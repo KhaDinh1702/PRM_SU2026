@@ -1,0 +1,15 @@
+# Node.js
+**/node_modules/
+**/dist/
+.env
+
+# Flutter
+**/build/
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# OS
+.DS_Store
+Thumbs.db

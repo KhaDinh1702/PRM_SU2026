@@ -1,0 +1,77 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks for Projects in Visual Studio Code.
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android related
+**/android/app/src/main/res/generated/
+**/android/app/src/main/res/values/generated.xml
+**/android/local.properties
+**/android/project.properties
+**/android/SdkManager.exe
+**/android/settings.gradle
+**/android/signing.configs/
+**/android/signing.configs/debug/
+**/android/signing.configs/release/
+**/android/signing.configs/upload/
+**/android/v8.arm64.so
+**/android/v8.arm.so
+**/android/v8.x86_64.so
+**/android/v8.x86.so
+
+# iOS related
+**/ios/Pods/
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+
+# Symbols and archives
+*.pdb
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.bc
+*.ll
+*.out
+*.app
+*.ipa
+*.zip
+*.tar.gz
+*.rar
+*.7z
