@@ -1,15 +1,64 @@
-# Node.js
+# Dependency Directories
 **/node_modules/
-**/dist/
-.env
+**/bower_components/
 
-# Flutter
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+**/android/local.properties
+
+# IDE & Editor Settings
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs & Diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build & Compilation Outputs
 **/build/
+**/dist/
+**/out/
+**/.next/
+**/.nuxt/
+**/.docusaurus/
+
+# Flutter & Dart Files
 **/.dart_tool/
 **/.packages
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/doc/api/
 
-# OS
-.DS_Store
-Thumbs.db
+# Miscellaneous
+*.class
+*.pyc
+*.swp
+*.bak
+*.tmp
+*.temp
