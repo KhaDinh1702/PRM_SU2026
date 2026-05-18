@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const sessionRoutes = require('./routes/sessionRoutes');
 
 const app = express();
 
@@ -11,6 +12,9 @@ app.use(express.json());
 
 // Connect to Database
 connectDB();
+
+// Routes
+app.use('/api/sessions', sessionRoutes);
 
 // Basic Route
 app.get('/api/health', (req, res) => {
