@@ -1,5 +1,12 @@
 const request = require('supertest');
 const express = require('express');
+
+// Giả lập middleware auth để bỏ qua xác thực token trong unit test
+jest.mock('../src/middleware/auth', () => (req, res, next) => {
+    req.user = { id: '6523e12089b25c3decfb3f9b' };
+    next();
+});
+
 const sessionRoutes = require('../src/routes/sessionRoutes');
 const Session = require('../src/models/Session');
 
