@@ -4,13 +4,18 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'services/auth_service.dart';
+import 'screens/login_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final bool loggedIn = await AuthService.isLoggedIn();
+  runApp(MyApp(isLoggedIn: loggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,11 @@ class MyApp extends StatelessWidget {
           background: const Color(0xFF080C14),
         ),
       ),
-      home: const TimerHomePage(),
+      initialRoute: isLoggedIn ? '/home' : '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const TimerHomePage(),
+      },
     );
   }
 }
@@ -51,6 +60,7 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
   // App mode: 'Focus' (25m), 'Short Break' (5m), 'Long Break' (15m), 'Custom'
   String _currentMode = 'Focus';
   int _customMinutes = 25;
+  String _userEmail = '';
 
   // Completion animation
   late AnimationController _completionController;
@@ -59,6 +69,7 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
+    _loadUserInfo();
     
     // Setup pulsing animation for completion state
     _completionController = AnimationController(
@@ -68,6 +79,30 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _completionController, curve: Curves.easeInOut),
     );
+  }
+
+  Future<void> _loadUserInfo() async {
+    final userInfo = await AuthService.getUserInfo();
+    if (userInfo != null && mounted) {
+      setState(() {
+        _userEmail = userInfo['email'] ?? '';
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService.logout();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đã đăng xuất tài khoản thành công.'),
+          backgroundColor: Colors.amber[800],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override
@@ -81,9 +116,13 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
   
   Future<void> _syncSessionToBackend(String mode, int durationSeconds) async {
     try {
+      final token = await AuthService.getToken();
       final response = await http.post(
         Uri.parse(_baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
           'mode': mode,
           'durationSeconds': durationSeconds,
@@ -120,7 +159,14 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
 
   Future<List<dynamic>> _fetchHistory() async {
     try {
-      final response = await http.get(Uri.parse(_baseUrl)).timeout(const Duration(seconds: 4));
+      final token = await AuthService.getToken();
+      final response = await http.get(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as List<dynamic>;
       }
@@ -130,7 +176,14 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
 
   Future<Map<String, dynamic>> _fetchStats() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/stats')).timeout(const Duration(seconds: 4));
+      final token = await AuthService.getToken();
+      final response = await http.get(
+        Uri.parse('$_baseUrl/stats'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 4));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -629,19 +682,21 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'PREMIUM',
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 3,
-                              ),
+                              _userEmail.isNotEmpty 
+                                  ? 'CHÀO ÔNG CHỦ: ${_userEmail.split('@')[0].toUpperCase()}'
+                                  : 'PREMIUM',
+                              style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
                             ),
-                            Text(
+                            const Text(
                               'Space Timer',
                               style: TextStyle(
                                 color: Colors.white,
@@ -658,6 +713,11 @@ class _TimerHomePageState extends State<TimerHomePage> with TickerProviderStateM
                               icon: const Icon(Icons.bar_chart_rounded, color: Colors.white70, size: 28),
                               onPressed: _showHistoryStatsSheet,
                               tooltip: 'Thống kê & Lịch sử',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 24),
+                              onPressed: _handleLogout,
+                              tooltip: 'Đăng xuất',
                             ),
                             const SizedBox(width: 8),
                             Container(
