@@ -1,4 +1,5 @@
 const swaggerJSDoc = require('swagger-jsdoc');
+const path = require('path');
 
 const options = {
     definition: {
@@ -12,6 +13,10 @@ const options = {
             },
         },
         servers: [
+            {
+                url: 'https://prm-tan.vercel.app',
+                description: 'Production Cloud Server'
+            },
             {
                 url: 'http://localhost:5000',
                 description: 'Development Server'
@@ -33,7 +38,7 @@ const options = {
             }
         ]
     },
-    apis: ['./src/routes/*.js'] // Quét JSDoc định nghĩa route
+    apis: [path.join(__dirname, '../routes/*.js')] // Quét JSDoc định nghĩa bằng đường dẫn tuyệt đối
 };
 
 const swaggerSpec = swaggerJSDoc(options);
