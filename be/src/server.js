@@ -48,7 +48,12 @@ const swaggerCustomOptions = {
         .swagger-ui .dialog-ux .modal-ux-header h3 { color: #f8fafc; }
         .swagger-ui .dialog-ux .modal-ux-content p { color: #94a3b8; }
     `,
-    customSiteTitle: "FlowMate API Documents 🚀"
+    customSiteTitle: "FlowMate API Documents 🚀",
+    customCssUrl: "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css",
+    customJs: [
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js"
+    ]
 };
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerCustomOptions));
