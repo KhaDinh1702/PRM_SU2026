@@ -105,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         if (mounted) {
           if (result['success']) {
-            _showSnackBar(result['message'] ?? 'Tạo tài khoản thành công! 🌟', Colors.emerald);
+            _showSnackBar(result['message'] ?? 'Tạo tài khoản thành công! 🌟', Colors.teal);
             Navigator.pushReplacementNamed(context, '/home');
           } else {
             _showSnackBar(result['message'] ?? 'Đăng ký thất bại.', Colors.redAccent);
