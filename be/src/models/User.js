@@ -22,6 +22,21 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: [6, 'Mật khẩu phải chứa ít nhất 6 ký tự']
     },
+    name: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    profile: {
+        bio: { type: String, default: '' },
+        avatarUrl: { type: String, default: '' }
+    },
+    settings: {
+        theme: { type: String, default: 'dark' },
+        focusTime: { type: Number, default: 25 }, // minutes
+        shortBreak: { type: Number, default: 5 }, // minutes
+        longBreak: { type: Number, default: 15 } // minutes
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -29,14 +44,13 @@ const userSchema = new mongoose.Schema({
 });
 
 // Pre-save hook to hash password
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+    if (!this.isModified('password')) return;
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
-        next();
     } catch (error) {
-        next(error);
+        throw error;
     }
 });
 

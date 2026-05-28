@@ -13,7 +13,7 @@ const generateToken = (userId) => {
 // @route   POST /api/auth/register
 exports.register = async (req, res) => {
     try {
-        const { email, phone, password } = req.body;
+        const { email, phone, password, name } = req.body;
 
         // Validation cơ bản
         if (!email || !password) {
@@ -50,7 +50,7 @@ exports.register = async (req, res) => {
         }
 
         // Tạo người dùng mới
-        const user = new User({ email, phone, password });
+        const user = new User({ email, phone, password, name: name || '' });
         await user.save();
 
         const token = generateToken(user._id);
@@ -61,10 +61,12 @@ exports.register = async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                phone: user.phone || ''
+                phone: user.phone || '',
+                name: user.name || ''
             }
         });
     } catch (error) {
+        console.error('Lỗi trong authController.register:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -102,10 +104,12 @@ exports.login = async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                phone: user.phone || ''
+                phone: user.phone || '',
+                name: user.name || ''
             }
         });
     } catch (error) {
+        console.error('Lỗi trong authController.login:', error);
         res.status(500).json({ error: error.message });
     }
 };

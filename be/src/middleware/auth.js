@@ -13,6 +13,7 @@ const auth = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
+        console.error('Lỗi trong middleware auth:', error);
         res.status(401).json({ error: 'Token xác thực không hợp lệ hoặc đã hết hạn.' });
     }
 };

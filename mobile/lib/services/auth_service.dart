@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // Thay đổi IP cho phù hợp (10.0.2.2 đối với Android Emulator)
-  static const String baseUrl = 'http://10.0.2.2:5000/api/auth';
+  static const String baseUrl = 'https://prm-tan.vercel.app/api/auth';
   static const String tokenKey = 'jwt_token';
   static const String userKey = 'user_info';
 
