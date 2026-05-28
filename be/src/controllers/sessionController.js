@@ -16,6 +16,7 @@ exports.createSession = async (req, res) => {
         const savedSession = await session.save();
         res.status(201).json(savedSession);
     } catch (error) {
+        console.error('Lỗi trong sessionController.createSession:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -26,6 +27,7 @@ exports.getAllSessions = async (req, res) => {
         const sessions = await Session.find({ user: req.user.id }).sort({ completedAt: -1 }).limit(100);
         res.status(200).json(sessions);
     } catch (error) {
+        console.error('Lỗi trong sessionController.getAllSessions:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -77,6 +79,7 @@ exports.getStats = async (req, res) => {
 
         res.status(200).json(formattedStats);
     } catch (error) {
+        console.error('Lỗi trong sessionController.getStats:', error);
         res.status(500).json({ error: error.message });
     }
 };
