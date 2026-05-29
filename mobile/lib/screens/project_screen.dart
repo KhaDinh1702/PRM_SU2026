@@ -17,6 +17,8 @@ class ProjectScreen extends StatefulWidget {
 class _ProjectScreenState extends State<ProjectScreen> {
   bool _isLoading = true;
   List<dynamic> _projects = [];
+  List<dynamic> _allUsers = [];
+  bool _isLoadingUsers = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _memberEmailController = TextEditingController();
@@ -82,6 +84,37 @@ class _ProjectScreenState extends State<ProjectScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadUsers() async {
+    try {
+      setState(() => _isLoadingUsers = true);
+
+      final token = await AuthService.getToken();
+
+      final response = await http.get(
+        Uri.parse('https://prm-tan.vercel.app/api/users'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (mounted) {
+          setState(() {
+            _allUsers = data;
+            _isLoadingUsers = false;
+          });
+        }
+      } else {
+        setState(() => _isLoadingUsers = false);
+      }
+    } catch (e) {
+      setState(() => _isLoadingUsers = false);
     }
   }
 
@@ -227,6 +260,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showProjectDetails(Map<String, dynamic> projectData) {
+    _loadUsers();
+
     final project = projectData['project'];
     final members = project['members'] as List<dynamic>? ?? [];
 
@@ -397,6 +432,157 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                     ),
                                     Text(member['email'], style: TextStyle(fontSize: 12, color: captionColor)),
                                   ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Suggested users list
+                Text(
+                  LocaleService.tr(
+                    'GỢI Ý THÀNH VIÊN',
+                    en: 'SUGGESTED MEMBERS',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: captionColor,
+                    letterSpacing: 2,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  height: 180,
+                  child: _isLoadingUsers
+                      ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                      : _allUsers.isEmpty
+                      ? Center(
+                    child: Text(
+                      LocaleService.tr(
+                        'Không có người dùng nào',
+                        en: 'No users found',
+                      ),
+                      style: TextStyle(color: captionColor),
+                    ),
+                  )
+                      : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _allUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = _allUsers[index];
+
+                      final alreadyMember =
+                          members.any((m) => m['_id'] == user['_id']) ||
+                              project['owner']['_id'] == user['_id'];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Opacity(
+                          opacity: alreadyMember ? 0.5 : 1,
+                          child: GlassCard(
+                            borderRadius: 18,
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: const Color(0xFF06B6D4),
+                                  backgroundImage:
+                                  user['profile']?['avatarUrl'] != null &&
+                                      user['profile']['avatarUrl']
+                                          .toString()
+                                          .isNotEmpty
+                                      ? NetworkImage(
+                                    user['profile']['avatarUrl'],
+                                  )
+                                      : null,
+                                  child:
+                                  user['profile']?['avatarUrl'] == null ||
+                                      user['profile']['avatarUrl']
+                                          .toString()
+                                          .isEmpty
+                                      ? const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                  )
+                                      : null,
+                                ),
+
+                                const SizedBox(width: 14),
+
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user['name']?.toString().isNotEmpty ==
+                                            true
+                                            ? user['name']
+                                            : user['email']
+                                            .split('@')[0],
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        user['email'],
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: captionColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                alreadyMember
+                                    ? Text(
+                                  LocaleService.tr(
+                                    'Đã tham gia',
+                                    en: 'Joined',
+                                  ),
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                )
+                                    : ElevatedButton(
+                                  onPressed: () async {
+                                    _memberEmailController.text =
+                                    user['email'];
+
+                                    await _addMember(project['_id']);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                    const Color(0xFF06B6D4),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    LocaleService.tr(
+                                      'Thêm',
+                                      en: 'Add',
+                                    ),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),

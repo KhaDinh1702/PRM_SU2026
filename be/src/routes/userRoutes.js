@@ -78,4 +78,49 @@ router.get('/profile', auth, userController.getProfile);
  */
 router.put('/profile', auth, userController.updateProfile);
 
+/**
+ * @swagger
+ * tags:
+ *   name: User Profile
+ *   description: Quản lý hồ sơ và các cài đặt cá nhân của người dùng
+ */
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Lấy danh sách tất cả người dùng
+ *     tags: [User Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trả về danh sách tất cả người dùng
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     example: "685f3f1a2c9f8b0012345678"
+ *                   name:
+ *                     type: string
+ *                     example: "Nguyen Van A"
+ *                   email:
+ *                     type: string
+ *                     example: "vana@gmail.com"
+ *                   profile:
+ *                     type: object
+ *                     properties:
+ *                       avatarUrl:
+ *                         type: string
+ *                         example: "https://avatar.url/user.jpg"
+ *       401:
+ *         description: Chưa đăng nhập hoặc token không hợp lệ
+ */
+router.get('/', auth, userController.getAllUsers);
+
 module.exports = router;
