@@ -62,3 +62,17 @@ exports.updateProfile = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// GET /api/users
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find()
+            .select('_id name email profile.avatarUrl')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Lỗi trong userController.getAllUsers:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
