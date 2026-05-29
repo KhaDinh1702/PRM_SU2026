@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
+import '../services/locale_service.dart';
 import '../widgets/premium_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -65,72 +67,106 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _selectDateTime(BuildContext context, StateSetter setDialogState) async {
-    final DateTime? pickedDate = await showDatePicker(
+    final now = DateTime.now();
+    final initialDate = _selectedDateTime.isBefore(now) ? now : _selectedDateTime;
+
+    // Show Material Date Picker
+    final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDateTime,
-      firstDate: DateTime(2020),
+      initialDate: initialDate,
+      firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(2100),
       builder: (context, child) {
-        final isDark = ThemeService.isDarkMode.value;
-        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
-        final textColor = ThemeService.getTextColor(isDark);
-
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: const Color(0xFF10B981),
-              onPrimary: Colors.white,
-              surface: dialogBg,
-              onSurface: textColor,
-            ),
+            colorScheme: ThemeService.isDarkMode.value
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF10B981),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E293B),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF10B981),
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
           ),
           child: child!,
         );
       },
     );
-    if (pickedDate != null) {
-      if (!mounted) return;
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
-        builder: (context, child) {
-          final isDark = ThemeService.isDarkMode.value;
-          final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
-          final textColor = ThemeService.getTextColor(isDark);
 
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.dark(
-                primary: const Color(0xFF10B981),
-                onPrimary: Colors.white,
-                surface: dialogBg,
-                onSurface: textColor,
-              ),
-            ),
-            child: child!,
-          );
-        },
-      );
-      if (pickedTime != null) {
-        setDialogState(() {
-          _selectedDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-        });
+    if (pickedDate == null) return;
+
+    // Show Material Time Picker
+    if (!context.mounted) return;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ThemeService.isDarkMode.value
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF10B981),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E293B),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF10B981),
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime == null) return;
+
+    final temporaryDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    final finalNow = DateTime.now();
+    setDialogState(() {
+      if (temporaryDateTime.isBefore(finalNow)) {
+        _selectedDateTime = finalNow;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr('Thời gian ở quá khứ đã được tự động chuyển về hiện tại! ⏰', en: 'Past time was automatically changed to current time! ⏰')),
+            backgroundColor: Colors.amber,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        _selectedDateTime = temporaryDateTime;
       }
-    }
+    });
   }
 
   Future<void> _createEvent() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
-    final startTime = _selectedDateTime.toIso8601String();
-    final endTime = _selectedDateTime.add(const Duration(hours: 1)).toIso8601String();
+    // Validate lại trước khi gửi lên server, nếu nhỏ hơn thời gian thực tế thì tự động set về hiện tại
+    final now = DateTime.now();
+    if (_selectedDateTime.isBefore(now)) {
+      _selectedDateTime = now;
+    }
+
+    final startTime = _selectedDateTime.toUtc().toIso8601String();
+    final endTime = _selectedDateTime.add(const Duration(hours: 1)).toUtc().toIso8601String();
 
     try {
       final token = await AuthService.getToken();
@@ -153,7 +189,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _titleController.clear();
         _descController.clear();
         setState(() {
-          _selectedDateTime = DateTime.now().add(const Duration(hours: 1));
+          _selectedDateTime = DateTime.now();
         });
         _loadEvents();
       }
@@ -174,24 +210,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (response.statusCode == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã xóa sự kiện thành công! 🗑️'),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã xóa sự kiện thành công! 🗑️', en: 'Event deleted successfully! 🗑️')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
         _loadEvents();
       } else {
         final errData = jsonDecode(response.body);
-        throw Exception(errData['error'] ?? 'Xóa thất bại');
+        throw Exception(errData['error'] ?? LocaleService.tr('Xóa thất bại', en: 'Deletion failed'));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi khi xóa sự kiện: $e'),
+            content: Text('${LocaleService.tr('Lỗi khi xóa sự kiện:', en: 'Error deleting event:')} $e'),
             backgroundColor: Colors.amber[900],
             behavior: SnackBarBehavior.floating,
           ),
@@ -201,6 +237,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _showCreateEventDialog() {
+    // Luôn "bắt thời gian thật" khi mở hộp thoại tạo sự kiện mới
+    setState(() {
+      _selectedDateTime = DateTime.now();
+    });
+
     showDialog(
       context: context,
       builder: (context) {
@@ -221,7 +262,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   side: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
                 ),
                 title: Text(
-                  'TẠO SỰ KIỆN MỚI',
+                  LocaleService.tr('TẠO SỰ KIỆN MỚI', en: 'CREATE NEW EVENT'),
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor, letterSpacing: 1.5),
                 ),
                 content: Column(
@@ -229,15 +270,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     PremiumInputField(
                       controller: _titleController,
-                      label: 'Tiêu đề sự kiện *',
-                      hintText: 'Nhập tiêu đề...',
+                      label: LocaleService.tr('Tiêu đề sự kiện *', en: 'Event title *'),
+                      hintText: LocaleService.tr('Nhập tiêu đề...', en: 'Enter title...'),
                       prefixIcon: Icons.title_rounded,
                     ),
                     const SizedBox(height: 14),
                     PremiumInputField(
                       controller: _descController,
-                      label: 'Mô tả ngắn',
-                      hintText: 'Nhập mô tả chi tiết...',
+                      label: LocaleService.tr('Mô tả ngắn', en: 'Short description'),
+                      hintText: LocaleService.tr('Nhập mô tả chi tiết...', en: 'Enter detailed description...'),
                       prefixIcon: Icons.description_outlined,
                     ),
                     const SizedBox(height: 20),
@@ -251,7 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Loại sự kiện:', style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text(LocaleService.tr('Loại sự kiện:', en: 'Event type:'), style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _eventType,
@@ -275,7 +316,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        value == 'reminder' ? 'Nhắc nhở' : (value == 'meeting' ? 'Cuộc họp' : 'Khác'),
+                                        value == 'reminder' ? LocaleService.tr('Nhắc nhở', en: 'Reminder') : (value == 'meeting' ? LocaleService.tr('Cuộc họp', en: 'Meeting') : LocaleService.tr('Khác', en: 'Other')),
                                         style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
                                       ),
                                     ],
@@ -296,7 +337,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Thời gian:', style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                        Text(LocaleService.tr('Thời gian:', en: 'Time:'), style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
                         TextButton.icon(
                           onPressed: () => _selectDateTime(context, setDialogState),
                           icon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF10B981), size: 18),
@@ -317,7 +358,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Hủy', style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -329,7 +370,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    child: const Text('Tạo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -368,11 +409,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'LỊCH TRÌNH CÁ NHÂN',
+                          LocaleService.tr('LỊCH TRÌNH CÁ NHÂN', en: 'PERSONAL SCHEDULE'),
                           style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
                         ),
                         Text(
-                          'Thời Gian Biểu',
+                          LocaleService.tr('Thời Gian Biểu', en: 'Timetable'),
                           style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
                         ),
                       ],
@@ -380,7 +421,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ElevatedButton.icon(
                       onPressed: _showCreateEventDialog,
                       icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: const Text('Thêm sự kiện', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      label: Text(LocaleService.tr('Thêm sự kiện', en: 'Add event'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: themeColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -410,7 +451,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   children: [
                                     Icon(Icons.calendar_today_rounded, size: 54, color: captionColor.withOpacity(0.4)),
                                     const SizedBox(height: 12),
-                                    Text('Chưa có sự kiện hay lịch trình nào.', style: TextStyle(color: captionColor, fontSize: 14)),
+                                    Text(LocaleService.tr('Chưa có sự kiện hay lịch trình nào.', en: 'No events or schedules yet.'), style: TextStyle(color: captionColor, fontSize: 14)),
                                   ],
                                 ),
                               ),
@@ -424,7 +465,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 itemBuilder: (context, index) {
                                   final event = _events[index];
                                   final eventId = event['id'];
-                                  final title = event['title'] ?? 'Sự kiện không tên';
+                                  final title = event['title'] ?? LocaleService.tr('Sự kiện không tên', en: 'Untitled event');
                                   final desc = event['description'] ?? '';
                                   final start = event['start'] ?? '';
                                   final type = event['type'] ?? 'reminder';
