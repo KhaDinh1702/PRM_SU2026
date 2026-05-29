@@ -37,39 +37,40 @@ class MyApp extends StatelessWidget {
           valueListenable: ThemeService.isDarkMode,
           builder: (context, isDark, child) {
             return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'FlowMate Productivity System',
-          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-          theme: ThemeData(
-            useMaterial3: true,
-            brightness: Brightness.light,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF8B5CF6), // Premium Violet
-              brightness: Brightness.light,
-              background: const Color(0xFFF8FAFC),
-            ),
-            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-          ),
-          darkTheme: ThemeData(
-            useMaterial3: true,
-            brightness: Brightness.dark,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF8B5CF6), // Cyber Violet
-              brightness: Brightness.dark,
-              background: const Color(0xFF070B19),
-            ),
-            scaffoldBackgroundColor: const Color(0xFF070B19),
-          ),
-          initialRoute: isLoggedIn ? '/home' : '/login',
-          routes: {
-            '/login': (context) => const LoginScreen(),
-            '/home': (context) => const MainNavigationScreen(),
+              debugShowCheckedModeBanner: false,
+              title: 'FlowMate Productivity System',
+              themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+              theme: ThemeData(
+                useMaterial3: true,
+                brightness: Brightness.light,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF8B5CF6), // Premium Violet
+                  brightness: Brightness.light,
+                  background: const Color(0xFFF8FAFC),
+                ),
+                scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+              ),
+              darkTheme: ThemeData(
+                useMaterial3: true,
+                brightness: Brightness.dark,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF8B5CF6), // Cyber Violet
+                  brightness: Brightness.dark,
+                  background: const Color(0xFF070B19),
+                ),
+                scaffoldBackgroundColor: const Color(0xFF070B19),
+              ),
+              initialRoute: isLoggedIn ? '/home' : '/login',
+              routes: {
+                '/login': (context) => const LoginScreen(),
+                '/home': (context) => const MainNavigationScreen(),
+              },
+            );
           },
         );
       },
     );
   }
-}
 }
 
 class MainNavigationScreen extends StatefulWidget {
