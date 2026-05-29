@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
+import '../services/locale_service.dart';
 import '../widgets/premium_widgets.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -82,27 +83,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   FadeInSlide(
                     delayMs: 0,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'TỔNG QUAN TIẾN TRÌNH',
-                          style: TextStyle(
-                            color: captionColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              LocaleService.tr('TỔNG QUAN TIẾN TRÌNH', en: 'PROGRESS OVERVIEW'),
+                              style: TextStyle(
+                                color: captionColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'FlowMate Dashboard',
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'FlowMate Dashboard',
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
+                        // Language Switcher
+                        GestureDetector(
+                          onTap: LocaleService.toggleLanguage,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: themeColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: themeColor.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.language, color: themeColor, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  LocaleService.languageCode.value.toUpperCase(),
+                                  style: TextStyle(
+                                    color: themeColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        )
                       ],
                     ),
                   ),
@@ -122,9 +154,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 100,
                               child: _buildSummaryCard(
-                                'Cần làm',
+                                LocaleService.tr('Cần làm', en: 'Pending'),
                                 '${_summary['pendingTasks']}',
-                                'công việc',
+                                LocaleService.tr('công việc', en: 'tasks'),
                                 Icons.playlist_add_check_rounded,
                                 themeColor,
                                 isDark,
@@ -133,9 +165,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 200,
                               child: _buildSummaryCard(
-                                'Hoàn thành',
+                                LocaleService.tr('Hoàn thành', en: 'Completed'),
                                 '${_summary['completedTasks']}',
-                                'công việc',
+                                LocaleService.tr('công việc', en: 'tasks'),
                                 Icons.task_alt_rounded,
                                 const Color(0xFF10B981),
                                 isDark,
@@ -144,9 +176,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 300,
                               child: _buildSummaryCard(
-                                'Dự án tham gia',
+                                LocaleService.tr('Dự án tham gia', en: 'Projects joined'),
                                 '${_summary['projects']}',
-                                'dự án',
+                                LocaleService.tr('dự án', en: 'projects'),
                                 Icons.dns_outlined,
                                 const Color(0xFF06B6D4),
                                 isDark,
@@ -155,9 +187,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 400,
                               child: _buildSummaryCard(
-                                'Tập trung hôm nay',
+                                LocaleService.tr('Tập trung hôm nay', en: 'Focus today'),
                                 '${_summary['totalFocusTimeTodayMinutes']}',
-                                'phút',
+                                LocaleService.tr('phút', en: 'mins'),
                                 Icons.bolt,
                                 accentColor,
                                 isDark,
@@ -171,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   FadeInSlide(
                     delayMs: 450,
                     child: Text(
-                      'LỊCH HỌP SẮP TỚI',
+                      LocaleService.tr('LỊCH HỌP SẮP TỚI', en: 'UPCOMING MEETING'),
                       style: TextStyle(
                         color: captionColor,
                         fontSize: 11,
@@ -295,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 child: Text(
-                  'Không có cuộc họp nào sắp diễn ra! 🎉',
+                  LocaleService.tr('Không có cuộc họp nào sắp diễn ra! 🎉', en: 'No upcoming meetings! 🎉'),
                   style: TextStyle(color: captionColor, fontSize: 14),
                 ),
               ),
@@ -316,7 +348,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        meeting['title'] ?? 'Cuộc họp không có tên',
+                        meeting['title'] ?? LocaleService.tr('Cuộc họp không có tên', en: 'Untitled meeting'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -327,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         meeting['description']?.toString().isNotEmpty == true
                             ? meeting['description']
-                            : 'Không có mô tả',
+                            : LocaleService.tr('Không có mô tả', en: 'No description'),
                         style: TextStyle(
                           fontSize: 12,
                           color: subTextColor,

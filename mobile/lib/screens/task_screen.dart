@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
+import '../services/locale_service.dart';
 import '../widgets/premium_widgets.dart';
 
 class TaskScreen extends StatefulWidget {
@@ -104,11 +105,11 @@ class _TaskScreenState extends State<TaskScreen> {
         _descController.clear();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã thêm công việc mới thành công! 📝'),
-              backgroundColor: Color(0xFF8B5CF6),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã thêm công việc mới thành công! 📝', en: 'Task added successfully! 📝')),
+              backgroundColor: const Color(0xFF8B5CF6),
               behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -135,8 +136,8 @@ class _TaskScreenState extends State<TaskScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(newStatus == 'Completed'
-                  ? 'Tuyệt vời! Đã hoàn thành công việc! 🎉'
-                  : 'Đã mở lại công việc.'),
+                  ? LocaleService.tr('Tuyệt vời! Đã hoàn thành công việc! 🎉', en: 'Awesome! Task completed! 🎉')
+                  : LocaleService.tr('Đã mở lại công việc.', en: 'Task reopened.')),
               backgroundColor: newStatus == 'Completed'
                   ? const Color(0xFF10B981)
                   : Colors.amber[800],
@@ -164,11 +165,11 @@ class _TaskScreenState extends State<TaskScreen> {
       if (response.statusCode == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã xóa công việc thành công! 🗑️'),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã xóa công việc thành công! 🗑️', en: 'Task deleted successfully! 🗑️')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -198,7 +199,7 @@ class _TaskScreenState extends State<TaskScreen> {
                   side: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
                 ),
                 title: Text(
-                  'TẠO CÔNG VIỆC MỚI',
+                  LocaleService.tr('TẠO CÔNG VIỆC MỚI', en: 'CREATE NEW TASK'),
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor, letterSpacing: 1.5),
                 ),
                 content: Column(
@@ -206,15 +207,15 @@ class _TaskScreenState extends State<TaskScreen> {
                   children: [
                     PremiumInputField(
                       controller: _titleController,
-                      label: 'Tiêu đề công việc *',
-                      hintText: 'Nhập tiêu đề...',
+                      label: LocaleService.tr('Tiêu đề công việc *', en: 'Task title *'),
+                      hintText: LocaleService.tr('Nhập tiêu đề...', en: 'Enter title...'),
                       prefixIcon: Icons.title_rounded,
                     ),
                     const SizedBox(height: 14),
                     PremiumInputField(
                       controller: _descController,
-                      label: 'Mô tả ngắn',
-                      hintText: 'Nhập mô tả chi tiết...',
+                      label: LocaleService.tr('Mô tả ngắn', en: 'Short description'),
+                      hintText: LocaleService.tr('Nhập mô tả chi tiết...', en: 'Enter detailed description...'),
                       prefixIcon: Icons.description_outlined,
                     ),
                     const SizedBox(height: 20),
@@ -228,7 +229,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Độ ưu tiên:', style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text(LocaleService.tr('Độ ưu tiên:', en: 'Priority:'), style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _taskPriority,
@@ -273,7 +274,7 @@ class _TaskScreenState extends State<TaskScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Hủy', style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -285,7 +286,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    child: const Text('Tạo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -324,11 +325,11 @@ class _TaskScreenState extends State<TaskScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'QUẢN LÝ TIẾN ĐỘ',
+                          LocaleService.tr('QUẢN LÝ TIẾN ĐỘ', en: 'PROGRESS MANAGEMENT'),
                           style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
                         ),
                         Text(
-                          'Công Việc',
+                          LocaleService.tr('Công Việc', en: 'Tasks'),
                           style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
                         ),
                       ],
@@ -336,7 +337,7 @@ class _TaskScreenState extends State<TaskScreen> {
                     ElevatedButton.icon(
                       onPressed: _showCreateTaskDialog,
                       icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: const Text('Thêm task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      label: Text(LocaleService.tr('Thêm task', en: 'Add task'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: themeColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -360,7 +361,7 @@ class _TaskScreenState extends State<TaskScreen> {
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'Tìm kiếm công việc...',
+                            hintText: LocaleService.tr('Tìm kiếm công việc...', en: 'Search tasks...'),
                             hintStyle: TextStyle(color: captionColor, fontSize: 14),
                             prefixIcon: Icon(Icons.search, color: captionColor, size: 20),
                             border: InputBorder.none,
@@ -379,7 +380,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       items: <String>['All', 'Pending', 'In Progress', 'Completed', 'Overdue'].map((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
-                          child: Text(value == 'All' ? 'Tất cả' : value, style: TextStyle(color: textColor, fontSize: 14)),
+                          child: Text(value == 'All' ? LocaleService.tr('Tất cả', en: 'All') : value, style: TextStyle(color: textColor, fontSize: 14)),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -413,7 +414,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                   children: [
                                     Icon(Icons.playlist_add_check_rounded, size: 54, color: captionColor.withOpacity(0.4)),
                                     const SizedBox(height: 12),
-                                    Text('Chưa có công việc nào.', style: TextStyle(color: captionColor, fontSize: 14)),
+                                    Text(LocaleService.tr('Chưa có công việc nào.', en: 'No tasks yet.'), style: TextStyle(color: captionColor, fontSize: 14)),
                                   ],
                                 ),
                               ),
@@ -427,7 +428,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                 itemBuilder: (context, index) {
                                   final task = _tasks[index];
                                   final taskId = task['_id'];
-                                  final title = task['title'] ?? 'Công việc không tên';
+                                  final title = task['title'] ?? LocaleService.tr('Công việc không tên', en: 'Untitled task');
                                   final desc = task['description'] ?? '';
                                   final status = task['status'] ?? 'Pending';
                                   final priority = task['priority'] ?? 'Medium';

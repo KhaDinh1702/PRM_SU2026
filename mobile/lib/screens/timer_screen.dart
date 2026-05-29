@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
+import '../services/locale_service.dart';
 
 class TimerScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -22,8 +23,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   // Timer settings
   int _totalSeconds = 25 * 60;
   int _secondsRemaining = 25 * 60;
-  Timer? _timer;
   bool _isRunning = false;
+  late AnimationController _countdownController;
   
   // App mode: 'Focus' (25m), 'Short Break' (5m), 'Long Break' (15m), 'Custom'
   String _currentMode = 'Focus';
@@ -47,6 +48,22 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
       CurvedAnimation(parent: _completionController, curve: Curves.easeInOut),
     );
+
+    // Setup smooth countdown controller
+    _countdownController = AnimationController(
+      vsync: this,
+      value: 1.0,
+    );
+    _countdownController.addListener(() {
+      setState(() {
+        _secondsRemaining = (_countdownController.value * _totalSeconds).ceil();
+      });
+    });
+    _countdownController.addStatusListener((status) {
+      if (status == AnimationStatus.dismissed && _isRunning) {
+        _timerFinished();
+      }
+    });
   }
 
   Future<void> _loadUserInfo() async {
@@ -60,7 +77,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _countdownController.dispose();
     _completionController.dispose();
     super.dispose();
   }
@@ -85,11 +102,11 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
       if (response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã đồng bộ phiên làm việc thành công! 🚀'),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã đồng bộ phiên làm việc thành công! 🚀', en: 'Session synced successfully! 🚀')),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -100,7 +117,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Đã lưu phiên offline (Không thể kết nối server).'),
+            content: Text(LocaleService.tr('Đã lưu phiên offline (Không thể kết nối server).', en: 'Session saved offline (Cannot connect to server).')),
             backgroundColor: Colors.amber[900],
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -113,33 +130,25 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   void _startTimer() {
     if (_isRunning) return;
     
-    _timer?.cancel();
     setState(() {
       _isRunning = true;
     });
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
-      } else {
-        _timerFinished();
-      }
-    });
+    _countdownController.duration = Duration(seconds: _totalSeconds);
+    _countdownController.reverse(from: _totalSeconds > 0 ? _secondsRemaining / _totalSeconds : 0);
   }
 
   void _pauseTimer() {
     if (!_isRunning) return;
 
-    _timer?.cancel();
+    _countdownController.stop();
     setState(() {
       _isRunning = false;
     });
   }
 
   void _resetTimer() {
-    _timer?.cancel();
+    _countdownController.stop();
     _completionController.stop();
     _completionController.reset();
     setState(() {
@@ -154,11 +163,12 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         _totalSeconds = _customMinutes * 60;
       }
       _secondsRemaining = _totalSeconds;
+      _countdownController.value = 1.0;
     });
   }
 
   void _timerFinished() {
-    _timer?.cancel();
+    _countdownController.stop();
     setState(() {
       _isRunning = false;
       _secondsRemaining = 0;
@@ -194,7 +204,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                 const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
                 const SizedBox(width: 10),
                 Text(
-                  'HOÀN THÀNH!',
+                  LocaleService.tr('HOÀN THÀNH!', en: 'COMPLETED!'),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: textColor,
@@ -205,8 +215,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             ),
             content: Text(
               _currentMode == 'Focus'
-                  ? 'Tuyệt vời ông chủ! Bạn đã hoàn thành 25 phút tập trung cao độ. Hãy nghỉ ngơi một chút!'
-                  : 'Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?',
+                  ? LocaleService.tr('Tuyệt vời ông chủ! Bạn đã hoàn thành tập trung cao độ. Hãy nghỉ ngơi một chút!', en: 'Awesome! You completed deep focus. Take a break!')
+                  : LocaleService.tr('Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?', en: 'Break time is over! Ready for a new session?'),
               textAlign: TextAlign.center,
               style: TextStyle(color: subTextColor, fontSize: 16),
             ),
@@ -225,9 +235,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text(
-                  'Tuyệt vời',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: Text(
+                  LocaleService.tr('Tuyệt vời', en: 'Awesome'),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -241,7 +251,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     if (_isRunning) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Vui lòng tạm dừng timer trước khi đổi chế độ!'),
+          content: Text(LocaleService.tr('Vui lòng tạm dừng timer trước khi đổi chế độ!', en: 'Please pause the timer before changing mode!')),
           backgroundColor: Colors.amber[800],
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -257,6 +267,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
       _currentMode = mode;
       _totalSeconds = minutes * 60;
       _secondsRemaining = _totalSeconds;
+      _countdownController.value = 1.0;
     });
   }
 
@@ -265,9 +276,82 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
     setState(() {
       _currentMode = 'Custom';
-      _customMinutes = (_customMinutes + deltaMinutes).clamp(1, 180);
+      _customMinutes = (_customMinutes + deltaMinutes).clamp(1, 999);
       _totalSeconds = _customMinutes * 60;
       _secondsRemaining = _totalSeconds;
+      _countdownController.value = 1.0;
+    });
+  }
+
+  Future<void> _showTimeInputDialog() async {
+    if (_isRunning) return;
+
+    final TextEditingController controller = TextEditingController(text: (_totalSeconds ~/ 60).toString());
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+
+        return AlertDialog(
+          backgroundColor: dialogBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            LocaleService.tr('Nhập thời gian (phút)', en: 'Enter time (minutes)'),
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: '25',
+              hintStyle: TextStyle(color: ThemeService.getSubTextColor(isDark)),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: ThemeService.getBorderColor(isDark)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Color(0xFFF43F5E), width: 2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            autofocus: true,
+            onSubmitted: (val) => Navigator.pop(context, val),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: ThemeService.getSubTextColor(isDark))),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(LocaleService.tr('Xác nhận', en: 'Confirm'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    ).then((value) {
+      if (value != null && value is String && value.isNotEmpty) {
+        final int? minutes = int.tryParse(value);
+        if (minutes != null && minutes > 0) {
+          setState(() {
+            _currentMode = 'Custom';
+            _customMinutes = minutes.clamp(1, 999);
+            _totalSeconds = _customMinutes * 60;
+            _secondsRemaining = _totalSeconds;
+            _countdownController.value = 1.0;
+          });
+        }
+      }
     });
   }
 
@@ -278,8 +362,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   }
 
   double _getProgress() {
-    if (_totalSeconds == 0) return 0;
-    return _secondsRemaining / _totalSeconds;
+    return _countdownController.value;
   }
 
   @override
@@ -327,7 +410,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                           children: [
                             Text(
                               _userEmail.isNotEmpty 
-                                  ? 'CHÀO ÔNG CHỦ: ${_userEmail.split('@')[0].toUpperCase()}'
+                                  ? '${LocaleService.tr('CHÀO ÔNG CHỦ: ', en: 'HELLO BOSS: ')}${_userEmail.split('@')[0].toUpperCase()}'
                                   : 'PREMIUM',
                               style: TextStyle(
                                 color: captionColor,
@@ -385,7 +468,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                               size: 20,
                             ),
                             onPressed: () => ThemeService.toggleTheme(),
-                            tooltip: 'Chuyển chủ đề',
+                            tooltip: LocaleService.tr('Chuyển chủ đề', en: 'Toggle theme'),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
@@ -393,7 +476,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                           IconButton(
                             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
                             onPressed: widget.onLogout,
-                            tooltip: 'Đăng xuất',
+                            tooltip: LocaleService.tr('Đăng xuất', en: 'Logout'),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
@@ -452,16 +535,20 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                             ),
                           ),
 
-                          // Outer Interactive Canvas Painter
                           SizedBox(
                             width: 220,
                             height: 220,
-                            child: CustomPaint(
-                              painter: TimerPainter(
-                                progress: progress,
-                                baseColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-                                progressColor: themeColor,
-                              ),
+                            child: AnimatedBuilder(
+                              animation: _countdownController,
+                              builder: (context, child) {
+                                return CustomPaint(
+                                  painter: TimerPainter(
+                                    progress: _getProgress(),
+                                    baseColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                                    progressColor: themeColor,
+                                  ),
+                                );
+                              },
                             ),
                           ),
 
@@ -469,21 +556,24 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                timeStr,
-                                style: TextStyle(
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w800,
-                                  color: textColor,
-                                  letterSpacing: 1.5,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
+                              GestureDetector(
+                                onTap: _isRunning ? null : _showTimeInputDialog,
+                                child: Text(
+                                  timeStr,
+                                  style: TextStyle(
+                                    fontSize: 44,
+                                    fontWeight: FontWeight.w800,
+                                    color: textColor,
+                                    letterSpacing: 1.5,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _isRunning ? 'TIẾN TRÌNH' : 'TẠM DỪNG',
+                                _isRunning ? LocaleService.tr('TIẾN TRÌNH', en: 'IN PROGRESS') : LocaleService.tr('TẠM DỪNG', en: 'PAUSED'),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -509,7 +599,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                       child: Column(
                         children: [
                           Text(
-                            'ĐIỀU CHỈNH THỜI GIAN',
+                            LocaleService.tr('ĐIỀU CHỈNH THỜI GIAN', en: 'ADJUST TIME'),
                             style: TextStyle(
                               color: captionColor,
                               fontSize: 10,
@@ -528,15 +618,26 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                                   textBaseline: TextBaseline.alphabetic,
                                   crossAxisAlignment: CrossAxisAlignment.baseline,
                                   children: [
-                                    Text(
-                                      '${_totalSeconds ~/ 60}',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
+                                    GestureDetector(
+                                      onTap: _showTimeInputDialog,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
+                                        ),
+                                        child: Text(
+                                          '${_totalSeconds ~/ 60}',
+                                          style: TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                            color: textColor,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'phút',
                                       style: TextStyle(

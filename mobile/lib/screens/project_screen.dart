@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
+import '../services/locale_service.dart';
 import '../widgets/premium_widgets.dart';
 
 class ProjectScreen extends StatefulWidget {
@@ -107,11 +108,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
         _descController.clear();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã khởi tạo dự án nhóm thành công! 🚀'),
-              backgroundColor: Color(0xFF06B6D4),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã khởi tạo dự án nhóm thành công! 🚀', en: 'Project created successfully! 🚀')),
+              backgroundColor: const Color(0xFF06B6D4),
               behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -141,8 +142,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
         _loadProjects();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã thêm thành viên mới thành công! 🌟'),
+            SnackBar(
+              content: Text(LocaleService.tr('Đã thêm thành viên mới thành công! 🌟', en: 'Member added successfully! 🌟')),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
             ),
@@ -152,7 +153,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['error'] ?? 'Có lỗi xảy ra.'),
+              content: Text(data['error'] ?? LocaleService.tr('Có lỗi xảy ra.', en: 'An error occurred.')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
             ),
@@ -180,7 +181,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
               side: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
             ),
             title: Text(
-              'TẠO DỰ ÁN MỚI',
+              LocaleService.tr('TẠO DỰ ÁN MỚI', en: 'CREATE NEW PROJECT'),
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor, letterSpacing: 1.5),
             ),
             content: Column(
@@ -188,15 +189,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
               children: [
                 PremiumInputField(
                   controller: _nameController,
-                  label: 'Tên dự án *',
-                  hintText: 'Nhập tên dự án...',
+                  label: LocaleService.tr('Tên dự án *', en: 'Project name *'),
+                  hintText: LocaleService.tr('Nhập tên dự án...', en: 'Enter project name...'),
                   prefixIcon: Icons.folder_rounded,
                 ),
                 const SizedBox(height: 14),
                 PremiumInputField(
                   controller: _descController,
-                  label: 'Mô tả dự án',
-                  hintText: 'Nhập mô tả dự án...',
+                  label: LocaleService.tr('Mô tả dự án', en: 'Project description'),
+                  hintText: LocaleService.tr('Nhập mô tả dự án...', en: 'Enter project description...'),
                   prefixIcon: Icons.description_outlined,
                 ),
               ],
@@ -204,7 +205,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Hủy', style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
+                child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -216,7 +217,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
-                child: const Text('Tạo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -270,26 +271,26 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  project['name'] ?? 'Dự án không tên',
+                  project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  project['description']?.toString().isNotEmpty == true ? project['description'] : 'Không có mô tả chi tiết.',
+                  project['description']?.toString().isNotEmpty == true ? project['description'] : LocaleService.tr('Không có mô tả chi tiết.', en: 'No detailed description.'),
                   style: TextStyle(fontSize: 14, color: subTextColor),
                 ),
                 const SizedBox(height: 24),
 
                 // Members Title & Add Member
-                Text('THÀNH VIÊN DỰ ÁN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: captionColor, letterSpacing: 2)),
+                Text(LocaleService.tr('THÀNH VIÊN DỰ ÁN', en: 'PROJECT MEMBERS'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: captionColor, letterSpacing: 2)),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: PremiumInputField(
                         controller: _memberEmailController,
-                        label: 'Mời thành viên',
-                        hintText: 'Nhập email thành viên...',
+                        label: LocaleService.tr('Mời thành viên', en: 'Invite member'),
+                        hintText: LocaleService.tr('Nhập email thành viên...', en: 'Enter member email...'),
                         prefixIcon: Icons.mail_outline_rounded,
                       ),
                     ),
@@ -304,7 +305,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       ),
-                      child: const Text('Mời', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text(LocaleService.tr('Mời', en: 'Invite'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -356,7 +357,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                                 color: const Color(0xFFEAB308).withOpacity(0.12),
                                                 borderRadius: BorderRadius.circular(6),
                                               ),
-                                              child: const Text('CHỦ DỰ ÁN', style: TextStyle(color: Color(0xFFEAB308), fontSize: 8, fontWeight: FontWeight.w900)),
+                                              child: Text(LocaleService.tr('CHỦ DỰ ÁN', en: 'OWNER'), style: const TextStyle(color: Color(0xFFEAB308), fontSize: 8, fontWeight: FontWeight.w900)),
                                             )
                                           ],
                                         ),
@@ -441,11 +442,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'HỢP TÁC ĐỒNG ĐỘI',
+                          LocaleService.tr('HỢP TÁC ĐỒNG ĐỘI', en: 'TEAM COLLABORATION'),
                           style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
                         ),
                         Text(
-                          'Dự Án Nhóm',
+                          LocaleService.tr('Dự Án Nhóm', en: 'Team Projects'),
                           style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
                         ),
                       ],
@@ -453,7 +454,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     ElevatedButton.icon(
                       onPressed: _showCreateProjectDialog,
                       icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: const Text('Tạo dự án', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      label: Text(LocaleService.tr('Tạo dự án', en: 'New project'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: themeColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -483,7 +484,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                   children: [
                                     Icon(Icons.dns_outlined, size: 54, color: captionColor.withOpacity(0.4)),
                                     const SizedBox(height: 12),
-                                    Text('Chưa có dự án nào.', style: TextStyle(color: captionColor, fontSize: 14)),
+                                    Text(LocaleService.tr('Chưa có dự án nào.', en: 'No projects yet.'), style: TextStyle(color: captionColor, fontSize: 14)),
                                   ],
                                 ),
                               ),
@@ -499,7 +500,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                   final project = projectData['project'];
                                   final stats = projectData['stats'];
                                   
-                                  final name = project['name'] ?? 'Dự án không tên';
+                                  final name = project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project');
                                   final desc = project['description'] ?? '';
                                   final total = stats['totalTasks'] ?? 0;
                                   final completed = stats['completedTasks'] ?? 0;
@@ -544,11 +545,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                 children: [
                                                   Text(
-                                                    'Tiến độ: $progress%',
+                                                    '${LocaleService.tr('Tiến độ:', en: 'Progress:')} $progress%',
                                                     style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.bold),
                                                   ),
                                                   Text(
-                                                    'Tasks: $completed/$total',
+                                                    '${LocaleService.tr('Nhiệm vụ:', en: 'Tasks:')} $completed/$total',
                                                     style: TextStyle(fontSize: 11, color: captionColor),
                                                   ),
                                                 ],
@@ -574,7 +575,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                                       Icon(Icons.people_outline_rounded, size: 14, color: captionColor),
                                                       const SizedBox(width: 6),
                                                       Text(
-                                                        '${members.length + 1} thành viên',
+                                                        '${members.length + 1} ${LocaleService.tr('thành viên', en: 'members')}',
                                                         style: TextStyle(fontSize: 11, color: captionColor),
                                                       ),
                                                     ],

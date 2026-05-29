@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/locale_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -82,17 +83,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         if (mounted) {
           if (result['success']) {
-            _showSnackBar(result['message'] ?? 'Chào mừng ông chủ trở lại! 🚀', Colors.indigo);
+            _showSnackBar(result['message'] ?? LocaleService.tr('Chào mừng ông chủ trở lại! 🚀', en: 'Welcome back, boss! 🚀'), Colors.indigo);
             // Quay lại trang chính (TimerHomePage) và làm mới trạng thái đăng nhập
             Navigator.pushReplacementNamed(context, '/home');
           } else {
-            _showSnackBar(result['message'] ?? 'Đăng nhập thất bại.', Colors.redAccent);
+            _showSnackBar(result['message'] ?? LocaleService.tr('Đăng nhập thất bại.', en: 'Login failed.'), Colors.redAccent);
           }
         }
       } else {
         // Đăng ký
         if (_passwordController.text != _confirmPasswordController.text) {
-          _showSnackBar('Mật khẩu xác nhận không trùng khớp!', Colors.redAccent);
+          _showSnackBar(LocaleService.tr('Mật khẩu xác nhận không trùng khớp!', en: 'Passwords do not match!'), Colors.redAccent);
           setState(() => _isLoading = false);
           return;
         }
@@ -105,15 +106,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         if (mounted) {
           if (result['success']) {
-            _showSnackBar(result['message'] ?? 'Tạo tài khoản thành công! 🌟', Colors.teal);
+            _showSnackBar(result['message'] ?? LocaleService.tr('Tạo tài khoản thành công! 🌟', en: 'Account created successfully! 🌟'), Colors.teal);
             Navigator.pushReplacementNamed(context, '/home');
           } else {
-            _showSnackBar(result['message'] ?? 'Đăng ký thất bại.', Colors.redAccent);
+            _showSnackBar(result['message'] ?? LocaleService.tr('Đăng ký thất bại.', en: 'Registration failed.'), Colors.redAccent);
           }
         }
       }
     } catch (e) {
-      _showSnackBar('Đã xảy ra lỗi kết nối: $e', Colors.redAccent);
+      _showSnackBar('${LocaleService.tr('Đã xảy ra lỗi kết nối:', en: 'Connection error:')} $e', Colors.redAccent);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -211,8 +212,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     const SizedBox(height: 6),
                     Text(
                       _isLoginMode
-                          ? 'ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH'
-                          : 'ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
+                          ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH', en: 'LOGIN TO SYNC PROGRESS')
+                          : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ', en: 'REGISTER SPACE MEMBER'),
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -248,11 +249,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     // LOGIN MODE FIELDS
                                     _buildTextField(
                                       controller: _emailOrPhoneController,
-                                      labelText: 'Email hoặc Số điện thoại',
+                                      labelText: LocaleService.tr('Email hoặc Số điện thoại', en: 'Email or Phone number'),
                                       icon: Icons.alternate_email_rounded,
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
-                                          return 'Vui lòng nhập Email hoặc SĐT';
+                                          return LocaleService.tr('Vui lòng nhập Email hoặc SĐT', en: 'Please enter Email or Phone');
                                         }
                                         return null;
                                       },
@@ -261,17 +262,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     // REGISTER MODE FIELDS
                                     _buildTextField(
                                       controller: _emailController,
-                                      labelText: 'Địa chỉ Email',
+                                      labelText: LocaleService.tr('Địa chỉ Email', en: 'Email Address'),
                                       icon: Icons.email_outlined,
                                       keyboardType: TextInputType.emailAddress,
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
-                                          return 'Vui lòng nhập Email';
+                                          return LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email');
                                         }
                                         final emailRegex = RegExp(
                                             r'^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$');
                                         if (!emailRegex.hasMatch(value.trim())) {
-                                          return 'Định dạng email không hợp lệ';
+                                          return LocaleService.tr('Định dạng email không hợp lệ', en: 'Invalid email format');
                                         }
                                         return null;
                                       },
@@ -279,14 +280,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     const SizedBox(height: 16),
                                     _buildTextField(
                                       controller: _phoneController,
-                                      labelText: 'Số điện thoại (Tùy chọn)',
+                                      labelText: LocaleService.tr('Số điện thoại (Tùy chọn)', en: 'Phone number (Optional)'),
                                       icon: Icons.phone_android_rounded,
                                       keyboardType: TextInputType.phone,
                                       validator: (value) {
                                         if (value != null && value.trim().isNotEmpty) {
                                           final phoneRegex = RegExp(r'^[0-9]{10,11}$');
                                           if (!phoneRegex.hasMatch(value.trim())) {
-                                            return 'SĐT không hợp lệ (10-11 chữ số)';
+                                            return LocaleService.tr('SĐT không hợp lệ (10-11 chữ số)', en: 'Invalid phone number (10-11 digits)');
                                           }
                                         }
                                         return null;
@@ -298,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   // PASSWORD FIELD
                                   _buildTextField(
                                     controller: _passwordController,
-                                    labelText: 'Mật khẩu',
+                                    labelText: LocaleService.tr('Mật khẩu', en: 'Password'),
                                     icon: Icons.lock_outline_rounded,
                                     obscureText: _obscurePassword,
                                     suffixIcon: IconButton(
@@ -315,10 +316,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Vui lòng nhập mật khẩu';
+                                        return LocaleService.tr('Vui lòng nhập mật khẩu', en: 'Please enter password');
                                       }
                                       if (value.length < 6) {
-                                        return 'Mật khẩu phải chứa ít nhất 6 ký tự';
+                                        return LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự', en: 'Password must be at least 6 characters');
                                       }
                                       return null;
                                     },
@@ -329,15 +330,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     const SizedBox(height: 16),
                                     _buildTextField(
                                       controller: _confirmPasswordController,
-                                      labelText: 'Xác nhận Mật khẩu',
+                                      labelText: LocaleService.tr('Xác nhận Mật khẩu', en: 'Confirm Password'),
                                       icon: Icons.lock_reset_rounded,
                                       obscureText: _obscurePassword,
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return 'Vui lòng xác nhận mật khẩu';
+                                          return LocaleService.tr('Vui lòng xác nhận mật khẩu', en: 'Please confirm password');
                                         }
                                         if (value != _passwordController.text) {
-                                          return 'Mật khẩu xác nhận không trùng khớp';
+                                          return LocaleService.tr('Mật khẩu xác nhận không trùng khớp', en: 'Passwords do not match');
                                         }
                                         return null;
                                       },
@@ -379,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                               ),
                                             )
                                           : Text(
-                                              _isLoginMode ? 'Đăng Nhập' : 'Tạo Tài Khoản',
+                                              _isLoginMode ? LocaleService.tr('Đăng Nhập', en: 'Login') : LocaleService.tr('Tạo Tài Khoản', en: 'Create Account'),
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
@@ -404,14 +405,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       children: [
                         Text(
                           _isLoginMode
-                              ? 'Chưa có tài khoản? '
-                              : 'Đã có tài khoản? ',
+                              ? LocaleService.tr('Chưa có tài khoản? ', en: 'Don\'t have an account? ')
+                              : LocaleService.tr('Đã có tài khoản? ', en: 'Already have an account? '),
                           style: const TextStyle(color: Colors.white38, fontSize: 14),
                         ),
                         GestureDetector(
                           onTap: _toggleMode,
                           child: Text(
-                            _isLoginMode ? 'Đăng ký ngay' : 'Đăng nhập',
+                            _isLoginMode ? LocaleService.tr('Đăng ký ngay', en: 'Register now') : LocaleService.tr('Đăng nhập', en: 'Login'),
                             style: const TextStyle(
                               color: themeColor,
                               fontWeight: FontWeight.bold,

@@ -5,7 +5,7 @@ import 'package:prm_app/main.dart';
 void main() {
   testWidgets('Timer App initial state and presets test', (WidgetTester tester) async {
     // 1. Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(isLoggedIn: false));
 
     // 2. Verify that our initial timer is set to '25:00' (Focus Mode default).
     expect(find.text('25:00'), findsOneWidget);

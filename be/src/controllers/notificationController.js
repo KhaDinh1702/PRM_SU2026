@@ -30,3 +30,26 @@ exports.markAsRead = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// POST /api/notifications
+exports.createNotification = async (req, res) => {
+    try {
+        const { title, message, type } = req.body;
+        if (!title || !message) {
+            return res.status(400).json({ error: 'Tiêu đề và nội dung là bắt buộc' });
+        }
+
+        const notification = new Notification({
+            title,
+            message,
+            type: type || 'other',
+            user: req.user.id
+        });
+
+        await notification.save();
+        res.status(201).json(notification);
+    } catch (error) {
+        console.error('Lỗi trong notificationController.createNotification:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
