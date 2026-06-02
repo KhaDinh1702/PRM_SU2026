@@ -405,11 +405,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: Icon(
+                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                color: ThemeService.getTextColor(isDark),
+              ),
+              title: Text(
+                LocaleService.tr(
+                  isDark ? 'Chế độ sáng' : 'Chế độ tối',
+                  en: isDark ? 'Light Mode' : 'Dark Mode',
+                ),
+                style: TextStyle(color: ThemeService.getTextColor(isDark)),
+              ),
+              onTap: () {
+                ThemeService.toggleTheme();
+              },
+            ),
             const Spacer(),
             Divider(color: Colors.grey.withOpacity(0.2)),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-              title: const Text('Đăng xuất', style: TextStyle(color: Colors.redAccent)),
+              title: Text(
+                LocaleService.tr('Đăng xuất', en: 'Logout'),
+                style: const TextStyle(color: Colors.redAccent),
+              ),
               onTap: _handleLogout,
             ),
             const SizedBox(height: 16),

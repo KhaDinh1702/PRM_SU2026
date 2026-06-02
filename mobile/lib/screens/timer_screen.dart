@@ -367,7 +367,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final progress = _getProgress();
     final timeStr = _formatTime(_secondsRemaining);
 
     // Dynamic colors depending on the mode
@@ -458,27 +457,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Premium Light/Dark Mode Toggle Switch
-                          IconButton(
-                            icon: Icon(
-                              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                              color: isDark ? Colors.amber[400] : const Color(0xFF475569),
-                              size: 20,
-                            ),
-                            onPressed: () => ThemeService.toggleTheme(),
-                            tooltip: LocaleService.tr('Chuyển chủ đề', en: 'Toggle theme'),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 14),
-                          IconButton(
-                            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-                            onPressed: widget.onLogout,
-                            tooltip: LocaleService.tr('Đăng xuất', en: 'Logout'),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
                           ),
                         ],
                       ),
