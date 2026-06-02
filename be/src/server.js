@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -16,8 +18,16 @@ const calendarRoutes = require('./routes/calendarRoutes');
 const focusRoutes = require('./routes/focusRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const Message = require('./models/Message');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+    }
+});
 
 // Middleware
 app.use(cors());
@@ -70,6 +80,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/focus-sessions', focusRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/projects/:projectId/messages', chatRoutes);
 
 // Basic Route
 app.get('/api/health', (req, res) => {
@@ -82,8 +93,43 @@ app.get('/api/health', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+io.on('connection', (socket) => {
+    console.log('User connected to socket:', socket.id);
+
+    socket.on('joinProject', (projectId) => {
+        socket.join(projectId);
+        console.log(`Socket ${socket.id} joined project room: ${projectId}`);
+    });
+
+    socket.on('sendMessage', async (data) => {
+        try {
+            const { projectId, senderId, text } = data;
+            
+            // Save to database
+            const newMessage = new Message({
+                project: projectId,
+                sender: senderId,
+                text: text
+            });
+            await newMessage.save();
+
+            // Populate sender info for the client
+            await newMessage.populate('sender', 'name email profile');
+
+            // Emit to everyone in the room
+            io.to(projectId).emit('receiveMessage', newMessage);
+        } catch (error) {
+            console.error('Error saving/sending message:', error);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
+
 if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
     });
 }
