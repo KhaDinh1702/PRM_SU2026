@@ -8,6 +8,12 @@ import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/locale_service.dart';
 
+// ⚙️ Cấu hình URL backend:
+// - Khi chạy local trên Android Emulator: 'http://10.0.2.2:5000'
+// - Khi chạy local trên thiết bị thật: 'http://<IP_MÁY_TÍNH>:5000' (ví dụ: 'http://192.168.1.5:5000')
+// - Khi deploy production: 'https://prm-tan.vercel.app' (chỉ HTTP, KHÔNG có Socket.IO)
+const String _kBackendBaseUrl = 'http://10.0.2.2:5000';
+
 class ChatBottomSheet extends StatefulWidget {
   final String projectId;
   final String projectName;
@@ -26,6 +32,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   IO.Socket? socket;
   List<dynamic> messages = [];
   bool isLoading = true;
+  bool isSending = false;
   String currentUserId = '';
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -40,7 +47,9 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     try {
       final userData = await AuthService.getUserInfo();
       if (userData != null) {
-        currentUserId = userData['_id'];
+        // authController lưu user với field "id" (không phải "_id")
+        currentUserId = (userData['id'] ?? userData['_id'] ?? '').toString();
+        print('✅ currentUserId: $currentUserId');
       }
       
       await _fetchMessages();
@@ -57,12 +66,12 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/projects/${widget.projectId}/messages'),
+        Uri.parse('$_kBackendBaseUrl/api/projects/${widget.projectId}/messages'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         setState(() {
@@ -71,12 +80,13 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
         });
         _scrollToBottom();
       } else {
+        print('❌ Fetch messages failed: ${response.statusCode} ${response.body}');
         setState(() {
           isLoading = false;
         });
       }
     } catch (e) {
-      print('Error fetching messages: $e');
+      print('❌ Error fetching messages: $e');
       setState(() {
         isLoading = false;
       });
@@ -84,17 +94,27 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   }
 
   void _connectSocket() {
-    // Connect to the backend socket
-    socket = IO.io('https://prm-tan.vercel.app', <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
-    });
+    // Kết nối socket tới local backend
+    // Dùng OptionBuilder (đúng cú pháp cho socket_io_client v3.x)
+    socket = IO.io(
+      _kBackendBaseUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .enableReconnection()
+          .setReconnectionAttempts(5)
+          .build(),
+    );
 
     socket!.connect();
 
     socket!.onConnect((_) {
-      print('Connected to socket server');
+      print('✅ Connected to socket server');
       socket!.emit('joinProject', widget.projectId);
+    });
+
+    socket!.onConnectError((err) {
+      print('❌ Socket connection error: $err');
     });
 
     socket!.on('receiveMessage', (data) {
@@ -106,20 +126,68 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       }
     });
 
-    socket!.onDisconnect((_) => print('Disconnected from socket server'));
+    socket!.onDisconnect((_) => print('🔌 Disconnected from socket server'));
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || socket == null) return;
+    if (text.isEmpty || isSending) return;
 
-    socket!.emit('sendMessage', {
-      'projectId': widget.projectId,
-      'senderId': currentUserId,
-      'text': text,
-    });
-
+    setState(() => isSending = true);
     _messageController.clear();
+
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.post(
+        Uri.parse('$_kBackendBaseUrl/api/projects/${widget.projectId}/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'text': text}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 201) {
+        final newMessage = jsonDecode(response.body);
+        // Nếu socket không kết nối được, tự thêm tin nhắn vào list
+        if (socket == null || !socket!.connected) {
+          if (mounted) {
+            setState(() {
+              messages.add(newMessage);
+            });
+            _scrollToBottom();
+          }
+        }
+        // Nếu socket đang kết nối, tin nhắn sẽ được nhận qua receiveMessage event
+      } else {
+        print('❌ Send message failed: ${response.statusCode} ${response.body}');
+        // Khôi phục text nếu gửi thất bại
+        _messageController.text = text;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không gửi được tin nhắn. Thử lại!'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error sending message: $e');
+      _messageController.text = text;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi kết nối. Kiểm tra mạng!'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isSending = false);
+    }
   }
 
   void _scrollToBottom() {
@@ -145,16 +213,19 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
-    final textColor = ThemeService.getTextColor(isDark);
-    final subTextColor = ThemeService.getSubTextColor(isDark);
-    final borderColor = ThemeService.getBorderColor(isDark);
-    const themeColor = Color(0xFF06B6D4);
+    return ListenableBuilder(
+      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      builder: (context, child) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+        final subTextColor = ThemeService.getSubTextColor(isDark);
+        final borderColor = ThemeService.getBorderColor(isDark);
+        const themeColor = Color(0xFF06B6D4);
 
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-      child: Container(
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
         height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
           color: dialogBg.withOpacity(0.95),
@@ -256,7 +327,8 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                           itemBuilder: (context, index) {
                             final msg = messages[index];
                             final sender = msg['sender'];
-                            final isMe = sender['_id'] == currentUserId;
+                            // So sánh bằng toString() để tránh lỗi ObjectId vs string
+                            final isMe = sender['_id']?.toString() == currentUserId;
                             
                             String timeString = '';
                             if (msg['createdAt'] != null) {
@@ -294,7 +366,11 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                           Padding(
                                             padding: const EdgeInsets.only(left: 4, bottom: 4),
                                             child: Text(
-                                              sender['name'] ?? sender['email'].split('@')[0],
+                                              sender['username']?.toString().isNotEmpty == true
+                                                  ? '@${sender['username']}'
+                                                  : (sender['name']?.toString().isNotEmpty == true
+                                                      ? sender['name']
+                                                      : sender['email'].split('@')[0]),
                                               style: TextStyle(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w600),
                                             ),
                                           ),
@@ -368,17 +444,19 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                   ),
                   const SizedBox(width: 12),
                   GestureDetector(
-                    onTap: _sendMessage,
+                    onTap: isSending ? null : _sendMessage,
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
+                        gradient: LinearGradient(
+                          colors: isSending
+                              ? [Colors.grey, Colors.grey]
+                              : const [Color(0xFF06B6D4), Color(0xFF3B82F6)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
+                        boxShadow: isSending ? [] : [
                           BoxShadow(
                             color: const Color(0xFF06B6D4).withOpacity(0.3),
                             blurRadius: 12,
@@ -386,7 +464,16 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                           )
                         ],
                       ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      child: isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -395,6 +482,8 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

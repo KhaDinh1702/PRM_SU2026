@@ -15,6 +15,7 @@ import 'screens/project_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,13 +93,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const DashboardScreen(), // 0: Home
-      const TaskScreen(), // 1: Tasks
+      const DashboardScreen(),       // 0: Home
+      const TaskScreen(),             // 1: Tasks
       TimerScreen(onLogout: _handleLogout), // 2: Timer
-      const ProjectScreen(), // 3: Projects
-      const CalendarScreen(), // 4: Calendar
-      const AnalyticsScreen(), // 5: Analytics
-      const NotificationsScreen(), // 6: Notifications
+      const ProjectScreen(),          // 3: Projects
+      const CalendarScreen(),         // 4: Calendar
+      const AnalyticsScreen(),        // 5: Analytics
+      const NotificationsScreen(),    // 6: Notifications
+      const ProfileScreen(),          // 7: Profile
     ];
     _startEventCheckTimer();
   }
@@ -324,6 +326,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 6:
         activeColor = const Color(0xFFF59E0B); // Amber for Notifications
         break;
+      case 7:
+        activeColor = const Color(0xFF8B5CF6); // Violet for Profile
+        break;
       default:
         activeColor = const Color(0xFF8B5CF6);
     }
@@ -383,7 +388,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Divider(color: Colors.grey.withOpacity(0.2)),
             ListTile(
               leading: Icon(Icons.calendar_month_rounded, color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Lịch (Calendar)', en: 'Calendar'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
+              title: Text(LocaleService.tr('Lịch', en: 'Calendar'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
               onTap: () {
                 setState(() => _currentIndex = 4);
                 Navigator.pop(context);
@@ -391,7 +396,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             ListTile(
               leading: Icon(Icons.insights_rounded, color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Thống kê (Analytics)', en: 'Analytics'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
+              title: Text(LocaleService.tr('Thống kê', en: 'Analytics'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
               onTap: () {
                 setState(() => _currentIndex = 5);
                 Navigator.pop(context);
@@ -399,12 +404,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             ListTile(
               leading: Icon(Icons.notifications_outlined, color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Thông báo (Alerts)', en: 'Alerts'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
+              title: Text(LocaleService.tr('Thông báo', en: 'Notifications'), style: TextStyle(color: ThemeService.getTextColor(isDark))),
               onTap: () {
                 setState(() => _currentIndex = 6);
                 Navigator.pop(context);
               },
             ),
+            // Theme toggle
             ListTile(
               leading: Icon(
                 isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -417,8 +423,85 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 style: TextStyle(color: ThemeService.getTextColor(isDark)),
               ),
-              onTap: () {
-                ThemeService.toggleTheme();
+              onTap: () => ThemeService.toggleTheme(),
+            ),
+            // Language toggle
+            ValueListenableBuilder<String>(
+              valueListenable: LocaleService.languageCode,
+              builder: (context, lang, _) {
+                final isEn = lang == 'en';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      await LocaleService.toggleLanguage();
+                      setState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.black.withOpacity(0.04),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            isEn ? '🇬🇧' : '🇻🇳',
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  LocaleService.tr('Ngôn ngữ', en: 'Language'),
+                                  style: TextStyle(
+                                    color: ThemeService.getCaptionColor(isDark),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Text(
+                                  isEn ? 'English' : 'Tiếng Việt',
+                                  style: TextStyle(
+                                    color: ThemeService.getTextColor(isDark),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              LocaleService.tr('Chuyển sang EN', en: 'Switch to VI'),
+                              style: const TextStyle(
+                                color: Color(0xFF8B5CF6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
             const Spacer(),
@@ -478,11 +561,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem(0, Icons.space_dashboard_outlined, Icons.space_dashboard, 'Home', activeColor, isDark),
-                  _buildNavItem(1, Icons.playlist_add_check_rounded, Icons.playlist_add_check_rounded, 'Tasks', activeColor, isDark),
-                  _buildNavItem(2, Icons.hourglass_empty_rounded, Icons.hourglass_full_rounded, 'Timer', activeColor, isDark),
-                  _buildNavItem(3, Icons.dns_outlined, Icons.dns_rounded, 'Projects', activeColor, isDark),
-                  // Nút mở Menu (Drawer) được thêm vào đây
+                  _buildNavItem(0, Icons.space_dashboard_outlined, Icons.space_dashboard, LocaleService.tr('Trang chủ', en: 'Home'), activeColor, isDark),
+                  _buildNavItem(1, Icons.playlist_add_check_rounded, Icons.playlist_add_check_rounded, LocaleService.tr('Nhiệm vụ', en: 'Tasks'), activeColor, isDark),
+                  _buildNavItem(2, Icons.hourglass_empty_rounded, Icons.hourglass_full_rounded, LocaleService.tr('Bấm giờ', en: 'Timer'), activeColor, isDark),
+                  _buildNavItem(3, Icons.dns_outlined, Icons.dns_rounded, LocaleService.tr('Dự án', en: 'Projects'), activeColor, isDark),
+                  _buildNavItem(7, Icons.person_outline_rounded, Icons.person_rounded, LocaleService.tr('Hồ sơ', en: 'Profile'), activeColor, isDark),
+                  // Nút mở Menu (Drawer)
                   _buildMenuButton(isDark),
                 ],
               ),
@@ -514,7 +598,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              'Menu',
+              LocaleService.tr('Danh mục', en: 'Menu'),
               style: TextStyle(
                 color: themeColor,
                 fontSize: 9,

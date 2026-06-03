@@ -13,7 +13,7 @@ const generateToken = (userId) => {
 // @route   POST /api/auth/register
 exports.register = async (req, res) => {
     try {
-        const { email, phone, password, name } = req.body;
+        const { email, phone, password, name, username } = req.body;
 
         // Validation cơ bản
         if (!email || !password) {
@@ -49,8 +49,20 @@ exports.register = async (req, res) => {
             }
         }
 
+        // Kiểm tra username nếu có
+        if (username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            if (!usernameRegex.test(username)) {
+                return res.status(400).json({ error: 'Username chỉ chứa chữ cái, số, dấu gạch dưới (3-20 ký tự)' });
+            }
+            const existingUsername = await User.findOne({ username });
+            if (existingUsername) {
+                return res.status(400).json({ error: 'Username này đã được sử dụng' });
+            }
+        }
+
         // Tạo người dùng mới
-        const user = new User({ email, phone, password, name: name || '' });
+        const user = new User({ email, phone, password, name: name || '', username: username || undefined });
         await user.save();
 
         const token = generateToken(user._id);
@@ -62,7 +74,8 @@ exports.register = async (req, res) => {
                 id: user._id,
                 email: user.email,
                 phone: user.phone || '',
-                name: user.name || ''
+                name: user.name || '',
+                username: user.username || ''
             }
         });
     } catch (error) {
@@ -78,12 +91,16 @@ exports.login = async (req, res) => {
         const { emailOrPhone, password } = req.body;
 
         if (!emailOrPhone || !password) {
-            return res.status(400).json({ error: 'Vui lòng cung cấp email/số điện thoại và mật khẩu' });
+            return res.status(400).json({ error: 'Vui lòng cung cấp email, số điện thoại hoặc username và mật khẩu' });
         }
 
-        // Tìm user theo email hoặc số điện thoại
+        // Tìm user theo email, số điện thoại hoặc username
         const user = await User.findOne({
-            $or: [{ email: emailOrPhone.toLowerCase() }, { phone: emailOrPhone }]
+            $or: [
+                { email: emailOrPhone.toLowerCase() },
+                { phone: emailOrPhone },
+                { username: emailOrPhone }
+            ]
         });
 
         if (!user) {
@@ -105,7 +122,8 @@ exports.login = async (req, res) => {
                 id: user._id,
                 email: user.email,
                 phone: user.phone || '',
-                name: user.name || ''
+                name: user.name || '',
+                username: user.username || ''
             }
         });
     } catch (error) {

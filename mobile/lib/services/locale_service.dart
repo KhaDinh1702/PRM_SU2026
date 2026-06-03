@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocaleService {
-  static final ValueNotifier<String> languageCode = ValueNotifier<String>('vi');
+  static final ValueNotifier<String> languageCode = ValueNotifier<String>('en');
   static const String _langKey = 'app_language_code';
 
   // Initialize language state from SharedPreferences
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    languageCode.value = prefs.getString(_langKey) ?? 'vi';
+    languageCode.value = prefs.getString(_langKey) ?? 'en'; // default: English
   }
 
   // Toggle between vi and en
