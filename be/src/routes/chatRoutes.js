@@ -12,29 +12,76 @@ const chatMessagesLimiter = rateLimit({
     legacyHeaders: false
 });
 
+// Helper: dùng toString() để so sánh ObjectId với string (tránh lỗi type mismatch từ JWT)
+// JWT được tạo với { id: userId } → dùng req.user.id (KHÔNG phải req.user._id)
+const isProjectMember = (project, userId) => {
+    if (!userId) return false;
+    const uid = userId.toString();
+    const ownerMatch = project.owner.toString() === uid;
+    const memberMatch = project.members.some(m => m.toString() === uid);
+    return ownerMatch || memberMatch;
+};
+
 // GET /api/projects/:projectId/messages
-// Fetch messages for a specific project
 router.get('/', chatMessagesLimiter, auth, async (req, res) => {
     try {
         const { projectId } = req.params;
 
-        // Check if the project exists and the user is a member/owner
         const project = await Project.findById(projectId);
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        const isMember = project.members.includes(req.user._id) || project.owner.equals(req.user._id);
-        if (!isMember) {
+        if (!isProjectMember(project, req.user.id)) {
             return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
         }
 
         const messages = await Message.find({ project: projectId })
-            .populate('sender', 'name email profile')
+            .populate('sender', 'name email username profile')
             .sort({ createdAt: 1 })
-            .limit(100); // Limit to last 100 messages for now
+            .limit(100);
 
         res.json(messages);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/projects/:projectId/messages
+router.post('/', chatMessagesLimiter, auth, async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const { text } = req.body;
+
+        if (!text || !text.trim()) {
+            return res.status(400).json({ error: 'Message text is required' });
+        }
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        if (!isProjectMember(project, req.user.id)) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
+        // Lưu tin nhắn vào DB
+        const newMessage = new Message({
+            project: projectId,
+            sender: req.user.id,
+            text: text.trim(),
+        });
+        await newMessage.save();
+        await newMessage.populate('sender', 'name email username profile');
+
+        // Broadcast qua Socket.IO cho tất cả thành viên trong room
+        const io = req.app.get('io');
+        if (io) {
+            io.to(projectId).emit('receiveMessage', newMessage);
+        }
+
+        res.status(201).json(newMessage);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

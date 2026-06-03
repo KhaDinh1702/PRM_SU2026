@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _emailOrPhoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
@@ -47,6 +48,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _emailOrPhoneController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _fadeController.dispose();
@@ -102,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           _emailController.text,
           _phoneController.text,
           _passwordController.text,
+          username: _usernameController.text,
         );
 
         if (mounted) {
@@ -143,26 +146,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     const themeColor = Color(0xFF8B5CF6); // Premium Cyber Violet
     const accentColor = Color(0xFFF43F5E); // Cyber Pink
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF070B19),
-              Color(0xFF0F172A),
-              Color(0xFF020617),
-            ],
-            stops: [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    return ListenableBuilder(
+      listenable: LocaleService.languageCode,
+      builder: (context, child) {
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF070B19),
+                  Color(0xFF0F172A),
+                  Color(0xFF020617),
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
+            child: SafeArea(
+              child: Stack(
+                children: [
+                  Center(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -249,11 +257,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     // LOGIN MODE FIELDS
                                     _buildTextField(
                                       controller: _emailOrPhoneController,
-                                      labelText: LocaleService.tr('Email hoặc Số điện thoại', en: 'Email or Phone number'),
-                                      icon: Icons.alternate_email_rounded,
+                                      labelText: LocaleService.tr('Email, SĐT hoặc Username', en: 'Email, Phone or Username'),
+                                      icon: Icons.person_outline_rounded,
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
-                                          return LocaleService.tr('Vui lòng nhập Email hoặc SĐT', en: 'Please enter Email or Phone');
+                                          return LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username', en: 'Please enter Email, Phone or Username');
                                         }
                                         return null;
                                       },
@@ -288,6 +296,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           final phoneRegex = RegExp(r'^[0-9]{10,11}$');
                                           if (!phoneRegex.hasMatch(value.trim())) {
                                             return LocaleService.tr('SĐT không hợp lệ (10-11 chữ số)', en: 'Invalid phone number (10-11 digits)');
+                                          }
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildTextField(
+                                      controller: _usernameController,
+                                      labelText: LocaleService.tr('Username (Tùy chọn)', en: 'Username (Optional)'),
+                                      icon: Icons.alternate_email_rounded,
+                                      validator: (value) {
+                                        if (value != null && value.trim().isNotEmpty) {
+                                          final usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
+                                          if (!usernameRegex.hasMatch(value.trim())) {
+                                            return LocaleService.tr('3-20 ký tự: chữ, số, dấu gạch', en: '3-20 chars: letters, numbers, underscore');
                                           }
                                         }
                                         return null;
@@ -422,15 +445,47 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                         ),
                       ],
+                    ), // closes Row
+                  ], // closes children of Column
+                ), // closes Column
+              ), // closes Padding
+            ), // closes SingleChildScrollView
+          ), // closes Center
+          Positioned(
+                    top: 16,
+                    right: 16,
+                    child: GestureDetector(
+                      onTap: LocaleService.toggleLanguage,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.language, color: Colors.white70, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              LocaleService.languageCode.value.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

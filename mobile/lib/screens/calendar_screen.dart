@@ -385,9 +385,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF10B981);
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: ThemeService.isDarkMode,
-      builder: (context, isDark, child) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      builder: (context, child) {
+        final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);

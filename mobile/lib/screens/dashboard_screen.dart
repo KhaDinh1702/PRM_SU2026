@@ -64,9 +64,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const themeColor = Color(0xFF8B5CF6); // Premium Cyber Violet
     const accentColor = Color(0xFFF43F5E); // Cyber Pink
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: ThemeService.isDarkMode,
-      builder: (context, isDark, child) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      builder: (context, child) {
+        final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
 

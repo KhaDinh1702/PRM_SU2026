@@ -3,124 +3,97 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 
-/**
- * @swagger
- * tags:
- *   name: User Profile
- *   description: Quản lý hồ sơ và các cài đặt cá nhân của người dùng
- */
-
-/**
- * @swagger
- * /api/users/profile:
- *   get:
- *     summary: Lấy thông tin cá nhân và cài đặt của người dùng hiện tại
- *     tags: [User Profile]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Trả về chi tiết hồ sơ cá nhân và settings của user
- *       401:
- *         description: Chưa đăng nhập hoặc token không hợp lệ
- *       404:
- *         description: Không tìm thấy người dùng
- */
 router.get('/profile', auth, userController.getProfile);
-
-/**
- * @swagger
- * /api/user/profile:
- *   put:
- *     summary: Cập nhật thông tin cá nhân hoặc các cài đặt Pomodoro/Theme của người dùng
- *     tags: [User Profile]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Dinh Hoang Kha (Updated)"
- *               phone:
- *                 type: string
- *                 example: "0987654322"
- *               bio:
- *                 type: string
- *                 example: "Đam mê lập trình và quản lý thời gian."
- *               avatarUrl:
- *                 type: string
- *                 example: "https://avatar.url/me.jpg"
- *               settings:
- *                 type: object
- *                 properties:
- *                   theme:
- *                     type: string
- *                     example: "light"
- *                   focusTime:
- *                     type: number
- *                     example: 30
- *                   shortBreak:
- *                     type: number
- *                     example: 5
- *                   longBreak:
- *                     type: number
- *                     example: 20
- *     responses:
- *       200:
- *         description: Cập nhật thông tin hồ sơ cá nhân thành công
- *       401:
- *         description: Chưa đăng nhập hoặc token không hợp lệ
- */
 router.put('/profile', auth, userController.updateProfile);
-
-/**
- * @swagger
- * tags:
- *   name: User Profile
- *   description: Quản lý hồ sơ và các cài đặt cá nhân của người dùng
- */
-
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Lấy danh sách tất cả người dùng
- *     tags: [User Profile]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Trả về danh sách tất cả người dùng
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                     example: "685f3f1a2c9f8b0012345678"
- *                   name:
- *                     type: string
- *                     example: "Nguyen Van A"
- *                   email:
- *                     type: string
- *                     example: "vana@gmail.com"
- *                   profile:
- *                     type: object
- *                     properties:
- *                       avatarUrl:
- *                         type: string
- *                         example: "https://avatar.url/user.jpg"
- *       401:
- *         description: Chưa đăng nhập hoặc token không hợp lệ
- */
 router.get('/', auth, userController.getAllUsers);
+
+// GET /api/users/me - Lấy thông tin user hiện tại (bao gồm username)
+router.get('/me', auth, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const now = new Date();
+        let changesThisMonth = 0;
+        if (user.usernameChangedAt) {
+            const lastChange = new Date(user.usernameChangedAt);
+            const sameMonth = lastChange.getMonth() === now.getMonth() &&
+                              lastChange.getFullYear() === now.getFullYear();
+            if (sameMonth) changesThisMonth = user.usernameChangeCount || 0;
+        }
+
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name || '',
+            username: user.username || '',
+            phone: user.phone || '',
+            profile: user.profile,
+            usernameChangesThisMonth: changesThisMonth,
+            usernameChangesRemaining: Math.max(0, 2 - changesThisMonth),
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT /api/users/username - Đổi username (tối đa 2 lần/tháng)
+router.put('/username', auth, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const { username } = req.body;
+
+        if (!username || !username.trim()) {
+            return res.status(400).json({ error: 'Username không được để trống' });
+        }
+
+        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+        if (!usernameRegex.test(username.trim())) {
+            return res.status(400).json({ error: 'Username chỉ chứa chữ cái, số, dấu gạch dưới (3-20 ký tự)' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Kiểm tra giới hạn 2 lần/tháng
+        const now = new Date();
+        let changesThisMonth = 0;
+        if (user.usernameChangedAt) {
+            const lastChange = new Date(user.usernameChangedAt);
+            const sameMonth = lastChange.getMonth() === now.getMonth() &&
+                              lastChange.getFullYear() === now.getFullYear();
+            if (sameMonth) changesThisMonth = user.usernameChangeCount || 0;
+        }
+
+        if (changesThisMonth >= 2) {
+            return res.status(429).json({
+                error: 'Bạn đã đổi username 2 lần trong tháng này. Thử lại vào tháng sau.',
+                changesRemaining: 0,
+            });
+        }
+
+        // Kiểm tra username đã tồn tại chưa
+        const existing = await User.findOne({ username: username.trim(), _id: { $ne: req.user.id } });
+        if (existing) {
+            return res.status(400).json({ error: 'Username này đã được sử dụng bởi người khác' });
+        }
+
+        const newCount = changesThisMonth + 1;
+        user.username = username.trim();
+        user.usernameChangeCount = newCount;
+        user.usernameChangedAt = now;
+        await user.save();
+
+        res.json({
+            message: 'Đổi username thành công!',
+            username: user.username,
+            changesThisMonth: newCount,
+            changesRemaining: 2 - newCount,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 module.exports = router;

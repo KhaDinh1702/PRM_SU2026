@@ -216,9 +216,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   Widget build(BuildContext context) {
     const themeColor = Color(0xFFF59E0B); // Amber for Notifications
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: ThemeService.isDarkMode,
-      builder: (context, isDark, child) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      builder: (context, child) {
+        final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
 

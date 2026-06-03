@@ -27,6 +27,23 @@ const userSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    username: {
+        type: String,
+        trim: true,
+        unique: true,
+        sparse: true, // cho phép nhiều user chưa đặt username (null)
+        minlength: [3, 'Username phải có ít nhất 3 ký tự'],
+        maxlength: [20, 'Username tối đa 20 ký tự'],
+        match: [/^[a-zA-Z0-9_]+$/, 'Username chỉ chứa chữ cái, số và dấu gạch dưới']
+    },
+    usernameChangeCount: {
+        type: Number,
+        default: 0
+    },
+    usernameChangedAt: {
+        type: Date,
+        default: null
+    },
     profile: {
         bio: { type: String, default: '' },
         avatarUrl: { type: String, default: '' }

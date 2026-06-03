@@ -36,6 +36,9 @@ app.use(express.json());
 // Connect to Database
 connectDB();
 
+// Expose io instance so routes can broadcast socket events
+app.set('io', io);
+
 // Swagger UI với Custom Premium Cyber Dark Theme CSS
 const swaggerCustomOptions = {
     customCss: `
