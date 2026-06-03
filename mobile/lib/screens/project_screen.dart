@@ -177,7 +177,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(LocaleService.tr('Đã thêm thành viên mới thành công! 🌟', en: 'Member added successfully! 🌟')),
+              content: Text(LocaleService.tr('Đã gửi lời mời tham gia dự án! 📧', en: 'Project invitation sent! 📧')),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
             ),

@@ -102,9 +102,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
 
   Future<void> _markAllAsRead() async {
-    final unread = _notifications.where((n) => n['isRead'] != true).toList();
+    final unread = _notifications.where((n) => n['isRead'] != true && n['type'] != 'invitation').toList();
     for (final n in unread) {
       await _markAsRead(n['_id']);
+    }
+  }
+
+  Future<void> _respondToInvitation(String projectId, String notificationId, String action) async {
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/projects/$projectId/invitations/$notificationId/respond'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'action': action}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            final idx = _notifications.indexWhere((n) => n['_id'] == notificationId);
+            if (idx != -1) {
+              _notifications[idx] = data['notification'];
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(action == 'accept'
+                  ? LocaleService.tr('Đã chấp nhận lời mời! 🎉', en: 'Invitation accepted! 🎉')
+                  : LocaleService.tr('Đã từ chối lời mời.', en: 'Invitation rejected.')),
+              backgroundColor: action == 'accept' ? Colors.green : Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(LocaleService.tr('Có lỗi xảy ra', en: 'An error occurred'))),
+        );
+      }
     }
   }
 
@@ -118,6 +158,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
         return Icons.videocam_rounded;
       case 'project':
         return Icons.dns_rounded;
+      case 'invitation':
+        return Icons.group_add_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -131,6 +173,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
         return const Color(0xFFF43F5E); // Rose
       case 'project':
         return const Color(0xFF06B6D4); // Cyan
+      case 'invitation':
+        return Colors.blue;
       default:
         return const Color(0xFF8B5CF6); // Violet
     }
@@ -144,6 +188,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
         return LocaleService.tr('Cuộc họp', en: 'Meeting');
       case 'project':
         return LocaleService.tr('Dự án', en: 'Project');
+      case 'invitation':
+        return LocaleService.tr('Lời mời', en: 'Invite');
       default:
         return LocaleService.tr('Hệ thống', en: 'System');
     }
@@ -286,6 +332,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
+                if (_notifications.any((n) => n['type'] == 'invitation' && n['invitationStatus'] == 'pending'))
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            LocaleService.tr('Lời mời dự án', en: 'Project Invitations'),
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ..._notifications
+                              .where((n) => n['type'] == 'invitation' && n['invitationStatus'] == 'pending')
+                              .map((invite) => _buildInvitationCard(invite, isDark)),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // --- Content ---
                 if (_isLoading)
                   SliverToBoxAdapter(
@@ -348,13 +419,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final notification = _notifications[index];
+                          final notification = _notifications.where((n) => n['type'] != 'invitation' || n['invitationStatus'] != 'pending').toList()[index];
                           return FadeInSlide(
                             delayMs: 80 * index,
                             child: _buildNotificationCard(notification, isDark),
                           );
                         },
-                        childCount: _notifications.length,
+                        childCount: _notifications.where((n) => n['type'] != 'invitation' || n['invitationStatus'] != 'pending').length,
                       ),
                     ),
                   ),
@@ -494,6 +565,95 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  Widget _buildInvitationCard(
+    Map<String, dynamic> invite,
+    bool isDark,
+  ) {
+    final textColor = ThemeService.getTextColor(isDark);
+    final subTextColor = ThemeService.getSubTextColor(isDark);
+    final projectName = invite['relatedId'] != null ? invite['relatedId']['name'] : 'Unknown Project';
+    final senderName = invite['sender'] != null ? (invite['sender']['name'] ?? invite['sender']['email']) : 'Someone';
+    final projectId = invite['relatedId'] != null ? invite['relatedId']['_id'] : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.group_add_rounded,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        projectName,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        LocaleService.tr(
+                          '$senderName đã mời bạn tham gia dự án',
+                          en: '$senderName invited you to join the project',
+                        ),
+                        style: TextStyle(
+                          color: subTextColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'accept'),
+                    icon: const Icon(Icons.check),
+                    label: Text(LocaleService.tr('Chấp nhận', en: 'Accept')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'reject'),
+                    icon: const Icon(Icons.close),
+                    label: Text(LocaleService.tr('Từ chối', en: 'Reject')),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

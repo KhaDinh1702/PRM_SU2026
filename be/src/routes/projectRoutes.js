@@ -9,6 +9,7 @@ router.get('/:projectId', auth, projectController.getProjectById);
 router.put('/:projectId', auth, projectController.updateProject);
 router.delete('/:projectId', auth, projectController.deleteProject);
 router.post('/:projectId/members', auth, projectController.addMember);
+router.post('/:projectId/invitations/:notificationId/respond', auth, projectController.respondToInvitation);
 router.get('/:projectId/tasks', auth, projectController.getProjectTasks);
 
 module.exports = router;

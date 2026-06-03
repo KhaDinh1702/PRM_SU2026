@@ -1,12 +1,20 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
+const rateLimit = require('express-rate-limit');
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const Project = require('../models/Project');
 
+const chatMessagesLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // GET /api/projects/:projectId/messages
 // Fetch messages for a specific project
-router.get('/', auth, async (req, res) => {
+router.get('/', chatMessagesLimiter, auth, async (req, res) => {
     try {
         const { projectId } = req.params;
 
