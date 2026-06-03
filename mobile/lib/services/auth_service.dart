@@ -20,7 +20,7 @@ class AuthService {
           'phone': phone.trim().isEmpty ? null : phone.trim(),
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       final data = jsonDecode(response.body);
 
@@ -48,7 +48,7 @@ class AuthService {
           'emailOrPhone': emailOrPhone.trim(),
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30));
 
       final data = jsonDecode(response.body);
 

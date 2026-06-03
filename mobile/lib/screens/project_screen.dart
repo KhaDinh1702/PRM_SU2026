@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/locale_service.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/chat_bottom_sheet.dart';
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({super.key});
@@ -305,9 +306,38 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => ChatBottomSheet(
+                            projectId: project['_id'],
+                            projectName: project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_rounded, size: 16, color: Colors.white),
+                      label: Text(LocaleService.tr('Chat', en: 'Chat'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        elevation: 4,
+                        shadowColor: const Color(0xFF06B6D4).withOpacity(0.4),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
