@@ -3,7 +3,13 @@ const Notification = require('../models/Notification');
 // GET /api/notifications
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.find({ user: req.user.id }).sort({ createdAt: -1 });
+        const notifications = await Notification.find({ user: req.user.id })
+            .populate('sender', 'name email')
+            .populate({
+                path: 'relatedId',
+                select: 'name'
+            })
+            .sort({ createdAt: -1 });
         res.status(200).json(notifications);
     } catch (error) {
         console.error('Lỗi trong notificationController.getNotifications:', error);
