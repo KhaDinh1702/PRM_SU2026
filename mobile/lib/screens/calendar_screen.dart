@@ -360,16 +360,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
                   ),
-                  ElevatedButton(
+                  PremiumButton(
                     onPressed: () {
                       _createEvent();
                       Navigator.pop(context);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
+                    backgroundColor: const Color(0xFF10B981),
                     child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -419,14 +415,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
+                    PremiumButton.icon(
                       onPressed: _showCreateEventDialog,
-                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: Text(LocaleService.tr('Thêm sự kiện', en: 'Add event'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
+                      icon: Icons.add,
+                      label: LocaleService.tr('Thêm sự kiện', en: 'Add event'),
+                      backgroundColor: themeColor,
                     )
                   ],
                 ),

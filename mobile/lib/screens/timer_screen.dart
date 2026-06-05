@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/locale_service.dart';
+import '../widgets/premium_widgets.dart';
 
 class TimerScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -222,22 +223,15 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             ),
             actionsAlignment: MainAxisAlignment.center,
             actions: [
-              ElevatedButton(
+              PremiumButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                   _resetTimer();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF43F5E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
+                backgroundColor: const Color(0xFFF43F5E),
                 child: Text(
                   LocaleService.tr('Tuyệt vời', en: 'Awesome'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
             ],
@@ -327,14 +321,10 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
               onPressed: () => Navigator.pop(context),
               child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: ThemeService.getSubTextColor(isDark))),
             ),
-            ElevatedButton(
+            PremiumButton(
               onPressed: () => Navigator.pop(context, controller.text),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF43F5E),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(LocaleService.tr('Xác nhận', en: 'Confirm'), style: const TextStyle(fontWeight: FontWeight.bold)),
+              backgroundColor: const Color(0xFFF43F5E),
+              child: Text(LocaleService.tr('Xác nhận', en: 'Confirm'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         );
@@ -810,55 +800,116 @@ class TimerPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2;
     const strokeWidth = 12.0;
+    final isSketchy = ThemeService.isSketchyMode.value;
 
-    // Draw background track
-    final paintBase = Paint()
-      ..color = baseColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth - 2;
-    canvas.drawCircle(center, radius - strokeWidth / 2, paintBase);
+    if (isSketchy) {
+      // Vẽ nét vẽ tay cho background circle
+      final paintBase = Paint()
+        ..color = baseColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      // Vẽ 2 vòng tròn hơi méo lồng nhau
+      _drawSketchyCircle(canvas, center, radius - strokeWidth / 2, paintBase, 0.8);
+      _drawSketchyCircle(canvas, center, radius - strokeWidth / 2, paintBase, 1.2);
+    } else {
+      // Draw background track
+      final paintBase = Paint()
+        ..color = baseColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth - 2;
+      canvas.drawCircle(center, radius - strokeWidth / 2, paintBase);
+    }
 
     // Draw glowing progress arc
     if (progress > 0) {
-      final paintProgress = Paint()
-        ..shader = SweepGradient(
-          colors: [
-            progressColor.withOpacity(0.6),
-            progressColor,
-            progressColor.withOpacity(0.9),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-          transform: const GradientRotation(-math.pi / 2),
-        ).createShader(Rect.fromCircle(center: center, radius: radius))
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = strokeWidth;
+      if (isSketchy) {
+        final paintProgress = Paint()
+          ..color = progressColor
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 3.5;
 
-      // Subtle shadow/glow effect
-      final paintGlow = Paint()
-        ..color = progressColor.withOpacity(0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = strokeWidth + 4
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        // Vẽ progress arc vẽ tay
+        _drawSketchyArc(canvas, center, radius - strokeWidth / 2, -math.pi / 2, 2 * math.pi * progress, paintProgress);
+      } else {
+        final paintProgress = Paint()
+          ..shader = SweepGradient(
+            colors: [
+              progressColor.withOpacity(0.6),
+              progressColor,
+              progressColor.withOpacity(0.9),
+            ],
+            stops: const [0.0, 0.5, 1.0],
+            transform: const GradientRotation(-math.pi / 2),
+          ).createShader(Rect.fromCircle(center: center, radius: radius))
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = strokeWidth;
 
-      final sweepAngle = 2 * math.pi * progress;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        paintGlow,
-      );
+        // Subtle shadow/glow effect
+        final paintGlow = Paint()
+          ..color = progressColor.withOpacity(0.3)
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = strokeWidth + 4
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        paintProgress,
-      );
+        final sweepAngle = 2 * math.pi * progress;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+          -math.pi / 2,
+          sweepAngle,
+          false,
+          paintGlow,
+        );
+
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+          -math.pi / 2,
+          sweepAngle,
+          false,
+          paintProgress,
+        );
+      }
     }
+  }
+
+  void _drawSketchyCircle(Canvas canvas, Offset center, double radius, Paint paint, double offsetScale) {
+    final path = Path();
+    const segments = 180;
+    for (int i = 0; i <= segments; i++) {
+      final angle = (i * 2 * math.pi) / segments;
+      // Thêm nhiễu toán học vào bán kính
+      final noise = math.sin(angle * 12) * 1.5 * offsetScale + math.cos(angle * 7) * 0.8 * offsetScale;
+      final r = radius + noise;
+      final x = center.dx + r * math.cos(angle);
+      final y = center.dy + r * math.sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawSketchyArc(Canvas canvas, Offset center, double radius, double startAngle, double sweepAngle, Paint paint) {
+    final path = Path();
+    final segments = (sweepAngle.abs() * 30).round().clamp(10, 180);
+    for (int i = 0; i <= segments; i++) {
+      final angle = startAngle + (i * sweepAngle) / segments;
+      final noise = math.sin(angle * 12) * 1.2 + math.cos(angle * 7) * 0.6;
+      final r = radius + noise;
+      final x = center.dx + r * math.cos(angle);
+      final y = center.dy + r * math.sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
   }
 
   @override

@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
+import '../services/theme_service.dart';
 
 // --- PREMIUM SKELETON SHIMMER LOADER ---
 class ShimmerLoading extends StatefulWidget {
@@ -29,7 +31,12 @@ class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProvid
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
-    )..repeat();
+    );
+    
+    // Chỉ repeat animation nếu KHÔNG ở chế độ sketchy
+    if (!ThemeService.isSketchyMode.value) {
+      _controller.repeat();
+    }
 
     _animation = Tween<double>(begin: -2.0, end: 2.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
@@ -44,6 +51,25 @@ class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    if (ThemeService.isSketchyMode.value) {
+      return sketchy.SketchyCard(
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final baseColor = isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03);
@@ -163,6 +189,15 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (ThemeService.isSketchyMode.value) {
+      return sketchy.SketchyCard(
+        child: Padding(
+          padding: padding,
+          child: child,
+        ),
+      );
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final cardBgColor = isDark 
@@ -173,25 +208,30 @@ class GlassCard extends StatelessWidget {
         ? Colors.white.withOpacity(0.05) 
         : Colors.black.withOpacity(0.04);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: cardBgColor,
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: borderColor, width: 1),
-            boxShadow: boxShadow ?? [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.15 : 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              )
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: boxShadow ?? [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: cardBgColor,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            child: child,
           ),
-          child: child,
         ),
       ),
     );
@@ -218,6 +258,21 @@ class PremiumInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hintColor = isDark ? Colors.white30 : Colors.black38;
+
+    if (ThemeService.isSketchyMode.value) {
+      return sketchy.SketchyTextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: hintColor, fontSize: 13, fontWeight: FontWeight.w500),
+          hintText: hintText,
+          hintStyle: TextStyle(color: hintColor, fontSize: 13),
+          prefixIcon: Icon(prefixIcon, color: hintColor, size: 20),
+        ),
+      );
+    }
     
     final bgInputColor = isDark 
         ? Colors.white.withOpacity(0.02) 
@@ -228,7 +283,6 @@ class PremiumInputField extends StatelessWidget {
         : Colors.black.withOpacity(0.06);
 
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final hintColor = isDark ? Colors.white30 : Colors.black38;
 
     return Container(
       decoration: BoxDecoration(
@@ -250,6 +304,94 @@ class PremiumInputField extends StatelessWidget {
         ),
         style: TextStyle(color: textColor, fontSize: 14),
       ),
+    );
+  }
+}
+
+// --- ADAPTIVE PREMIUM/SKECHY BUTTON ---
+class PremiumButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Widget? child;
+  final Color? backgroundColor;
+  final IconData? icon;
+  final String? label;
+
+  const PremiumButton({
+    super.key,
+    required this.onPressed,
+    required this.child,
+    this.backgroundColor,
+  }) : icon = null, label = null;
+
+  const PremiumButton.icon({
+    super.key,
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    this.backgroundColor,
+  }) : child = null;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColor = backgroundColor ?? const Color(0xFF8B5CF6);
+
+    if (ThemeService.isSketchyMode.value) {
+      if (icon != null && label != null) {
+        return sketchy.SketchyButton(
+          onPressed: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16),
+                const SizedBox(width: 6),
+                sketchy.SketchyText(
+                  label!,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      
+      Widget finalChild = child ?? const SizedBox();
+      if (finalChild is Text) {
+        finalChild = sketchy.SketchyText(
+          finalChild.data ?? '',
+          style: finalChild.style ?? const TextStyle(fontWeight: FontWeight.bold),
+        );
+      }
+
+      return sketchy.SketchyButton(
+        onPressed: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: finalChild,
+        ),
+      );
+    }
+
+    if (icon != null && label != null) {
+      return ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18, color: Colors.white),
+        label: Text(label!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: themeColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    }
+
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: themeColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: child,
     );
   }
 }

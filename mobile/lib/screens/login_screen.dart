@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/locale_service.dart';
+import '../services/theme_service.dart';
+import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,7 +73,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   // Xử lý submit Form
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+    final isSketchy = ThemeService.isSketchyMode.value;
+    if (isSketchy) {
+      if (_isLoginMode) {
+        if (_emailOrPhoneController.text.trim().isEmpty) {
+          _showSnackBar(LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username', en: 'Please enter Email, Phone or Username'), Colors.redAccent);
+          return;
+        }
+      } else {
+        if (_emailController.text.trim().isEmpty) {
+          _showSnackBar(LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email'), Colors.redAccent);
+          return;
+        }
+        if (_passwordController.text.length < 6) {
+          _showSnackBar(LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự', en: 'Password must be at least 6 characters'), Colors.redAccent);
+          return;
+        }
+        if (_passwordController.text != _confirmPasswordController.text) {
+          _showSnackBar(LocaleService.tr('Mật khẩu xác nhận không trùng khớp!', en: 'Passwords do not match!'), Colors.redAccent);
+          return;
+        }
+      }
+    } else {
+      if (!_formKey.currentState!.validate()) return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -147,8 +172,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     const accentColor = Color(0xFFF43F5E); // Cyber Pink
 
     return ListenableBuilder(
-      listenable: LocaleService.languageCode,
+      listenable: Listenable.merge([LocaleService.languageCode, ThemeService.isSketchyMode]),
       builder: (context, child) {
+        final isSketchy = ThemeService.isSketchyMode.value;
+        if (isSketchy) {
+          return _buildSketchyLayout();
+        }
+
         return Scaffold(
           body: Container(
             decoration: const BoxDecoration(
@@ -488,6 +518,164 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       },
     );
   }
+
+  Widget _buildSketchyLayout() {
+    return sketchy.SketchyScaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo vẽ tay
+                sketchy.SketchyCard(
+                  child: const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Icon(
+                      Icons.blur_on_rounded,
+                      size: 48,
+                      color: Color(0xFF8B5CF6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                sketchy.SketchyText(
+                  'SPACE TIMER',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                sketchy.SketchyText(
+                  _isLoginMode
+                      ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH', en: 'LOGIN TO SYNC PROGRESS')
+                      : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ', en: 'REGISTER SPACE MEMBER'),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Form Card vẽ tay
+                sketchy.SketchyCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_isLoginMode) ...[
+                          sketchy.SketchyTextField(
+                            controller: _emailOrPhoneController,
+                            decoration: InputDecoration(
+                              hintText: LocaleService.tr('Email, SĐT hoặc Username', en: 'Email, Phone or Username'),
+                            ),
+                          ),
+                        ] else ...[
+                          sketchy.SketchyTextField(
+                            controller: _emailController,
+                            decoration: InputDecoration(
+                              hintText: LocaleService.tr('Địa chỉ Email', en: 'Email Address'),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 16),
+                          sketchy.SketchyTextField(
+                            controller: _phoneController,
+                            decoration: InputDecoration(
+                              hintText: LocaleService.tr('Số điện thoại (Tùy chọn)', en: 'Phone number (Optional)'),
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          sketchy.SketchyTextField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              hintText: LocaleService.tr('Username (Tùy chọn)', en: 'Username (Optional)'),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        sketchy.SketchyTextField(
+                          controller: _passwordController,
+                          decoration: InputDecoration(
+                            hintText: LocaleService.tr('Mật khẩu', en: 'Password'),
+                          ),
+                          obscureText: _obscurePassword,
+                        ),
+                        if (!_isLoginMode) ...[
+                          const SizedBox(height: 16),
+                          sketchy.SketchyTextField(
+                            controller: _confirmPasswordController,
+                            decoration: InputDecoration(
+                              hintText: LocaleService.tr('Xác nhận Mật khẩu', en: 'Confirm Password'),
+                            ),
+                            obscureText: _obscurePassword,
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+
+                        // Submit Button vẽ tay
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5CF6)))
+                            : sketchy.SketchyButton(
+                                onPressed: _submitForm,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                  child: Center(
+                                    child: sketchy.SketchyText(
+                                      _isLoginMode
+                                          ? LocaleService.tr('Đăng Nhập', en: 'Login')
+                                          : LocaleService.tr('Tạo Tài Khoản', en: 'Create Account'),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Switch mode footer
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    sketchy.SketchyText(
+                      _isLoginMode
+                          ? LocaleService.tr('Chưa có tài khoản? ', en: 'Don\'t have an account? ')
+                          : LocaleService.tr('Đã có tài khoản? ', en: 'Already have an account? '),
+                    ),
+                    GestureDetector(
+                      onTap: _toggleMode,
+                      child: sketchy.SketchyText(
+                        _isLoginMode ? LocaleService.tr('Đăng ký ngay', en: 'Register now') : LocaleService.tr('Đăng nhập', en: 'Login'),
+                        style: const TextStyle(
+                          color: Color(0xFF8B5CF6),
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   // Reusable Premium TextField Builder
   Widget _buildTextField({

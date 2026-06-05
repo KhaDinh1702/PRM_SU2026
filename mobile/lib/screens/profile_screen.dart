@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/locale_service.dart';
+import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -86,18 +87,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
-
-  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode, ThemeService.isSketchyMode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
+        final isSketchy = ThemeService.isSketchyMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
         final cardBg = ThemeService.getCardColor(isDark);
         final borderColor = ThemeService.getBorderColor(isDark);
+
+        if (isSketchy) {
+          return _buildSketchyLayout(isDark, textColor, subTextColor, captionColor, cardBg, borderColor);
+        }
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -157,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Center(
                                     child: Text(
                                       ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)
-                                          .isNotEmpty
+                                              .isNotEmpty
                                           ? ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)[0]
                                               .toUpperCase()
                                           : 'U',
@@ -325,6 +329,215 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
         );
       },
+    );
+  }
+
+  Widget _buildSketchyLayout(bool isDark, Color textColor, Color subTextColor, Color captionColor, Color cardBg, Color borderColor) {
+    final remainingChanges = _userData?['usernameChangesRemaining'] ?? 2;
+    final usedChanges = 2 - remainingChanges;
+
+    return sketchy.SketchyScaffold(
+      backgroundColor: Colors.transparent,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: themeColor))
+          : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  sketchy.SketchyText(
+                    LocaleService.tr('HỒ SƠ CÁ NHÂN', en: 'MY PROFILE'),
+                    style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                  ),
+                  sketchy.SketchyText(
+                    LocaleService.tr('Tài khoản', en: 'Account'),
+                    style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Avatar + Name Card vẽ tay
+                  sketchy.SketchyCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          // Avatar circle vẽ tay
+                          sketchy.SketchyCard(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String).isNotEmpty
+                                    ? ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)[0].toUpperCase()
+                                    : 'U',
+                                style: TextStyle(color: textColor, fontSize: 32, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          sketchy.SketchyText(
+                            _userData?['username']?.isNotEmpty == true
+                                ? '@${_userData!['username']}'
+                                : LocaleService.tr('Chưa đặt username', en: 'No username set'),
+                            style: const TextStyle(
+                              color: themeColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          sketchy.SketchyText(
+                            _userData?['email'] ?? '',
+                            style: TextStyle(color: subTextColor, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Info rows vẽ tay
+                  _buildSketchyInfoRow(Icons.person_outline_rounded, LocaleService.tr('Họ tên', en: 'Name'),
+                      _userData?['name']?.toString().isNotEmpty == true
+                          ? _userData!['name']
+                          : LocaleService.tr('Chưa cập nhật', en: 'Not set'),
+                      textColor, subTextColor),
+                  const SizedBox(height: 10),
+                  _buildSketchyInfoRow(Icons.email_outlined, 'Email',
+                      _userData?['email'] ?? '', textColor, subTextColor),
+                  const SizedBox(height: 20),
+
+                  // Sketchy Theme config card
+                  sketchy.SketchyCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.gesture_rounded, color: themeColor, size: 24),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                sketchy.SketchyText(
+                                  LocaleService.tr('Giao diện vẽ tay', en: 'Sketchy UI Theme'),
+                                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                                sketchy.SketchyText(
+                                  LocaleService.tr('Đang kích hoạt', en: 'Currently active'),
+                                  style: TextStyle(color: subTextColor, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          sketchy.SketchyButton(
+                            onPressed: () => ThemeService.toggleSketchyMode(),
+                            child: sketchy.SketchyText(
+                              LocaleService.tr('Tắt', en: 'Turn Off'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Username change section vẽ tay
+                  sketchy.SketchyText(
+                    LocaleService.tr('ĐỔI USERNAME', en: 'CHANGE USERNAME'),
+                    style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Remaining changes indicator vẽ tay
+                  sketchy.SketchyCard(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            remainingChanges == 0 ? Icons.block_rounded : Icons.swap_horiz_rounded,
+                            color: remainingChanges == 0 ? Colors.redAccent : themeColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: sketchy.SketchyText(
+                              remainingChanges == 0
+                                  ? LocaleService.tr('Đã dùng hết 2 lượt đổi tháng này', en: 'Used all 2 changes this month')
+                                  : LocaleService.tr(
+                                      'Đã đổi $usedChanges/2 lần tháng này · Còn $remainingChanges lượt',
+                                      en: 'Changed $usedChanges/2 times this month · $remainingChanges left'),
+                              style: TextStyle(
+                                color: remainingChanges == 0 ? Colors.redAccent : themeColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Username text field vẽ tay
+                  sketchy.SketchyCard(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: sketchy.SketchyTextField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          hintText: LocaleService.tr('Nhập username mới...', en: 'Enter new username...'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Save button vẽ tay
+                  _isSaving
+                      ? const Center(child: CircularProgressIndicator(color: themeColor))
+                      : sketchy.SketchyButton(
+                          onPressed: remainingChanges > 0 ? _changeUsername : null,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Center(
+                              child: sketchy.SketchyText(
+                                LocaleService.tr('Lưu Username', en: 'Save Username'),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildSketchyInfoRow(IconData icon, String label, String value, Color textColor, Color subTextColor) {
+    return sketchy.SketchyCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: themeColor, size: 20),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                sketchy.SketchyText(label, style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w600)),
+                sketchy.SketchyText(value, style: TextStyle(fontSize: 14, color: textColor, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

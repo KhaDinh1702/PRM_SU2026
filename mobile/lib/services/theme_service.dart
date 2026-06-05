@@ -3,12 +3,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeService {
   static final ValueNotifier<bool> isDarkMode = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> isSketchyMode = ValueNotifier<bool>(false);
   static const String _themeKey = 'is_dark_mode';
+  static const String _sketchyKey = 'is_sketchy_mode';
 
   // Initialize theme state from SharedPreferences
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     isDarkMode.value = prefs.getBool(_themeKey) ?? true;
+    isSketchyMode.value = prefs.getBool(_sketchyKey) ?? false;
   }
 
   // Toggle between dark and light themes
@@ -16,6 +19,13 @@ class ThemeService {
     isDarkMode.value = !isDarkMode.value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_themeKey, isDarkMode.value);
+  }
+
+  // Toggle between sketchy and standard themes
+  static Future<void> toggleSketchyMode() async {
+    isSketchyMode.value = !isSketchyMode.value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sketchyKey, isSketchyMode.value);
   }
 
   // --- Dynamic Color Palettes adapting to Dark/Light Mode ---

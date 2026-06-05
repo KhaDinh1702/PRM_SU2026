@@ -634,22 +634,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: PremiumButton.icon(
                     onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'accept'),
-                    icon: const Icon(Icons.check),
-                    label: Text(LocaleService.tr('Chấp nhận', en: 'Accept')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
+                    icon: Icons.check,
+                    label: LocaleService.tr('Chấp nhận', en: 'Accept'),
+                    backgroundColor: Colors.green,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: PremiumButton.icon(
                     onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'reject'),
-                    icon: const Icon(Icons.close),
-                    label: Text(LocaleService.tr('Từ chối', en: 'Reject')),
+                    icon: Icons.close,
+                    label: LocaleService.tr('Từ chối', en: 'Reject'),
+                    backgroundColor: Colors.redAccent,
                   ),
                 ),
               ],

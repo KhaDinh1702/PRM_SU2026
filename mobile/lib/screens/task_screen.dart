@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
 import '../services/locale_service.dart';
@@ -276,16 +277,12 @@ class _TaskScreenState extends State<TaskScreen> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
                   ),
-                  ElevatedButton(
+                  PremiumButton(
                     onPressed: () {
                       _createTask();
                       Navigator.pop(context);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B5CF6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
+                    backgroundColor: const Color(0xFF8B5CF6),
                     child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
@@ -335,14 +332,11 @@ class _TaskScreenState extends State<TaskScreen> {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
+                    PremiumButton.icon(
                       onPressed: _showCreateTaskDialog,
-                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: Text(LocaleService.tr('Thêm task', en: 'Add task'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
+                      icon: Icons.add,
+                      label: LocaleService.tr('Thêm task', en: 'Add task'),
+                      backgroundColor: themeColor,
                     )
                   ],
                 ),
@@ -352,25 +346,35 @@ class _TaskScreenState extends State<TaskScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: cardBgColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: LocaleService.tr('Tìm kiếm công việc...', en: 'Search tasks...'),
-                            hintStyle: TextStyle(color: captionColor, fontSize: 14),
-                            prefixIcon: Icon(Icons.search, color: captionColor, size: 20),
-                            border: InputBorder.none,
-                          ),
-                          style: TextStyle(color: textColor),
-                          onSubmitted: (_) => _loadTasks(),
-                        ),
-                      ),
+                      child: ThemeService.isSketchyMode.value
+                          ? sketchy.SketchyTextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: LocaleService.tr('Tìm kiếm công việc...', en: 'Search tasks...'),
+                                hintStyle: TextStyle(color: captionColor, fontSize: 14),
+                                prefixIcon: Icon(Icons.search, color: captionColor, size: 20),
+                              ),
+                              onSubmitted: (_) => _loadTasks(),
+                            )
+                          : Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: cardBgColor,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: LocaleService.tr('Tìm kiếm công việc...', en: 'Search tasks...'),
+                                  hintStyle: TextStyle(color: captionColor, fontSize: 14),
+                                  prefixIcon: Icon(Icons.search, color: captionColor, size: 20),
+                                  border: InputBorder.none,
+                                ),
+                                style: TextStyle(color: textColor),
+                                onSubmitted: (_) => _loadTasks(),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 12),
                     DropdownButton<String>(

@@ -23,11 +23,122 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _memberEmailController = TextEditingController();
+  Map<String, dynamic>? _currentUser;
 
   @override
   void initState() {
     super.initState();
     _loadProjects();
+    _initCurrentUser();
+  }
+
+  Future<void> _initCurrentUser() async {
+    final user = await AuthService.getUserInfo();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+      });
+    }
+  }
+
+  Future<void> _deleteProject(String projectId) async {
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.delete(
+        Uri.parse('https://prm-tan.vercel.app/api/projects/$projectId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(LocaleService.tr('Đã xóa dự án thành công! 🗑️', en: 'Project deleted successfully! 🗑️')),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        _loadProjects();
+      } else {
+        final data = jsonDecode(response.body);
+        throw Exception(data['error'] ?? LocaleService.tr('Xóa thất bại', en: 'Deletion failed'));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${LocaleService.tr('Lỗi khi xóa dự án:', en: 'Error deleting project:')} $e'),
+            backgroundColor: Colors.amber[900],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmationDialog(String projectId, String projectName) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+        final subTextColor = ThemeService.getSubTextColor(isDark);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AlertDialog(
+            backgroundColor: dialogBg.withOpacity(0.9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    LocaleService.tr('XÓA DỰ ÁN?', en: 'DELETE PROJECT?'),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: textColor, letterSpacing: 1.2),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              '${LocaleService.tr('Bạn có chắc chắn muốn xóa dự án', en: 'Are you sure you want to delete project')} "$projectName"?\n${LocaleService.tr('Hành động này sẽ xóa toàn bộ task và không thể khôi phục!', en: 'This action will delete all tasks and cannot be undone!')}',
+              style: TextStyle(color: subTextColor, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  LocaleService.tr('Hủy', en: 'Cancel'),
+                  style: TextStyle(color: ThemeService.getCaptionColor(isDark), fontWeight: FontWeight.bold),
+                ),
+              ),
+              PremiumButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Close project details bottom sheet
+                  _deleteProject(projectId);
+                },
+                backgroundColor: Colors.redAccent,
+                child: Text(
+                  LocaleService.tr('Xóa', en: 'Delete'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -241,16 +352,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
               ),
-              ElevatedButton(
+              PremiumButton(
                 onPressed: () {
                   _createProject();
                   Navigator.pop(context);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF06B6D4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
+                backgroundColor: const Color(0xFF06B6D4),
                 child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
@@ -315,27 +422,33 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) => ChatBottomSheet(
-                            projectId: project['_id'],
-                            projectName: project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_currentUser?['_id'] == project['owner']?['_id'] || _currentUser?['id'] == project['owner']?['id']) ...[
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 24),
+                            onPressed: () => _showDeleteConfirmationDialog(project['_id'], project['name'] ?? ''),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.chat_bubble_rounded, size: 16, color: Colors.white),
-                      label: Text(LocaleService.tr('Chat', en: 'Chat'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF06B6D4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        elevation: 4,
-                        shadowColor: const Color(0xFF06B6D4).withOpacity(0.4),
-                      ),
+                          const SizedBox(width: 8),
+                        ],
+                        PremiumButton.icon(
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => ChatBottomSheet(
+                                projectId: project['_id'],
+                                projectName: project['name'] ?? LocaleService.tr('Dự án không tên', en: 'Untitled project'),
+                              ),
+                            );
+                          },
+                          icon: Icons.chat_bubble_rounded,
+                          label: LocaleService.tr('Chat', en: 'Chat'),
+                          backgroundColor: const Color(0xFF06B6D4),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -360,16 +473,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
+                    PremiumButton(
                       onPressed: () {
                         _addMember(project['_id']);
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF06B6D4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      ),
+                      backgroundColor: const Color(0xFF06B6D4),
                       child: Text(LocaleService.tr('Mời', en: 'Invite'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
@@ -588,21 +697,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                     fontSize: 11,
                                   ),
                                 )
-                                    : ElevatedButton(
+                                    : PremiumButton(
                                   onPressed: () async {
                                     _memberEmailController.text =
                                     user['email'];
 
                                     await _addMember(project['_id']);
                                   },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                    const Color(0xFF06B6D4),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                    ),
-                                  ),
+                                  backgroundColor: const Color(0xFF06B6D4),
                                   child: Text(
                                     LocaleService.tr(
                                       'Thêm',
@@ -668,14 +770,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
+                    PremiumButton.icon(
                       onPressed: _showCreateProjectDialog,
-                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: Text(LocaleService.tr('Tạo dự án', en: 'New project'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
+                      icon: Icons.add,
+                      label: LocaleService.tr('Tạo dự án', en: 'New project'),
+                      backgroundColor: themeColor,
                     )
                   ],
                 ),
