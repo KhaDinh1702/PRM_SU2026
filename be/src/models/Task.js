@@ -34,6 +34,14 @@ const taskSchema = new mongoose.Schema({
         ref: 'Project',
         default: null
     },
+    assignedTo: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    assignedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -42,5 +50,9 @@ const taskSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+taskSchema.index({ project: 1, status: 1 });
+taskSchema.index({ user: 1, status: 1, createdAt: -1 });
+taskSchema.index({ project: 1, assignedTo: 1, status: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

@@ -12,16 +12,18 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final TextEditingController _emailOrPhoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isLoginMode = true;
   bool _obscurePassword = true;
@@ -77,20 +79,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (isSketchy) {
       if (_isLoginMode) {
         if (_emailOrPhoneController.text.trim().isEmpty) {
-          _showSnackBar(LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username', en: 'Please enter Email, Phone or Username'), Colors.redAccent);
+          _showSnackBar(
+              LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username',
+                  en: 'Please enter Email, Phone or Username'),
+              Colors.redAccent);
           return;
         }
       } else {
         if (_emailController.text.trim().isEmpty) {
-          _showSnackBar(LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email'), Colors.redAccent);
+          _showSnackBar(
+              LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email'),
+              Colors.redAccent);
           return;
         }
         if (_passwordController.text.length < 6) {
-          _showSnackBar(LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự', en: 'Password must be at least 6 characters'), Colors.redAccent);
+          _showSnackBar(
+              LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự',
+                  en: 'Password must be at least 6 characters'),
+              Colors.redAccent);
           return;
         }
         if (_passwordController.text != _confirmPasswordController.text) {
-          _showSnackBar(LocaleService.tr('Mật khẩu xác nhận không trùng khớp!', en: 'Passwords do not match!'), Colors.redAccent);
+          _showSnackBar(
+              LocaleService.tr('Mật khẩu xác nhận không trùng khớp!',
+                  en: 'Passwords do not match!'),
+              Colors.redAccent);
           return;
         }
       }
@@ -110,17 +123,28 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         if (mounted) {
           if (result['success']) {
-            _showSnackBar(result['message'] ?? LocaleService.tr('Chào mừng ông chủ trở lại! 🚀', en: 'Welcome back, boss! 🚀'), Colors.indigo);
+            _showSnackBar(
+                result['message'] ??
+                    LocaleService.tr('Chào mừng ông chủ trở lại!',
+                        en: 'Welcome back, boss!'),
+                Colors.indigo);
             // Quay lại trang chính (TimerHomePage) và làm mới trạng thái đăng nhập
             Navigator.pushReplacementNamed(context, '/home');
           } else {
-            _showSnackBar(result['message'] ?? LocaleService.tr('Đăng nhập thất bại.', en: 'Login failed.'), Colors.redAccent);
+            _showSnackBar(
+                result['message'] ??
+                    LocaleService.tr('Đăng nhập thất bại.',
+                        en: 'Login failed.'),
+                Colors.redAccent);
           }
         }
       } else {
         // Đăng ký
         if (_passwordController.text != _confirmPasswordController.text) {
-          _showSnackBar(LocaleService.tr('Mật khẩu xác nhận không trùng khớp!', en: 'Passwords do not match!'), Colors.redAccent);
+          _showSnackBar(
+              LocaleService.tr('Mật khẩu xác nhận không trùng khớp!',
+                  en: 'Passwords do not match!'),
+              Colors.redAccent);
           setState(() => _isLoading = false);
           return;
         }
@@ -134,15 +158,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
         if (mounted) {
           if (result['success']) {
-            _showSnackBar(result['message'] ?? LocaleService.tr('Tạo tài khoản thành công! 🌟', en: 'Account created successfully! 🌟'), Colors.teal);
+            _showSnackBar(
+                result['message'] ??
+                    LocaleService.tr('Tạo tài khoản thành công!',
+                        en: 'Account created successfully!'),
+                Colors.teal);
             Navigator.pushReplacementNamed(context, '/home');
           } else {
-            _showSnackBar(result['message'] ?? LocaleService.tr('Đăng ký thất bại.', en: 'Registration failed.'), Colors.redAccent);
+            _showSnackBar(
+                result['message'] ??
+                    LocaleService.tr('Đăng ký thất bại.',
+                        en: 'Registration failed.'),
+                Colors.redAccent);
           }
         }
       }
     } catch (e) {
-      _showSnackBar('${LocaleService.tr('Đã xảy ra lỗi kết nối:', en: 'Connection error:')} $e', Colors.redAccent);
+      _showSnackBar(
+          '${LocaleService.tr('Đã xảy ra lỗi kết nối:', en: 'Connection error:')} $e',
+          Colors.redAccent);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -172,7 +206,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     const accentColor = Color(0xFFF43F5E); // Cyber Pink
 
     return ListenableBuilder(
-      listenable: Listenable.merge([LocaleService.languageCode, ThemeService.isSketchyMode]),
+      listenable: Listenable.merge(
+          [LocaleService.languageCode, ThemeService.isSketchyMode]),
       builder: (context, child) {
         final isSketchy = ThemeService.isSketchyMode.value;
         if (isSketchy) {
@@ -201,301 +236,384 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       physics: const BouncingScrollPhysics(),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // LOGO Space Timer & Glowing Title
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: themeColor.withOpacity(0.2),
-                                blurRadius: 40,
-                                spreadRadius: 10,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.03),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          child: const Icon(
-                            Icons.blur_on_rounded,
-                            size: 48,
-                            color: themeColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'SPACE TIMER',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _isLoginMode
-                          ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH', en: 'LOGIN TO SYNC PROGRESS')
-                          : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ', en: 'REGISTER SPACE MEMBER'),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white38,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // GLASSMORPHIC CARD WITH FORM
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                        child: Container(
-                          padding: const EdgeInsets.all(28.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F1524).withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                              width: 1,
-                            ),
-                          ),
-                          child: Form(
-                            key: _formKey,
-                            child: FadeTransition(
-                              opacity: _fadeAnimation,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (_isLoginMode) ...[
-                                    // LOGIN MODE FIELDS
-                                    _buildTextField(
-                                      controller: _emailOrPhoneController,
-                                      labelText: LocaleService.tr('Email, SĐT hoặc Username', en: 'Email, Phone or Username'),
-                                      icon: Icons.person_outline_rounded,
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username', en: 'Please enter Email, Phone or Username');
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ] else ...[
-                                    // REGISTER MODE FIELDS
-                                    _buildTextField(
-                                      controller: _emailController,
-                                      labelText: LocaleService.tr('Địa chỉ Email', en: 'Email Address'),
-                                      icon: Icons.email_outlined,
-                                      keyboardType: TextInputType.emailAddress,
-                                      validator: (value) {
-                                        if (value == null || value.trim().isEmpty) {
-                                          return LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email');
-                                        }
-                                        final emailRegex = RegExp(
-                                            r'^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$');
-                                        if (!emailRegex.hasMatch(value.trim())) {
-                                          return LocaleService.tr('Định dạng email không hợp lệ', en: 'Invalid email format');
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _phoneController,
-                                      labelText: LocaleService.tr('Số điện thoại (Tùy chọn)', en: 'Phone number (Optional)'),
-                                      icon: Icons.phone_android_rounded,
-                                      keyboardType: TextInputType.phone,
-                                      validator: (value) {
-                                        if (value != null && value.trim().isNotEmpty) {
-                                          final phoneRegex = RegExp(r'^[0-9]{10,11}$');
-                                          if (!phoneRegex.hasMatch(value.trim())) {
-                                            return LocaleService.tr('SĐT không hợp lệ (10-11 chữ số)', en: 'Invalid phone number (10-11 digits)');
-                                          }
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _usernameController,
-                                      labelText: LocaleService.tr('Username (Tùy chọn)', en: 'Username (Optional)'),
-                                      icon: Icons.alternate_email_rounded,
-                                      validator: (value) {
-                                        if (value != null && value.trim().isNotEmpty) {
-                                          final usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
-                                          if (!usernameRegex.hasMatch(value.trim())) {
-                                            return LocaleService.tr('3-20 ký tự: chữ, số, dấu gạch', en: '3-20 chars: letters, numbers, underscore');
-                                          }
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ],
-                                  const SizedBox(height: 16),
-
-                                  // PASSWORD FIELD
-                                  _buildTextField(
-                                    controller: _passwordController,
-                                    labelText: LocaleService.tr('Mật khẩu', en: 'Password'),
-                                    icon: Icons.lock_outline_rounded,
-                                    obscureText: _obscurePassword,
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off_rounded
-                                            : Icons.visibility_rounded,
-                                        color: Colors.white38,
-                                        size: 20,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // LOGO Space Timer & Glowing Title
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: themeColor.withOpacity(0.2),
+                                        blurRadius: 40,
+                                        spreadRadius: 10,
                                       ),
-                                      onPressed: () {
-                                        setState(() => _obscurePassword = !_obscurePassword);
-                                      },
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return LocaleService.tr('Vui lòng nhập mật khẩu', en: 'Please enter password');
-                                      }
-                                      if (value.length < 6) {
-                                        return LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự', en: 'Password must be at least 6 characters');
-                                      }
-                                      return null;
-                                    },
+                                    ],
                                   ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.03),
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  child: const Icon(
+                                    Icons.blur_on_rounded,
+                                    size: 48,
+                                    color: themeColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'SPACE TIMER',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _isLoginMode
+                                  ? LocaleService.tr(
+                                      'ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH',
+                                      en: 'LOGIN TO SYNC PROGRESS')
+                                  : LocaleService.tr(
+                                      'ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
+                                      en: 'REGISTER SPACE MEMBER'),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white38,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
 
-                                  // CONFIRM PASSWORD FIELD (REGISTER ONLY)
-                                  if (!_isLoginMode) ...[
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _confirmPasswordController,
-                                      labelText: LocaleService.tr('Xác nhận Mật khẩu', en: 'Confirm Password'),
-                                      icon: Icons.lock_reset_rounded,
-                                      obscureText: _obscurePassword,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return LocaleService.tr('Vui lòng xác nhận mật khẩu', en: 'Please confirm password');
-                                        }
-                                        if (value != _passwordController.text) {
-                                          return LocaleService.tr('Mật khẩu xác nhận không trùng khớp', en: 'Passwords do not match');
-                                        }
-                                        return null;
-                                      },
+                            // GLASSMORPHIC CARD WITH FORM
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(30),
+                              child: BackdropFilter(
+                                filter:
+                                    ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.all(28.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0F1524)
+                                        .withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.08),
+                                      width: 1,
                                     ),
-                                  ],
+                                  ),
+                                  child: Form(
+                                    key: _formKey,
+                                    child: FadeTransition(
+                                      opacity: _fadeAnimation,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          if (_isLoginMode) ...[
+                                            // LOGIN MODE FIELDS
+                                            _buildTextField(
+                                              controller:
+                                                  _emailOrPhoneController,
+                                              labelText: LocaleService.tr(
+                                                  'Email, SĐT hoặc Username',
+                                                  en: 'Email, Phone or Username'),
+                                              icon:
+                                                  Icons.person_outline_rounded,
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.trim().isEmpty) {
+                                                  return LocaleService.tr(
+                                                      'Vui lòng nhập Email, SĐT hoặc Username',
+                                                      en: 'Please enter Email, Phone or Username');
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ] else ...[
+                                            // REGISTER MODE FIELDS
+                                            _buildTextField(
+                                              controller: _emailController,
+                                              labelText: LocaleService.tr(
+                                                  'Địa chỉ Email',
+                                                  en: 'Email Address'),
+                                              icon: Icons.email_outlined,
+                                              keyboardType:
+                                                  TextInputType.emailAddress,
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.trim().isEmpty) {
+                                                  return LocaleService.tr(
+                                                      'Vui lòng nhập Email',
+                                                      en: 'Please enter Email');
+                                                }
+                                                final emailRegex = RegExp(
+                                                    r'^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$');
+                                                if (!emailRegex
+                                                    .hasMatch(value.trim())) {
+                                                  return LocaleService.tr(
+                                                      'Định dạng email không hợp lệ',
+                                                      en: 'Invalid email format');
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                            const SizedBox(height: 16),
+                                            _buildTextField(
+                                              controller: _phoneController,
+                                              labelText: LocaleService.tr(
+                                                  'Số điện thoại (Tùy chọn)',
+                                                  en: 'Phone number (Optional)'),
+                                              icon: Icons.phone_android_rounded,
+                                              keyboardType: TextInputType.phone,
+                                              validator: (value) {
+                                                if (value != null &&
+                                                    value.trim().isNotEmpty) {
+                                                  final phoneRegex =
+                                                      RegExp(r'^[0-9]{10,11}$');
+                                                  if (!phoneRegex
+                                                      .hasMatch(value.trim())) {
+                                                    return LocaleService.tr(
+                                                        'SĐT không hợp lệ (10-11 chữ số)',
+                                                        en: 'Invalid phone number (10-11 digits)');
+                                                  }
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                            const SizedBox(height: 16),
+                                            _buildTextField(
+                                              controller: _usernameController,
+                                              labelText: LocaleService.tr(
+                                                  'Username (Tùy chọn)',
+                                                  en: 'Username (Optional)'),
+                                              icon:
+                                                  Icons.alternate_email_rounded,
+                                              validator: (value) {
+                                                if (value != null &&
+                                                    value.trim().isNotEmpty) {
+                                                  final usernameRegex = RegExp(
+                                                      r'^[a-zA-Z0-9_]{3,20}$');
+                                                  if (!usernameRegex
+                                                      .hasMatch(value.trim())) {
+                                                    return LocaleService.tr(
+                                                        '3-20 ký tự: chữ, số, dấu gạch',
+                                                        en: '3-20 chars: letters, numbers, underscore');
+                                                  }
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ],
+                                          const SizedBox(height: 16),
 
-                                  const SizedBox(height: 32),
+                                          // PASSWORD FIELD
+                                          _buildTextField(
+                                            controller: _passwordController,
+                                            labelText: LocaleService.tr(
+                                                'Mật khẩu',
+                                                en: 'Password'),
+                                            icon: Icons.lock_outline_rounded,
+                                            obscureText: _obscurePassword,
+                                            suffixIcon: IconButton(
+                                              icon: Icon(
+                                                _obscurePassword
+                                                    ? Icons
+                                                        .visibility_off_rounded
+                                                    : Icons.visibility_rounded,
+                                                color: Colors.white38,
+                                                size: 20,
+                                              ),
+                                              onPressed: () {
+                                                setState(() =>
+                                                    _obscurePassword =
+                                                        !_obscurePassword);
+                                              },
+                                            ),
+                                            validator: (value) {
+                                              if (value == null ||
+                                                  value.isEmpty) {
+                                                return LocaleService.tr(
+                                                    'Vui lòng nhập mật khẩu',
+                                                    en: 'Please enter password');
+                                              }
+                                              if (value.length < 6) {
+                                                return LocaleService.tr(
+                                                    'Mật khẩu phải chứa ít nhất 6 ký tự',
+                                                    en: 'Password must be at least 6 characters');
+                                              }
+                                              return null;
+                                            },
+                                          ),
 
-                                  // MAIN SUBMIT BUTTON WITH GRADIENT & GLOW
-                                  GestureDetector(
-                                    onTap: _isLoading ? null : _submitForm,
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        gradient: const LinearGradient(
-                                          colors: [themeColor, accentColor],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: themeColor.withOpacity(0.3),
-                                            blurRadius: 16,
-                                            spreadRadius: 1,
-                                            offset: const Offset(0, 4),
+                                          // CONFIRM PASSWORD FIELD (REGISTER ONLY)
+                                          if (!_isLoginMode) ...[
+                                            const SizedBox(height: 16),
+                                            _buildTextField(
+                                              controller:
+                                                  _confirmPasswordController,
+                                              labelText: LocaleService.tr(
+                                                  'Xác nhận Mật khẩu',
+                                                  en: 'Confirm Password'),
+                                              icon: Icons.lock_reset_rounded,
+                                              obscureText: _obscurePassword,
+                                              validator: (value) {
+                                                if (value == null ||
+                                                    value.isEmpty) {
+                                                  return LocaleService.tr(
+                                                      'Vui lòng xác nhận mật khẩu',
+                                                      en: 'Please confirm password');
+                                                }
+                                                if (value !=
+                                                    _passwordController.text) {
+                                                  return LocaleService.tr(
+                                                      'Mật khẩu xác nhận không trùng khớp',
+                                                      en: 'Passwords do not match');
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ],
+
+                                          const SizedBox(height: 32),
+
+                                          // MAIN SUBMIT BUTTON WITH GRADIENT & GLOW
+                                          GestureDetector(
+                                            onTap:
+                                                _isLoading ? null : _submitForm,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                  milliseconds: 200),
+                                              height: 56,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    themeColor,
+                                                    accentColor
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: themeColor
+                                                        .withOpacity(0.3),
+                                                    blurRadius: 16,
+                                                    spreadRadius: 1,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: _isLoading
+                                                  ? const SizedBox(
+                                                      width: 24,
+                                                      height: 24,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2.5,
+                                                      ),
+                                                    )
+                                                  : Text(
+                                                      _isLoginMode
+                                                          ? LocaleService.tr(
+                                                              'Đăng Nhập',
+                                                              en: 'Login')
+                                                          : LocaleService.tr(
+                                                              'Tạo Tài Khoản',
+                                                              en: 'Create Account'),
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.white,
+                                                        letterSpacing: 1,
+                                                      ),
+                                                    ),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      alignment: Alignment.center,
-                                      child: _isLoading
-                                          ? const SizedBox(
-                                              width: 24,
-                                              height: 24,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2.5,
-                                              ),
-                                            )
-                                          : Text(
-                                              _isLoginMode ? LocaleService.tr('Đăng Nhập', en: 'Login') : LocaleService.tr('Tạo Tài Khoản', en: 'Create Account'),
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                                letterSpacing: 1,
-                                              ),
-                                            ),
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                            const SizedBox(height: 32),
 
-                    // SWITCH REGISTER/LOGIN FOOTER
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _isLoginMode
-                              ? LocaleService.tr('Chưa có tài khoản? ', en: 'Don\'t have an account? ')
-                              : LocaleService.tr('Đã có tài khoản? ', en: 'Already have an account? '),
-                          style: const TextStyle(color: Colors.white38, fontSize: 14),
-                        ),
-                        GestureDetector(
-                          onTap: _toggleMode,
-                          child: Text(
-                            _isLoginMode ? LocaleService.tr('Đăng ký ngay', en: 'Register now') : LocaleService.tr('Đăng nhập', en: 'Login'),
-                            style: const TextStyle(
-                              color: themeColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ), // closes Row
-                  ], // closes children of Column
-                ), // closes Column
-              ), // closes Padding
-            ), // closes SingleChildScrollView
-          ), // closes Center
-          Positioned(
+                            // SWITCH REGISTER/LOGIN FOOTER
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _isLoginMode
+                                      ? LocaleService.tr('Chưa có tài khoản? ',
+                                          en: 'Don\'t have an account? ')
+                                      : LocaleService.tr('Đã có tài khoản? ',
+                                          en: 'Already have an account? '),
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 14),
+                                ),
+                                GestureDetector(
+                                  onTap: _toggleMode,
+                                  child: Text(
+                                    _isLoginMode
+                                        ? LocaleService.tr('Đăng ký ngay',
+                                            en: 'Register now')
+                                        : LocaleService.tr('Đăng nhập',
+                                            en: 'Login'),
+                                    style: const TextStyle(
+                                      color: themeColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ), // closes Row
+                          ], // closes children of Column
+                        ), // closes Column
+                      ), // closes Padding
+                    ), // closes SingleChildScrollView
+                  ), // closes Center
+                  Positioned(
                     top: 16,
                     right: 16,
                     child: GestureDetector(
                       onTap: LocaleService.toggleLanguage,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.language, color: Colors.white70, size: 16),
+                            const Icon(Icons.language,
+                                color: Colors.white70, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               LocaleService.languageCode.value.toUpperCase(),
@@ -552,8 +670,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 const SizedBox(height: 6),
                 sketchy.SketchyText(
                   _isLoginMode
-                      ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH', en: 'LOGIN TO SYNC PROGRESS')
-                      : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ', en: 'REGISTER SPACE MEMBER'),
+                      ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH',
+                          en: 'LOGIN TO SYNC PROGRESS')
+                      : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
+                          en: 'REGISTER SPACE MEMBER'),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -573,14 +693,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           sketchy.SketchyTextField(
                             controller: _emailOrPhoneController,
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Email, SĐT hoặc Username', en: 'Email, Phone or Username'),
+                              hintText: LocaleService.tr(
+                                  'Email, SĐT hoặc Username',
+                                  en: 'Email, Phone or Username'),
                             ),
                           ),
                         ] else ...[
                           sketchy.SketchyTextField(
                             controller: _emailController,
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Địa chỉ Email', en: 'Email Address'),
+                              hintText: LocaleService.tr('Địa chỉ Email',
+                                  en: 'Email Address'),
                             ),
                             keyboardType: TextInputType.emailAddress,
                           ),
@@ -588,7 +711,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           sketchy.SketchyTextField(
                             controller: _phoneController,
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Số điện thoại (Tùy chọn)', en: 'Phone number (Optional)'),
+                              hintText: LocaleService.tr(
+                                  'Số điện thoại (Tùy chọn)',
+                                  en: 'Phone number (Optional)'),
                             ),
                             keyboardType: TextInputType.phone,
                           ),
@@ -596,7 +721,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           sketchy.SketchyTextField(
                             controller: _usernameController,
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Username (Tùy chọn)', en: 'Username (Optional)'),
+                              hintText: LocaleService.tr('Username (Tùy chọn)',
+                                  en: 'Username (Optional)'),
                             ),
                           ),
                         ],
@@ -604,7 +730,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         sketchy.SketchyTextField(
                           controller: _passwordController,
                           decoration: InputDecoration(
-                            hintText: LocaleService.tr('Mật khẩu', en: 'Password'),
+                            hintText:
+                                LocaleService.tr('Mật khẩu', en: 'Password'),
                           ),
                           obscureText: _obscurePassword,
                         ),
@@ -613,7 +740,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           sketchy.SketchyTextField(
                             controller: _confirmPasswordController,
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Xác nhận Mật khẩu', en: 'Confirm Password'),
+                              hintText: LocaleService.tr('Xác nhận Mật khẩu',
+                                  en: 'Confirm Password'),
                             ),
                             obscureText: _obscurePassword,
                           ),
@@ -622,16 +750,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                         // Submit Button vẽ tay
                         _isLoading
-                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B5CF6)))
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF8B5CF6)))
                             : sketchy.SketchyButton(
                                 onPressed: _submitForm,
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12.0),
                                   child: Center(
                                     child: sketchy.SketchyText(
                                       _isLoginMode
-                                          ? LocaleService.tr('Đăng Nhập', en: 'Login')
-                                          : LocaleService.tr('Tạo Tài Khoản', en: 'Create Account'),
+                                          ? LocaleService.tr('Đăng Nhập',
+                                              en: 'Login')
+                                          : LocaleService.tr('Tạo Tài Khoản',
+                                              en: 'Create Account'),
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -652,13 +785,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   children: [
                     sketchy.SketchyText(
                       _isLoginMode
-                          ? LocaleService.tr('Chưa có tài khoản? ', en: 'Don\'t have an account? ')
-                          : LocaleService.tr('Đã có tài khoản? ', en: 'Already have an account? '),
+                          ? LocaleService.tr('Chưa có tài khoản? ',
+                              en: 'Don\'t have an account? ')
+                          : LocaleService.tr('Đã có tài khoản? ',
+                              en: 'Already have an account? '),
                     ),
                     GestureDetector(
                       onTap: _toggleMode,
                       child: sketchy.SketchyText(
-                        _isLoginMode ? LocaleService.tr('Đăng ký ngay', en: 'Register now') : LocaleService.tr('Đăng nhập', en: 'Login'),
+                        _isLoginMode
+                            ? LocaleService.tr('Đăng ký ngay',
+                                en: 'Register now')
+                            : LocaleService.tr('Đăng nhập', en: 'Login'),
                         style: const TextStyle(
                           color: Color(0xFF8B5CF6),
                           fontWeight: FontWeight.bold,
@@ -675,7 +813,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       ),
     );
   }
-
 
   // Reusable Premium TextField Builder
   Widget _buildTextField({
@@ -700,7 +837,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white.withOpacity(0.02),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
@@ -717,7 +855,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
-        errorStyle: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+        errorStyle: const TextStyle(
+            color: Colors.redAccent, fontWeight: FontWeight.bold),
       ),
     );
   }

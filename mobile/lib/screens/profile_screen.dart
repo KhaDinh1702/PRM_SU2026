@@ -50,7 +50,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (newUsername.isEmpty) return;
     if (newUsername == (_userData?['username'] ?? '')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username không thay đổi!'), behavior: SnackBarBehavior.floating),
+        const SnackBar(
+            content: Text('Username không thay đổi!'),
+            behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -69,27 +71,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ ${result['message']} (còn $remaining lượt đổi tháng này)'),
+            content: Text(
+                '${result['message']} (còn $remaining lượt đổi tháng này)'),
             backgroundColor: const Color(0xFF10B981),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ ${result['message']}'),
+            content: Text('${result['message']}'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         );
       }
     }
   }
+
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode, ThemeService.isSketchyMode]),
+      listenable: Listenable.merge([
+        ThemeService.isDarkMode,
+        LocaleService.languageCode,
+        ThemeService.isSketchyMode
+      ]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final isSketchy = ThemeService.isSketchyMode.value;
@@ -100,13 +110,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final borderColor = ThemeService.getBorderColor(isDark);
 
         if (isSketchy) {
-          return _buildSketchyLayout(isDark, textColor, subTextColor, captionColor, cardBg, borderColor);
+          return _buildSketchyLayout(isDark, textColor, subTextColor,
+              captionColor, cardBg, borderColor);
         }
 
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: themeColor))
+              ? const Center(
+                  child: CircularProgressIndicator(color: themeColor))
               : SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -116,11 +128,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Header
                       Text(
                         LocaleService.tr('HỒ SƠ CÁ NHÂN', en: 'MY PROFILE'),
-                        style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                        style: TextStyle(
+                            color: captionColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2),
                       ),
                       Text(
                         LocaleService.tr('Tài khoản', en: 'Account'),
-                        style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
+                        style: TextStyle(
+                            color: textColor,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 28),
 
@@ -146,7 +165,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+                                      colors: [
+                                        Color(0xFF8B5CF6),
+                                        Color(0xFF06B6D4)
+                                      ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
@@ -160,12 +182,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)
+                                      ((_userData?['username'] ??
+                                                  _userData?['name'] ??
+                                                  _userData?['email'] ??
+                                                  'U') as String)
                                               .isNotEmpty
-                                          ? ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)[0]
+                                          ? ((_userData?['username'] ??
+                                                  _userData?['name'] ??
+                                                  _userData?['email'] ??
+                                                  'U') as String)[0]
                                               .toUpperCase()
                                           : 'U',
-                                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                 ),
@@ -173,7 +204,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   _userData?['username']?.isNotEmpty == true
                                       ? '@${_userData!['username']}'
-                                      : LocaleService.tr('Chưa đặt username', en: 'No username set'),
+                                      : LocaleService.tr('Chưa đặt username',
+                                          en: 'No username set'),
                                   style: TextStyle(
                                     color: themeColor,
                                     fontSize: 18,
@@ -183,7 +215,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _userData?['email'] ?? '',
-                                  style: TextStyle(color: subTextColor, fontSize: 13),
+                                  style: TextStyle(
+                                      color: subTextColor, fontSize: 13),
                                 ),
                               ],
                             ),
@@ -193,29 +226,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 20),
 
                       // Info cards
-                      _infoRow(Icons.person_outline_rounded, LocaleService.tr('Họ tên', en: 'Name'),
+                      _infoRow(
+                          Icons.person_outline_rounded,
+                          LocaleService.tr('Họ tên', en: 'Name'),
                           _userData?['name']?.toString().isNotEmpty == true
                               ? _userData!['name']
-                              : LocaleService.tr('Chưa cập nhật', en: 'Not set'),
-                          textColor, subTextColor, cardBg, borderColor),
+                              : LocaleService.tr('Chưa cập nhật',
+                                  en: 'Not set'),
+                          textColor,
+                          subTextColor,
+                          cardBg,
+                          borderColor),
                       const SizedBox(height: 10),
-                      _infoRow(Icons.email_outlined, 'Email',
-                          _userData?['email'] ?? '', textColor, subTextColor, cardBg, borderColor),
+                      _infoRow(
+                          Icons.email_outlined,
+                          'Email',
+                          _userData?['email'] ?? '',
+                          textColor,
+                          subTextColor,
+                          cardBg,
+                          borderColor),
                       const SizedBox(height: 28),
 
                       // Username change section
                       Text(
                         LocaleService.tr('ĐỔI USERNAME', en: 'CHANGE USERNAME'),
-                        style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                        style: TextStyle(
+                            color: captionColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2),
                       ),
                       const SizedBox(height: 12),
 
                       // Remaining changes indicator
                       Builder(builder: (_) {
-                        final remaining = _userData?['usernameChangesRemaining'] ?? 2;
+                        final remaining =
+                            _userData?['usernameChangesRemaining'] ?? 2;
                         final used = 2 - remaining;
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: remaining == 0
                                 ? Colors.redAccent.withOpacity(0.1)
@@ -230,20 +281,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                remaining == 0 ? Icons.block_rounded : Icons.swap_horiz_rounded,
-                                color: remaining == 0 ? Colors.redAccent : themeColor,
+                                remaining == 0
+                                    ? Icons.block_rounded
+                                    : Icons.swap_horiz_rounded,
+                                color: remaining == 0
+                                    ? Colors.redAccent
+                                    : themeColor,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   remaining == 0
-                                      ? LocaleService.tr('Đã dùng hết 2 lượt đổi tháng này', en: 'Used all 2 changes this month')
+                                      ? LocaleService.tr(
+                                          'Đã dùng hết 2 lượt đổi tháng này',
+                                          en: 'Used all 2 changes this month')
                                       : LocaleService.tr(
                                           'Đã đổi $used/2 lần tháng này · Còn $remaining lượt',
                                           en: 'Changed $used/2 times this month · $remaining left'),
                                   style: TextStyle(
-                                    color: remaining == 0 ? Colors.redAccent : themeColor,
+                                    color: remaining == 0
+                                        ? Colors.redAccent
+                                        : themeColor,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -257,7 +316,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Username text field
                       Builder(builder: (_) {
-                        final remaining = _userData?['usernameChangesRemaining'] ?? 2;
+                        final remaining =
+                            _userData?['usernameChangesRemaining'] ?? 2;
                         return Container(
                           decoration: BoxDecoration(
                             color: cardBg,
@@ -269,13 +329,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             enabled: remaining > 0,
                             style: TextStyle(color: textColor, fontSize: 15),
                             decoration: InputDecoration(
-                              hintText: LocaleService.tr('Nhập username mới...', en: 'Enter new username...'),
+                              hintText: LocaleService.tr('Nhập username mới...',
+                                  en: 'Enter new username...'),
                               hintStyle: TextStyle(color: subTextColor),
-                              prefixIcon: Icon(Icons.alternate_email_rounded, color: themeColor, size: 20),
+                              prefixIcon: Icon(Icons.alternate_email_rounded,
+                                  color: themeColor, size: 20),
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              helperText: LocaleService.tr('3-20 ký tự: a-z, 0-9, dấu gạch dưới', en: '3-20 chars: a-z, 0-9, underscore'),
-                              helperStyle: TextStyle(color: captionColor, fontSize: 11),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
+                              helperText: LocaleService.tr(
+                                  '3-20 ký tự: a-z, 0-9, dấu gạch dưới',
+                                  en: '3-20 chars: a-z, 0-9, underscore'),
+                              helperStyle:
+                                  TextStyle(color: captionColor, fontSize: 11),
                             ),
                           ),
                         );
@@ -284,7 +350,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Save button
                       Builder(builder: (_) {
-                        final remaining = _userData?['usernameChangesRemaining'] ?? 2;
+                        final remaining =
+                            _userData?['usernameChangesRemaining'] ?? 2;
                         final canChange = remaining > 0 && !_isSaving;
                         return GestureDetector(
                           onTap: canChange ? _changeUsername : null,
@@ -295,27 +362,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(20),
                               gradient: canChange
                                   ? const LinearGradient(
-                                      colors: [Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+                                      colors: [
+                                        Color(0xFF8B5CF6),
+                                        Color(0xFF06B6D4)
+                                      ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     )
                                   : LinearGradient(
-                                      colors: [Colors.grey.withOpacity(0.3), Colors.grey.withOpacity(0.3)],
+                                      colors: [
+                                        Colors.grey.withOpacity(0.3),
+                                        Colors.grey.withOpacity(0.3)
+                                      ],
                                     ),
                               boxShadow: canChange
-                                  ? [BoxShadow(color: themeColor.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 4))]
+                                  ? [
+                                      BoxShadow(
+                                          color: themeColor.withOpacity(0.3),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 4))
+                                    ]
                                   : [],
                             ),
                             alignment: Alignment.center,
                             child: _isSaving
                                 ? const SizedBox(
-                                    width: 22, height: 22,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2.5),
                                   )
                                 : Text(
-                                    LocaleService.tr('Lưu Username', en: 'Save Username'),
+                                    LocaleService.tr('Lưu Username',
+                                        en: 'Save Username'),
                                     style: TextStyle(
-                                      color: canChange ? Colors.white : subTextColor,
+                                      color: canChange
+                                          ? Colors.white
+                                          : subTextColor,
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,
@@ -332,7 +415,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSketchyLayout(bool isDark, Color textColor, Color subTextColor, Color captionColor, Color cardBg, Color borderColor) {
+  Widget _buildSketchyLayout(bool isDark, Color textColor, Color subTextColor,
+      Color captionColor, Color cardBg, Color borderColor) {
     final remainingChanges = _userData?['usernameChangesRemaining'] ?? 2;
     final usedChanges = 2 - remainingChanges;
 
@@ -349,11 +433,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Header
                   sketchy.SketchyText(
                     LocaleService.tr('HỒ SƠ CÁ NHÂN', en: 'MY PROFILE'),
-                    style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                    style: TextStyle(
+                        color: captionColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2),
                   ),
                   sketchy.SketchyText(
                     LocaleService.tr('Tài khoản', en: 'Account'),
-                    style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                        color: textColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 28),
 
@@ -368,10 +459,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: Text(
-                                ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String).isNotEmpty
-                                    ? ((_userData?['username'] ?? _userData?['name'] ?? _userData?['email'] ?? 'U') as String)[0].toUpperCase()
+                                ((_userData?['username'] ??
+                                            _userData?['name'] ??
+                                            _userData?['email'] ??
+                                            'U') as String)
+                                        .isNotEmpty
+                                    ? ((_userData?['username'] ??
+                                            _userData?['name'] ??
+                                            _userData?['email'] ??
+                                            'U') as String)[0]
+                                        .toUpperCase()
                                     : 'U',
-                                style: TextStyle(color: textColor, fontSize: 32, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                           ),
@@ -379,7 +481,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           sketchy.SketchyText(
                             _userData?['username']?.isNotEmpty == true
                                 ? '@${_userData!['username']}'
-                                : LocaleService.tr('Chưa đặt username', en: 'No username set'),
+                                : LocaleService.tr('Chưa đặt username',
+                                    en: 'No username set'),
                             style: const TextStyle(
                               color: themeColor,
                               fontSize: 18,
@@ -398,11 +501,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
 
                   // Info rows vẽ tay
-                  _buildSketchyInfoRow(Icons.person_outline_rounded, LocaleService.tr('Họ tên', en: 'Name'),
+                  _buildSketchyInfoRow(
+                      Icons.person_outline_rounded,
+                      LocaleService.tr('Họ tên', en: 'Name'),
                       _userData?['name']?.toString().isNotEmpty == true
                           ? _userData!['name']
                           : LocaleService.tr('Chưa cập nhật', en: 'Not set'),
-                      textColor, subTextColor),
+                      textColor,
+                      subTextColor),
                   const SizedBox(height: 10),
                   _buildSketchyInfoRow(Icons.email_outlined, 'Email',
                       _userData?['email'] ?? '', textColor, subTextColor),
@@ -414,19 +520,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          const Icon(Icons.gesture_rounded, color: themeColor, size: 24),
+                          const Icon(Icons.gesture_rounded,
+                              color: themeColor, size: 24),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 sketchy.SketchyText(
-                                  LocaleService.tr('Giao diện vẽ tay', en: 'Sketchy UI Theme'),
-                                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                  LocaleService.tr('Giao diện vẽ tay',
+                                      en: 'Sketchy UI Theme'),
+                                  style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 sketchy.SketchyText(
-                                  LocaleService.tr('Đang kích hoạt', en: 'Currently active'),
-                                  style: TextStyle(color: subTextColor, fontSize: 12),
+                                  LocaleService.tr('Đang kích hoạt',
+                                      en: 'Currently active'),
+                                  style: TextStyle(
+                                      color: subTextColor, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -446,31 +559,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Username change section vẽ tay
                   sketchy.SketchyText(
                     LocaleService.tr('ĐỔI USERNAME', en: 'CHANGE USERNAME'),
-                    style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                    style: TextStyle(
+                        color: captionColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2),
                   ),
                   const SizedBox(height: 12),
 
                   // Remaining changes indicator vẽ tay
                   sketchy.SketchyCard(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
                           Icon(
-                            remainingChanges == 0 ? Icons.block_rounded : Icons.swap_horiz_rounded,
-                            color: remainingChanges == 0 ? Colors.redAccent : themeColor,
+                            remainingChanges == 0
+                                ? Icons.block_rounded
+                                : Icons.swap_horiz_rounded,
+                            color: remainingChanges == 0
+                                ? Colors.redAccent
+                                : themeColor,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: sketchy.SketchyText(
                               remainingChanges == 0
-                                  ? LocaleService.tr('Đã dùng hết 2 lượt đổi tháng này', en: 'Used all 2 changes this month')
+                                  ? LocaleService.tr(
+                                      'Đã dùng hết 2 lượt đổi tháng này',
+                                      en: 'Used all 2 changes this month')
                                   : LocaleService.tr(
                                       'Đã đổi $usedChanges/2 lần tháng này · Còn $remainingChanges lượt',
                                       en: 'Changed $usedChanges/2 times this month · $remainingChanges left'),
                               style: TextStyle(
-                                color: remainingChanges == 0 ? Colors.redAccent : themeColor,
+                                color: remainingChanges == 0
+                                    ? Colors.redAccent
+                                    : themeColor,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -489,7 +615,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: sketchy.SketchyTextField(
                         controller: _usernameController,
                         decoration: InputDecoration(
-                          hintText: LocaleService.tr('Nhập username mới...', en: 'Enter new username...'),
+                          hintText: LocaleService.tr('Nhập username mới...',
+                              en: 'Enter new username...'),
                         ),
                       ),
                     ),
@@ -498,14 +625,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   // Save button vẽ tay
                   _isSaving
-                      ? const Center(child: CircularProgressIndicator(color: themeColor))
+                      ? const Center(
+                          child: CircularProgressIndicator(color: themeColor))
                       : sketchy.SketchyButton(
-                          onPressed: remainingChanges > 0 ? _changeUsername : null,
+                          onPressed:
+                              remainingChanges > 0 ? _changeUsername : null,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Center(
                               child: sketchy.SketchyText(
-                                LocaleService.tr('Lưu Username', en: 'Save Username'),
+                                LocaleService.tr('Lưu Username',
+                                    en: 'Save Username'),
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -520,7 +650,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSketchyInfoRow(IconData icon, String label, String value, Color textColor, Color subTextColor) {
+  Widget _buildSketchyInfoRow(IconData icon, String label, String value,
+      Color textColor, Color subTextColor) {
     return sketchy.SketchyCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -531,8 +662,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                sketchy.SketchyText(label, style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w600)),
-                sketchy.SketchyText(value, style: TextStyle(fontSize: 14, color: textColor, fontWeight: FontWeight.w600)),
+                sketchy.SketchyText(label,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: subTextColor,
+                        fontWeight: FontWeight.w600)),
+                sketchy.SketchyText(value,
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                        fontWeight: FontWeight.w600)),
               ],
             ),
           ],
@@ -541,8 +680,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value,
-      Color textColor, Color subTextColor, Color cardBg, Color borderColor) {
+  Widget _infoRow(IconData icon, String label, String value, Color textColor,
+      Color subTextColor, Color cardBg, Color borderColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
@@ -557,8 +696,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w600)),
-              Text(value, style: TextStyle(fontSize: 14, color: textColor, fontWeight: FontWeight.w600)),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: subTextColor,
+                      fontWeight: FontWeight.w600)),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: textColor,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ],

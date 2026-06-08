@@ -17,7 +17,8 @@ class TimerScreen extends StatefulWidget {
   State<TimerScreen> createState() => _TimerScreenState();
 }
 
-class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin {
+class _TimerScreenState extends State<TimerScreen>
+    with TickerProviderStateMixin {
   // Backend API URL (Vercel deployment)
   static const String _baseUrl = 'https://prm-tan.vercel.app/api/sessions';
 
@@ -26,7 +27,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   int _secondsRemaining = 25 * 60;
   bool _isRunning = false;
   late AnimationController _countdownController;
-  
+
   // App mode: 'Focus' (25m), 'Short Break' (5m), 'Long Break' (15m), 'Custom'
   String _currentMode = 'Focus';
   int _customMinutes = 25;
@@ -40,7 +41,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   void initState() {
     super.initState();
     _loadUserInfo();
-    
+
     // Setup pulsing animation for completion state
     _completionController = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -84,27 +85,31 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   }
 
   // --- Backend API Integrations ---
-  
+
   Future<void> _syncSessionToBackend(String mode, int durationSeconds) async {
     try {
       final token = await AuthService.getToken();
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'mode': mode,
-          'durationSeconds': durationSeconds,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse(_baseUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'mode': mode,
+              'durationSeconds': durationSeconds,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(LocaleService.tr('Đã đồng bộ phiên làm việc thành công! 🚀', en: 'Session synced successfully! 🚀')),
+              content: Text(LocaleService.tr(
+                  'Đã đồng bộ phiên làm việc thành công!',
+                  en: 'Session synced successfully!')),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -118,7 +123,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(LocaleService.tr('Đã lưu phiên offline (Không thể kết nối server).', en: 'Session saved offline (Cannot connect to server).')),
+            content: Text(LocaleService.tr(
+                'Đã lưu phiên offline (Không thể kết nối server).',
+                en: 'Session saved offline (Cannot connect to server).')),
             backgroundColor: Colors.amber[900],
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -130,13 +137,14 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
   void _startTimer() {
     if (_isRunning) return;
-    
+
     setState(() {
       _isRunning = true;
     });
 
     _countdownController.duration = Duration(seconds: _totalSeconds);
-    _countdownController.reverse(from: _totalSeconds > 0 ? _secondsRemaining / _totalSeconds : 0);
+    _countdownController.reverse(
+        from: _totalSeconds > 0 ? _secondsRemaining / _totalSeconds : 0);
   }
 
   void _pauseTimer() {
@@ -174,7 +182,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
       _isRunning = false;
       _secondsRemaining = 0;
     });
-    
+
     // Start pulsing visual effect to alert the user
     _completionController.repeat(reverse: true);
 
@@ -216,8 +224,12 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             ),
             content: Text(
               _currentMode == 'Focus'
-                  ? LocaleService.tr('Tuyệt vời ông chủ! Bạn đã hoàn thành tập trung cao độ. Hãy nghỉ ngơi một chút!', en: 'Awesome! You completed deep focus. Take a break!')
-                  : LocaleService.tr('Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?', en: 'Break time is over! Ready for a new session?'),
+                  ? LocaleService.tr(
+                      'Tuyệt vời ông chủ! Bạn đã hoàn thành tập trung cao độ. Hãy nghỉ ngơi một chút!',
+                      en: 'Awesome! You completed deep focus. Take a break!')
+                  : LocaleService.tr(
+                      'Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?',
+                      en: 'Break time is over! Ready for a new session?'),
               textAlign: TextAlign.center,
               style: TextStyle(color: subTextColor, fontSize: 16),
             ),
@@ -231,7 +243,10 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                 backgroundColor: const Color(0xFFF43F5E),
                 child: Text(
                   LocaleService.tr('Tuyệt vời', en: 'Awesome'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
               ),
             ],
@@ -245,7 +260,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     if (_isRunning) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(LocaleService.tr('Vui lòng tạm dừng timer trước khi đổi chế độ!', en: 'Please pause the timer before changing mode!')),
+          content: Text(LocaleService.tr(
+              'Vui lòng tạm dừng timer trước khi đổi chế độ!',
+              en: 'Please pause the timer before changing mode!')),
           backgroundColor: Colors.amber[800],
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
@@ -280,7 +297,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   Future<void> _showTimeInputDialog() async {
     if (_isRunning) return;
 
-    final TextEditingController controller = TextEditingController(text: (_totalSeconds ~/ 60).toString());
+    final TextEditingController controller =
+        TextEditingController(text: (_totalSeconds ~/ 60).toString());
 
     await showDialog(
       context: context,
@@ -291,25 +309,31 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
         return AlertDialog(
           backgroundColor: dialogBg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
-            LocaleService.tr('Nhập thời gian (phút)', en: 'Enter time (minutes)'),
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            LocaleService.tr('Nhập thời gian (phút)',
+                en: 'Enter time (minutes)'),
+            style: TextStyle(
+                color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
           ),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
             decoration: InputDecoration(
               hintText: '25',
               hintStyle: TextStyle(color: ThemeService.getSubTextColor(isDark)),
               enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: ThemeService.getBorderColor(isDark)),
+                borderSide:
+                    BorderSide(color: ThemeService.getBorderColor(isDark)),
                 borderRadius: BorderRadius.circular(16),
               ),
               focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Color(0xFFF43F5E), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFF43F5E), width: 2),
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
@@ -319,12 +343,16 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: ThemeService.getSubTextColor(isDark))),
+              child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
+                  style:
+                      TextStyle(color: ThemeService.getSubTextColor(isDark))),
             ),
             PremiumButton(
               onPressed: () => Navigator.pop(context, controller.text),
               backgroundColor: const Color(0xFFF43F5E),
-              child: Text(LocaleService.tr('Xác nhận', en: 'Confirm'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              child: Text(LocaleService.tr('Xác nhận', en: 'Confirm'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         );
@@ -372,7 +400,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     }
 
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge(
+          [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
@@ -399,7 +428,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _userEmail.isNotEmpty 
+                              _userEmail.isNotEmpty
                                   ? '${LocaleService.tr('CHÀO ÔNG CHỦ: ', en: 'HELLO BOSS: ')}${_userEmail.split('@')[0].toUpperCase()}'
                                   : 'PREMIUM',
                               style: TextStyle(
@@ -425,7 +454,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: themeColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
@@ -467,13 +497,28 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                     child: Row(
                       children: [
                         Expanded(
-                          child: _buildPresetTab('Focus', '25M', _currentMode == 'Focus', () => _setPreset('Focus', 25), isDark),
+                          child: _buildPresetTab(
+                              'Focus',
+                              '25M',
+                              _currentMode == 'Focus',
+                              () => _setPreset('Focus', 25),
+                              isDark),
                         ),
                         Expanded(
-                          child: _buildPresetTab('Short Break', '5M', _currentMode == 'Short Break', () => _setPreset('Short Break', 5), isDark),
+                          child: _buildPresetTab(
+                              'Short Break',
+                              '5M',
+                              _currentMode == 'Short Break',
+                              () => _setPreset('Short Break', 5),
+                              isDark),
                         ),
                         Expanded(
-                          child: _buildPresetTab('Long Break', '15M', _currentMode == 'Long Break', () => _setPreset('Long Break', 15), isDark),
+                          child: _buildPresetTab(
+                              'Long Break',
+                              '15M',
+                              _currentMode == 'Long Break',
+                              () => _setPreset('Long Break', 15),
+                              isDark),
                         ),
                       ],
                     ),
@@ -513,7 +558,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                                 return CustomPaint(
                                   painter: TimerPainter(
                                     progress: _getProgress(),
-                                    baseColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                                    baseColor: isDark
+                                        ? Colors.white.withOpacity(0.05)
+                                        : Colors.black.withOpacity(0.05),
                                     progressColor: themeColor,
                                   ),
                                 );
@@ -542,7 +589,11 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _isRunning ? LocaleService.tr('TIẾN TRÌNH', en: 'IN PROGRESS') : LocaleService.tr('TẠM DỪNG', en: 'PAUSED'),
+                                _isRunning
+                                    ? LocaleService.tr('TIẾN TRÌNH',
+                                        en: 'IN PROGRESS')
+                                    : LocaleService.tr('TẠM DỪNG',
+                                        en: 'PAUSED'),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -568,7 +619,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                       child: Column(
                         children: [
                           Text(
-                            LocaleService.tr('ĐIỀU CHỈNH THỜI GIAN', en: 'ADJUST TIME'),
+                            LocaleService.tr('ĐIỀU CHỈNH THỜI GIAN',
+                                en: 'ADJUST TIME'),
                             style: TextStyle(
                               color: captionColor,
                               fontSize: 10,
@@ -580,21 +632,33 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildAdjustButton(Icons.remove, () => _adjustTime(-1), themeColor, isDark),
+                              _buildAdjustButton(Icons.remove,
+                                  () => _adjustTime(-1), themeColor, isDark),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: Row(
                                   textBaseline: TextBaseline.alphabetic,
-                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
                                   children: [
                                     GestureDetector(
                                       onTap: _showTimeInputDialog,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.05)
+                                              : Colors.black.withOpacity(0.03),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: isDark
+                                                  ? Colors.white
+                                                      .withOpacity(0.1)
+                                                  : Colors.black
+                                                      .withOpacity(0.05)),
                                         ),
                                         child: Text(
                                           '${_totalSeconds ~/ 60}',
@@ -617,7 +681,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                                   ],
                                 ),
                               ),
-                              _buildAdjustButton(Icons.add, () => _adjustTime(1), themeColor, isDark),
+                              _buildAdjustButton(Icons.add,
+                                  () => _adjustTime(1), themeColor, isDark),
                             ],
                           ),
                         ],
@@ -635,7 +700,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                       _buildSecondaryButton(
                         Icons.replay,
                         _resetTimer,
-                        isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                        isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.05),
                         isDark,
                       ),
 
@@ -653,12 +720,18 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: _isRunning
-                                  ? [const Color(0xFFF43F5E), const Color(0xFFBE123C)]
+                                  ? [
+                                      const Color(0xFFF43F5E),
+                                      const Color(0xFFBE123C)
+                                    ]
                                   : [themeColor, themeColor.withOpacity(0.7)],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: (_isRunning ? const Color(0xFFF43F5E) : themeColor).withOpacity(0.4),
+                                color: (_isRunning
+                                        ? const Color(0xFFF43F5E)
+                                        : themeColor)
+                                    .withOpacity(0.4),
                                 blurRadius: 16,
                                 spreadRadius: 1,
                                 offset: const Offset(0, 4),
@@ -666,7 +739,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                             ],
                           ),
                           child: Icon(
-                            _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            _isRunning
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
                             color: Colors.white,
                             size: 34,
                           ),
@@ -679,7 +754,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                       _buildSecondaryButton(
                         Icons.settings_backup_restore,
                         () => _setPreset('Focus', 25),
-                        isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                        isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.05),
                         isDark,
                       ),
                     ],
@@ -694,7 +771,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   }
 
   // Custom Preset Tab builder
-  Widget _buildPresetTab(String title, String subtitle, bool isSelected, VoidCallback onTap, bool isDark) {
+  Widget _buildPresetTab(String title, String subtitle, bool isSelected,
+      VoidCallback onTap, bool isDark) {
     Color activeColor;
     if (title == 'Focus') {
       activeColor = const Color(0xFF8B5CF6);
@@ -711,9 +789,11 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
+          color:
+              isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
           border: Border.all(
-            color: isSelected ? activeColor.withOpacity(0.3) : Colors.transparent,
+            color:
+                isSelected ? activeColor.withOpacity(0.3) : Colors.transparent,
           ),
         ),
         child: Column(
@@ -721,7 +801,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             Text(
               title,
               style: TextStyle(
-                color: isSelected ? (isDark ? Colors.white : const Color(0xFF0F172A)) : (isDark ? Colors.white54 : Colors.black54),
+                color: isSelected
+                    ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                    : (isDark ? Colors.white54 : Colors.black54),
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -730,7 +812,9 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
             Text(
               subtitle,
               style: TextStyle(
-                color: isSelected ? activeColor : (isDark ? Colors.white30 : Colors.black38),
+                color: isSelected
+                    ? activeColor
+                    : (isDark ? Colors.white30 : Colors.black38),
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -742,7 +826,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   }
 
   // Custom Adjust Control Button
-  Widget _buildAdjustButton(IconData icon, VoidCallback onPressed, Color themeColor, bool isDark) {
+  Widget _buildAdjustButton(
+      IconData icon, VoidCallback onPressed, Color themeColor, bool isDark) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(30),
@@ -750,8 +835,13 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06)),
+          color: isDark
+              ? Colors.white.withOpacity(0.03)
+              : Colors.black.withOpacity(0.03),
+          border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : Colors.black.withOpacity(0.06)),
         ),
         child: Icon(
           icon,
@@ -763,7 +853,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   }
 
   // Secondary Control Button
-  Widget _buildSecondaryButton(IconData icon, VoidCallback onTap, Color bgColor, bool isDark) {
+  Widget _buildSecondaryButton(
+      IconData icon, VoidCallback onTap, Color bgColor, bool isDark) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -772,7 +863,10 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: bgColor,
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04)),
+          border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : Colors.black.withOpacity(0.04)),
         ),
         child: Icon(
           icon,
@@ -810,8 +904,10 @@ class TimerPainter extends CustomPainter {
         ..strokeWidth = 2.0;
 
       // Vẽ 2 vòng tròn hơi méo lồng nhau
-      _drawSketchyCircle(canvas, center, radius - strokeWidth / 2, paintBase, 0.8);
-      _drawSketchyCircle(canvas, center, radius - strokeWidth / 2, paintBase, 1.2);
+      _drawSketchyCircle(
+          canvas, center, radius - strokeWidth / 2, paintBase, 0.8);
+      _drawSketchyCircle(
+          canvas, center, radius - strokeWidth / 2, paintBase, 1.2);
     } else {
       // Draw background track
       final paintBase = Paint()
@@ -831,7 +927,8 @@ class TimerPainter extends CustomPainter {
           ..strokeWidth = 3.5;
 
         // Vẽ progress arc vẽ tay
-        _drawSketchyArc(canvas, center, radius - strokeWidth / 2, -math.pi / 2, 2 * math.pi * progress, paintProgress);
+        _drawSketchyArc(canvas, center, radius - strokeWidth / 2, -math.pi / 2,
+            2 * math.pi * progress, paintProgress);
       } else {
         final paintProgress = Paint()
           ..shader = SweepGradient(
@@ -875,13 +972,15 @@ class TimerPainter extends CustomPainter {
     }
   }
 
-  void _drawSketchyCircle(Canvas canvas, Offset center, double radius, Paint paint, double offsetScale) {
+  void _drawSketchyCircle(Canvas canvas, Offset center, double radius,
+      Paint paint, double offsetScale) {
     final path = Path();
     const segments = 180;
     for (int i = 0; i <= segments; i++) {
       final angle = (i * 2 * math.pi) / segments;
       // Thêm nhiễu toán học vào bán kính
-      final noise = math.sin(angle * 12) * 1.5 * offsetScale + math.cos(angle * 7) * 0.8 * offsetScale;
+      final noise = math.sin(angle * 12) * 1.5 * offsetScale +
+          math.cos(angle * 7) * 0.8 * offsetScale;
       final r = radius + noise;
       final x = center.dx + r * math.cos(angle);
       final y = center.dy + r * math.sin(angle);
@@ -894,7 +993,8 @@ class TimerPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
-  void _drawSketchyArc(Canvas canvas, Offset center, double radius, double startAngle, double sweepAngle, Paint paint) {
+  void _drawSketchyArc(Canvas canvas, Offset center, double radius,
+      double startAngle, double sweepAngle, Paint paint) {
     final path = Path();
     final segments = (sweepAngle.abs() * 30).round().clamp(10, 180);
     for (int i = 0; i <= segments; i++) {

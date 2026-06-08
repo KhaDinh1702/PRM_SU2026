@@ -65,7 +65,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const accentColor = Color(0xFFF43F5E); // Cyber Pink
 
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge(
+          [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
@@ -91,7 +92,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              LocaleService.tr('TỔNG QUAN TIẾN TRÌNH', en: 'PROGRESS OVERVIEW'),
+                              LocaleService.tr('TỔNG QUAN TIẾN TRÌNH',
+                                  en: 'PROGRESS OVERVIEW'),
                               style: TextStyle(
                                 color: captionColor,
                                 fontSize: 11,
@@ -114,18 +116,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         GestureDetector(
                           onTap: LocaleService.toggleLanguage,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: themeColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: themeColor.withOpacity(0.3)),
+                              border: Border.all(
+                                  color: themeColor.withOpacity(0.3)),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.language, color: themeColor, size: 16),
+                                Icon(Icons.language,
+                                    color: themeColor, size: 16),
                                 const SizedBox(width: 6),
                                 Text(
-                                  LocaleService.languageCode.value.toUpperCase(),
+                                  LocaleService.languageCode.value
+                                      .toUpperCase(),
                                   style: TextStyle(
                                     color: themeColor,
                                     fontWeight: FontWeight.bold,
@@ -177,7 +183,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 300,
                               child: _buildSummaryCard(
-                                LocaleService.tr('Dự án tham gia', en: 'Projects joined'),
+                                LocaleService.tr('Dự án tham gia',
+                                    en: 'Projects joined'),
                                 '${_summary['projects']}',
                                 LocaleService.tr('dự án', en: 'projects'),
                                 Icons.dns_outlined,
@@ -188,7 +195,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             FadeInSlide(
                               delayMs: 400,
                               child: _buildSummaryCard(
-                                LocaleService.tr('Tập trung hôm nay', en: 'Focus today'),
+                                LocaleService.tr('Tập trung hôm nay',
+                                    en: 'Focus today'),
                                 '${_summary['totalFocusTimeTodayMinutes']}',
                                 LocaleService.tr('phút', en: 'mins'),
                                 Icons.bolt,
@@ -204,7 +212,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   FadeInSlide(
                     delayMs: 450,
                     child: Text(
-                      LocaleService.tr('LỊCH HỌP SẮP TỚI', en: 'UPCOMING MEETING'),
+                      LocaleService.tr('LỊCH HỌP SẮP TỚI',
+                          en: 'UPCOMING MEETING'),
                       style: TextStyle(
                         color: captionColor,
                         fontSize: 11,
@@ -215,7 +224,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
                   _isLoading
-                      ? const ShimmerLoading(width: double.infinity, height: 110)
+                      ? const ShimmerLoading(
+                          width: double.infinity, height: 110)
                       : FadeInSlide(
                           delayMs: 500,
                           child: _buildNextMeetingCard(accentColor, isDark),
@@ -247,7 +257,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String count, String unit, IconData icon, Color color, bool isDark) {
+  Widget _buildSummaryCard(String title, String count, String unit,
+      IconData icon, Color color, bool isDark) {
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
@@ -328,7 +339,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 child: Text(
-                  LocaleService.tr('Không có cuộc họp nào sắp diễn ra! 🎉', en: 'No upcoming meetings! 🎉'),
+                  LocaleService.tr('Không có cuộc họp nào sắp diễn ra!',
+                      en: 'No upcoming meetings!'),
                   style: TextStyle(color: captionColor, fontSize: 14),
                 ),
               ),
@@ -349,7 +361,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        meeting['title'] ?? LocaleService.tr('Cuộc họp không có tên', en: 'Untitled meeting'),
+                        meeting['title'] ??
+                            LocaleService.tr('Cuộc họp không có tên',
+                                en: 'Untitled meeting'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -360,7 +374,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         meeting['description']?.toString().isNotEmpty == true
                             ? meeting['description']
-                            : LocaleService.tr('Không có mô tả', en: 'No description'),
+                            : LocaleService.tr('Không có mô tả',
+                                en: 'No description'),
                         style: TextStyle(
                           fontSize: 12,
                           color: subTextColor,
@@ -371,7 +386,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.access_time_rounded, color: captionColor, size: 14),
+                          Icon(Icons.access_time_rounded,
+                              color: captionColor, size: 14),
                           const SizedBox(width: 6),
                           Text(
                             _formatMeetingTime(meeting['startTime']),
