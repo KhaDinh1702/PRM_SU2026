@@ -66,9 +66,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  Future<void> _selectDateTime(BuildContext context, StateSetter setDialogState) async {
+  Future<void> _selectDateTime(
+      BuildContext context, StateSetter setDialogState) async {
     final now = DateTime.now();
-    final initialDate = _selectedDateTime.isBefore(now) ? now : _selectedDateTime;
+    final initialDate =
+        _selectedDateTime.isBefore(now) ? now : _selectedDateTime;
 
     // Show Material Date Picker
     final pickedDate = await showDatePicker(
@@ -143,7 +145,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _selectedDateTime = finalNow;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(LocaleService.tr('Thời gian ở quá khứ đã được tự động chuyển về hiện tại! ⏰', en: 'Past time was automatically changed to current time! ⏰')),
+            content: Text(LocaleService.tr(
+                'Thời gian ở quá khứ đã được tự động chuyển về hiện tại!',
+                en: 'Past time was automatically changed to current time!')),
             backgroundColor: Colors.amber,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
@@ -166,24 +170,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final startTime = _selectedDateTime.toUtc().toIso8601String();
-    final endTime = _selectedDateTime.add(const Duration(hours: 1)).toUtc().toIso8601String();
+    final endTime = _selectedDateTime
+        .add(const Duration(hours: 1))
+        .toUtc()
+        .toIso8601String();
 
     try {
       final token = await AuthService.getToken();
-      final response = await http.post(
-        Uri.parse('https://prm-tan.vercel.app/api/calendar/events'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'title': title,
-          'description': _descController.text.trim(),
-          'startTime': startTime,
-          'endTime': endTime,
-          'type': _eventType
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('https://prm-tan.vercel.app/api/calendar/events'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'title': title,
+              'description': _descController.text.trim(),
+              'startTime': startTime,
+              'endTime': endTime,
+              'type': _eventType
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) {
         _titleController.clear();
@@ -211,7 +220,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(LocaleService.tr('Đã xóa sự kiện thành công! 🗑️', en: 'Event deleted successfully! 🗑️')),
+              content: Text(LocaleService.tr('Đã xóa sự kiện thành công!',
+                  en: 'Event deleted successfully!')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
@@ -221,13 +231,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _loadEvents();
       } else {
         final errData = jsonDecode(response.body);
-        throw Exception(errData['error'] ?? LocaleService.tr('Xóa thất bại', en: 'Deletion failed'));
+        throw Exception(errData['error'] ??
+            LocaleService.tr('Xóa thất bại', en: 'Deletion failed'));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${LocaleService.tr('Lỗi khi xóa sự kiện:', en: 'Error deleting event:')} $e'),
+            content: Text(
+                '${LocaleService.tr('Lỗi khi xóa sự kiện:', en: 'Error deleting event:')} $e'),
             backgroundColor: Colors.amber[900],
             behavior: SnackBarBehavior.floating,
           ),
@@ -259,46 +271,71 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 backgroundColor: dialogBg.withOpacity(0.9),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(28),
-                  side: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08)),
+                  side: BorderSide(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : Colors.black.withOpacity(0.08)),
                 ),
                 title: Text(
                   LocaleService.tr('TẠO SỰ KIỆN MỚI', en: 'CREATE NEW EVENT'),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor, letterSpacing: 1.5),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: textColor,
+                      letterSpacing: 1.5),
                 ),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     PremiumInputField(
                       controller: _titleController,
-                      label: LocaleService.tr('Tiêu đề sự kiện *', en: 'Event title *'),
-                      hintText: LocaleService.tr('Nhập tiêu đề...', en: 'Enter title...'),
+                      label: LocaleService.tr('Tiêu đề sự kiện *',
+                          en: 'Event title *'),
+                      hintText: LocaleService.tr('Nhập tiêu đề...',
+                          en: 'Enter title...'),
                       prefixIcon: Icons.title_rounded,
                     ),
                     const SizedBox(height: 14),
                     PremiumInputField(
                       controller: _descController,
-                      label: LocaleService.tr('Mô tả ngắn', en: 'Short description'),
-                      hintText: LocaleService.tr('Nhập mô tả chi tiết...', en: 'Enter detailed description...'),
+                      label: LocaleService.tr('Mô tả ngắn',
+                          en: 'Short description'),
+                      hintText: LocaleService.tr('Nhập mô tả chi tiết...',
+                          en: 'Enter detailed description...'),
                       prefixIcon: Icons.description_outlined,
                     ),
                     const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.02)
+                            : Colors.black.withOpacity(0.02),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06)),
+                        border: Border.all(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.06)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(LocaleService.tr('Loại sự kiện:', en: 'Event type:'), style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text(
+                              LocaleService.tr('Loại sự kiện:',
+                                  en: 'Event type:'),
+                              style: TextStyle(
+                                  color: subTextColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500)),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _eventType,
                               dropdownColor: dialogBg,
-                              icon: Icon(Icons.keyboard_arrow_down_rounded, color: subTextColor),
-                              items: <String>['reminder', 'meeting', 'other'].map((String value) {
+                              icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                  color: subTextColor),
+                              items: <String>['reminder', 'meeting', 'other']
+                                  .map((String value) {
                                 Color dotColor = const Color(0xFF10B981);
                                 if (value == 'meeting') {
                                   dotColor = const Color(0xFF06B6D4);
@@ -312,12 +349,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       Container(
                                         width: 8,
                                         height: 8,
-                                        decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                                        decoration: BoxDecoration(
+                                            color: dotColor,
+                                            shape: BoxShape.circle),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        value == 'reminder' ? LocaleService.tr('Nhắc nhở', en: 'Reminder') : (value == 'meeting' ? LocaleService.tr('Cuộc họp', en: 'Meeting') : LocaleService.tr('Khác', en: 'Other')),
-                                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w600),
+                                        value == 'reminder'
+                                            ? LocaleService.tr('Nhắc nhở',
+                                                en: 'Reminder')
+                                            : (value == 'meeting'
+                                                ? LocaleService.tr('Cuộc họp',
+                                                    en: 'Meeting')
+                                                : LocaleService.tr('Khác',
+                                                    en: 'Other')),
+                                        style: TextStyle(
+                                            color: textColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600),
                                       ),
                                     ],
                                   ),
@@ -337,18 +386,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(LocaleService.tr('Thời gian:', en: 'Time:'), style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                        Text(LocaleService.tr('Thời gian:', en: 'Time:'),
+                            style: TextStyle(
+                                color: subTextColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500)),
                         TextButton.icon(
-                          onPressed: () => _selectDateTime(context, setDialogState),
-                          icon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF10B981), size: 18),
+                          onPressed: () =>
+                              _selectDateTime(context, setDialogState),
+                          icon: const Icon(Icons.calendar_month_rounded,
+                              color: Color(0xFF10B981), size: 18),
                           label: Text(
                             '${_selectedDateTime.day.toString().padLeft(2, '0')}/${_selectedDateTime.month.toString().padLeft(2, '0')} - ${_selectedDateTime.hour.toString().padLeft(2, '0')}:${_selectedDateTime.minute.toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13),
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981).withOpacity(0.12),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            backgroundColor:
+                                const Color(0xFF10B981).withOpacity(0.12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                         ),
                       ],
@@ -358,7 +419,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'), style: TextStyle(color: captionColor, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
+                        style: TextStyle(
+                            color: captionColor, fontWeight: FontWeight.bold)),
                   ),
                   PremiumButton(
                     onPressed: () {
@@ -366,7 +429,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Navigator.pop(context);
                     },
                     backgroundColor: const Color(0xFF10B981),
-                    child: Text(LocaleService.tr('Tạo', en: 'Create'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: Text(LocaleService.tr('Tạo', en: 'Create'),
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -382,7 +447,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const themeColor = Color(0xFF10B981);
 
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge(
+          [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
@@ -406,12 +472,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          LocaleService.tr('LỊCH TRÌNH CÁ NHÂN', en: 'PERSONAL SCHEDULE'),
-                          style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                          LocaleService.tr('LỊCH TRÌNH CÁ NHÂN',
+                              en: 'PERSONAL SCHEDULE'),
+                          style: TextStyle(
+                              color: captionColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2),
                         ),
                         Text(
                           LocaleService.tr('Thời Gian Biểu', en: 'Timetable'),
-                          style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                              color: textColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900),
                         ),
                       ],
                     ),
@@ -433,7 +507,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           itemCount: 6,
                           itemBuilder: (context, index) => const Padding(
                             padding: EdgeInsets.only(bottom: 12.0),
-                            child: ShimmerLoading(width: double.infinity, height: 86, borderRadius: 20),
+                            child: ShimmerLoading(
+                                width: double.infinity,
+                                height: 86,
+                                borderRadius: 20),
                           ),
                         )
                       : _events.isEmpty
@@ -443,9 +520,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.calendar_today_rounded, size: 54, color: captionColor.withOpacity(0.4)),
+                                    Icon(Icons.calendar_today_rounded,
+                                        size: 54,
+                                        color: captionColor.withOpacity(0.4)),
                                     const SizedBox(height: 12),
-                                    Text(LocaleService.tr('Chưa có sự kiện hay lịch trình nào.', en: 'No events or schedules yet.'), style: TextStyle(color: captionColor, fontSize: 14)),
+                                    Text(
+                                        LocaleService.tr(
+                                            'Chưa có sự kiện hay lịch trình nào.',
+                                            en: 'No events or schedules yet.'),
+                                        style: TextStyle(
+                                            color: captionColor, fontSize: 14)),
                                   ],
                                 ),
                               ),
@@ -459,7 +543,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 itemBuilder: (context, index) {
                                   final event = _events[index];
                                   final eventId = event['id'];
-                                  final title = event['title'] ?? LocaleService.tr('Sự kiện không tên', en: 'Untitled event');
+                                  final title = event['title'] ??
+                                      LocaleService.tr('Sự kiện không tên',
+                                          en: 'Untitled event');
                                   final desc = event['description'] ?? '';
                                   final start = event['start'] ?? '';
                                   final type = event['type'] ?? 'reminder';
@@ -467,8 +553,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                                   String formattedDate = '';
                                   try {
-                                    final completedAt = DateTime.parse(start).toLocal();
-                                    formattedDate = '${completedAt.hour.toString().padLeft(2, '0')}:${completedAt.minute.toString().padLeft(2, '0')} - ${completedAt.day}/${completedAt.month}';
+                                    final completedAt =
+                                        DateTime.parse(start).toLocal();
+                                    formattedDate =
+                                        '${completedAt.hour.toString().padLeft(2, '0')}:${completedAt.minute.toString().padLeft(2, '0')} - ${completedAt.day}/${completedAt.month}';
                                   } catch (_) {}
 
                                   Color cardColor;
@@ -482,53 +570,75 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       cardIcon = Icons.videocam_rounded;
                                     } else {
                                       cardColor = themeColor;
-                                      cardIcon = Icons.notifications_active_rounded;
+                                      cardIcon =
+                                          Icons.notifications_active_rounded;
                                     }
                                   }
 
                                   return FadeInSlide(
                                     delayMs: index * 60,
                                     child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 12.0),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12.0),
                                       child: GlassCard(
                                         borderRadius: 20,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 14),
                                         child: Row(
                                           children: [
                                             Container(
                                               padding: const EdgeInsets.all(10),
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                color: cardColor.withOpacity(0.1),
+                                                color:
+                                                    cardColor.withOpacity(0.1),
                                               ),
-                                              child: Icon(cardIcon, color: cardColor, size: 20),
+                                              child: Icon(cardIcon,
+                                                  color: cardColor, size: 20),
                                             ),
                                             const SizedBox(width: 16),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     title,
-                                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                                                    style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: textColor),
                                                   ),
                                                   if (desc.isNotEmpty) ...[
                                                     const SizedBox(height: 3),
                                                     Text(
                                                       desc,
-                                                      style: TextStyle(fontSize: 12, color: subTextColor),
+                                                      style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: subTextColor),
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ],
                                                   const SizedBox(height: 8),
                                                   Row(
                                                     children: [
-                                                      Icon(Icons.access_time_rounded, color: captionColor, size: 12),
+                                                      Icon(
+                                                          Icons
+                                                              .access_time_rounded,
+                                                          color: captionColor,
+                                                          size: 12),
                                                       const SizedBox(width: 6),
                                                       Text(
                                                         formattedDate,
-                                                        style: TextStyle(fontSize: 11, color: captionColor, fontWeight: FontWeight.bold),
+                                                        style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: captionColor,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
                                                       ),
                                                     ],
                                                   ),
@@ -537,8 +647,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                             ),
                                             if (source == 'event')
                                               IconButton(
-                                                icon: Icon(Icons.delete_outline_rounded, color: Colors.redAccent.withOpacity(0.8), size: 22),
-                                                onPressed: () => _deleteEvent(eventId),
+                                                icon: Icon(
+                                                    Icons
+                                                        .delete_outline_rounded,
+                                                    color: Colors.redAccent
+                                                        .withOpacity(0.8),
+                                                    size: 22),
+                                                onPressed: () =>
+                                                    _deleteEvent(eventId),
                                               ),
                                           ],
                                         ),

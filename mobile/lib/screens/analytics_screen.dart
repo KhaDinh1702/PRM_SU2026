@@ -115,7 +115,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     const accentColor = Color(0xFF8B5CF6); // Violet accent
 
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge(
+          [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
@@ -127,7 +128,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             onRefresh: _loadReports,
             color: themeColor,
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics()),
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +141,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          LocaleService.tr('THỐNG KÊ NĂNG SUẤT', en: 'PRODUCTIVITY STATS'),
+                          LocaleService.tr('THỐNG KÊ NĂNG SUẤT',
+                              en: 'PRODUCTIVITY STATS'),
                           style: TextStyle(
                             color: captionColor,
                             fontSize: 11,
@@ -171,15 +174,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   // --- Summary Cards ---
                   _isLoading
                       ? _buildShimmerSummary()
-                      : _buildSummarySection(isDark, themeColor, textColor, captionColor),
+                      : _buildSummarySection(
+                          isDark, themeColor, textColor, captionColor),
                   const SizedBox(height: 28),
 
                   // --- Completion Rate Ring ---
                   _isLoading
-                      ? const ShimmerLoading(width: double.infinity, height: 200, borderRadius: 24)
+                      ? const ShimmerLoading(
+                          width: double.infinity, height: 200, borderRadius: 24)
                       : FadeInSlide(
                           delayMs: 350,
-                          child: _buildCompletionRingCard(isDark, themeColor, accentColor, textColor, captionColor),
+                          child: _buildCompletionRingCard(isDark, themeColor,
+                              accentColor, textColor, captionColor),
                         ),
                   const SizedBox(height: 28),
 
@@ -187,29 +193,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   FadeInSlide(
                     delayMs: 400,
                     child: Text(
-                      LocaleService.tr('BIỂU ĐỒ THỜI GIAN TẬP TRUNG', en: 'FOCUS TIME CHART'),
-                      style: TextStyle(
-                        color: captionColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                      _isLoading
-                      ? const ShimmerLoading(width: double.infinity, height: 220, borderRadius: 24)
-                      : FadeInSlide(
-                          delayMs: 450,
-                          child: _buildBarChart(isDark, accentColor, captionColor, textColor, 'focusMinutes', LocaleService.tr('phút', en: 'mins')),
-                        ),
-                  const SizedBox(height: 28),
-
-                  // --- Completed Tasks Chart ---
-                  FadeInSlide(
-                    delayMs: 500,
-                    child: Text(
-                      LocaleService.tr('BIỂU ĐỒ TASK HOÀN THÀNH', en: 'COMPLETED TASKS CHART'),
+                      LocaleService.tr('BIỂU ĐỒ THỜI GIAN TẬP TRUNG',
+                          en: 'FOCUS TIME CHART'),
                       style: TextStyle(
                         color: captionColor,
                         fontSize: 11,
@@ -220,10 +205,47 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   ),
                   const SizedBox(height: 12),
                   _isLoading
-                      ? const ShimmerLoading(width: double.infinity, height: 220, borderRadius: 24)
+                      ? const ShimmerLoading(
+                          width: double.infinity, height: 220, borderRadius: 24)
+                      : FadeInSlide(
+                          delayMs: 450,
+                          child: _buildBarChart(
+                              isDark,
+                              accentColor,
+                              captionColor,
+                              textColor,
+                              'focusMinutes',
+                              LocaleService.tr('phút', en: 'mins')),
+                        ),
+                  const SizedBox(height: 28),
+
+                  // --- Completed Tasks Chart ---
+                  FadeInSlide(
+                    delayMs: 500,
+                    child: Text(
+                      LocaleService.tr('BIỂU ĐỒ TASK HOÀN THÀNH',
+                          en: 'COMPLETED TASKS CHART'),
+                      style: TextStyle(
+                        color: captionColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _isLoading
+                      ? const ShimmerLoading(
+                          width: double.infinity, height: 220, borderRadius: 24)
                       : FadeInSlide(
                           delayMs: 550,
-                          child: _buildBarChart(isDark, const Color(0xFF10B981), captionColor, textColor, 'completedTasks', 'tasks'),
+                          child: _buildBarChart(
+                              isDark,
+                              const Color(0xFF10B981),
+                              captionColor,
+                              textColor,
+                              'completedTasks',
+                              'tasks'),
                         ),
 
                   // --- Weekly Performance Summary ---
@@ -232,7 +254,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     FadeInSlide(
                       delayMs: 600,
                       child: Text(
-                        LocaleService.tr('TỔNG QUAN HIỆU SUẤT', en: 'PERFORMANCE SUMMARY'),
+                        LocaleService.tr('TỔNG QUAN HIỆU SUẤT',
+                            en: 'PERFORMANCE SUMMARY'),
                         style: TextStyle(
                           color: captionColor,
                           fontSize: 11,
@@ -244,12 +267,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const SizedBox(height: 12),
                     FadeInSlide(
                       delayMs: 650,
-                      child: _buildPerformanceSummaryCard(isDark, themeColor, textColor, captionColor),
+                      child: _buildPerformanceSummaryCard(
+                          isDark, themeColor, textColor, captionColor),
                     ),
                   ],
 
                   // Empty state
-                  if (!_isLoading && _totalTasks == 0 && _totalFocusSessions == 0) ...[
+                  if (!_isLoading &&
+                      _totalTasks == 0 &&
+                      _totalFocusSessions == 0) ...[
                     const SizedBox(height: 28),
                     FadeInSlide(
                       delayMs: 400,
@@ -273,7 +299,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                LocaleService.tr('Chưa có dữ liệu năng suất', en: 'No productivity data yet'),
+                                LocaleService.tr('Chưa có dữ liệu năng suất',
+                                    en: 'No productivity data yet'),
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 16,
@@ -282,7 +309,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                LocaleService.tr('Bắt đầu hoàn thành công việc để xem báo cáo! 🚀', en: 'Start completing tasks to see your report! 🚀'),
+                                LocaleService.tr(
+                                    'Bắt đầu hoàn thành công việc để xem báo cáo!',
+                                    en: 'Start completing tasks to see your report!'),
                                 style: TextStyle(
                                   color: captionColor,
                                   fontSize: 13,
@@ -327,17 +356,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: isActive ? activeColor.withOpacity(0.12) : ThemeService.getCardColor(isDark),
+                color: isActive
+                    ? activeColor.withOpacity(0.12)
+                    : ThemeService.getCardColor(isDark),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isActive ? activeColor.withOpacity(0.3) : ThemeService.getBorderColor(isDark),
+                  color: isActive
+                      ? activeColor.withOpacity(0.3)
+                      : ThemeService.getBorderColor(isDark),
                 ),
               ),
               child: Center(
                 child: Text(
                   opt['label']!,
                   style: TextStyle(
-                    color: isActive ? activeColor : ThemeService.getCaptionColor(isDark),
+                    color: isActive
+                        ? activeColor
+                        : ThemeService.getCaptionColor(isDark),
                     fontSize: 13,
                     fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                   ),
@@ -369,7 +404,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   // --- Summary Cards ---
-  Widget _buildSummarySection(bool isDark, Color themeColor, Color textColor, Color captionColor) {
+  Widget _buildSummarySection(
+      bool isDark, Color themeColor, Color textColor, Color captionColor) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -503,7 +539,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   // --- Completion Rate Ring Card ---
-  Widget _buildCompletionRingCard(bool isDark, Color themeColor, Color accentColor, Color textColor, Color captionColor) {
+  Widget _buildCompletionRingCard(bool isDark, Color themeColor,
+      Color accentColor, Color textColor, Color captionColor) {
     return GlassCard(
       borderRadius: 24,
       padding: const EdgeInsets.all(24),
@@ -517,7 +554,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               painter: _CompletionRingPainter(
                 percentage: _completionRate / 100,
                 color: accentColor,
-                bgColor: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+                bgColor: isDark
+                    ? Colors.white.withOpacity(0.04)
+                    : Colors.black.withOpacity(0.04),
               ),
               child: Center(
                 child: Column(
@@ -557,11 +596,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildProgressRow(LocaleService.tr('Hoàn thành', en: 'Completed'), _completedTasks, const Color(0xFF10B981), isDark),
+                _buildProgressRow(
+                    LocaleService.tr('Hoàn thành', en: 'Completed'),
+                    _completedTasks,
+                    const Color(0xFF10B981),
+                    isDark),
                 const SizedBox(height: 8),
-                _buildProgressRow(LocaleService.tr('Đang chờ', en: 'Pending'), _pendingTasks, const Color(0xFFF59E0B), isDark),
+                _buildProgressRow(LocaleService.tr('Đang chờ', en: 'Pending'),
+                    _pendingTasks, const Color(0xFFF59E0B), isDark),
                 const SizedBox(height: 8),
-                _buildProgressRow(LocaleService.tr('Tổng cộng', en: 'Total'), _totalTasks, accentColor, isDark),
+                _buildProgressRow(LocaleService.tr('Tổng cộng', en: 'Total'),
+                    _totalTasks, accentColor, isDark),
               ],
             ),
           ),
@@ -603,14 +648,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   // --- Bar Chart ---
-  Widget _buildBarChart(bool isDark, Color barColor, Color captionColor, Color textColor, String dataKey, String unit) {
+  Widget _buildBarChart(bool isDark, Color barColor, Color captionColor,
+      Color textColor, String dataKey, String unit) {
     if (_dailyStats.isEmpty) {
       return GlassCard(
         borderRadius: 24,
         padding: const EdgeInsets.all(24),
         child: Center(
           child: Text(
-            LocaleService.tr('Chưa có dữ liệu cho khoảng thời gian này', en: 'No data for this time period'),
+            LocaleService.tr('Chưa có dữ liệu cho khoảng thời gian này',
+                en: 'No data for this time period'),
             style: TextStyle(color: captionColor, fontSize: 13),
           ),
         ),
@@ -714,11 +761,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   // --- Performance Summary ---
-  Widget _buildPerformanceSummaryCard(bool isDark, Color themeColor, Color textColor, Color captionColor) {
+  Widget _buildPerformanceSummaryCard(
+      bool isDark, Color themeColor, Color textColor, Color captionColor) {
     // Calculate daily averages
     final totalDays = _dailyStats.length;
-    final avgTasks = totalDays > 0 ? (_completedTasks / totalDays).toStringAsFixed(1) : '0';
-    final avgFocus = totalDays > 0 ? (_totalFocusMinutes / totalDays).toStringAsFixed(0) : '0';
+    final avgTasks =
+        totalDays > 0 ? (_completedTasks / totalDays).toStringAsFixed(1) : '0';
+    final avgFocus = totalDays > 0
+        ? (_totalFocusMinutes / totalDays).toStringAsFixed(0)
+        : '0';
 
     // Find best day (most tasks completed)
     String bestDay = '—';
@@ -752,19 +803,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _buildSummaryRow(Icons.speed_rounded, LocaleService.tr('TB Tasks/ngày', en: 'Avg Tasks/day'), avgTasks, const Color(0xFF10B981), isDark),
+          _buildSummaryRow(
+              Icons.speed_rounded,
+              LocaleService.tr('TB Tasks/ngày', en: 'Avg Tasks/day'),
+              avgTasks,
+              const Color(0xFF10B981),
+              isDark),
           const SizedBox(height: 10),
-          _buildSummaryRow(Icons.timer_rounded, LocaleService.tr('TB Focus/ngày', en: 'Avg Focus/day'), '${avgFocus}m', const Color(0xFF8B5CF6), isDark),
+          _buildSummaryRow(
+              Icons.timer_rounded,
+              LocaleService.tr('TB Focus/ngày', en: 'Avg Focus/day'),
+              '${avgFocus}m',
+              const Color(0xFF8B5CF6),
+              isDark),
           const SizedBox(height: 10),
-          _buildSummaryRow(Icons.star_rounded, LocaleService.tr('Ngày làm tốt nhất', en: 'Best Day'), bestDay, const Color(0xFFF59E0B), isDark),
+          _buildSummaryRow(
+              Icons.star_rounded,
+              LocaleService.tr('Ngày làm tốt nhất', en: 'Best Day'),
+              bestDay,
+              const Color(0xFFF59E0B),
+              isDark),
           const SizedBox(height: 10),
-          _buildSummaryRow(Icons.whatshot_rounded, LocaleService.tr('Tổng phiên Focus', en: 'Total Focus Sessions'), '$_totalFocusSessions ${LocaleService.tr('phiên', en: 'sessions')}', themeColor, isDark),
+          _buildSummaryRow(
+              Icons.whatshot_rounded,
+              LocaleService.tr('Tổng phiên Focus', en: 'Total Focus Sessions'),
+              '$_totalFocusSessions ${LocaleService.tr('phiên', en: 'sessions')}',
+              themeColor,
+              isDark),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(IconData icon, String label, String value, Color color, bool isDark) {
+  Widget _buildSummaryRow(
+      IconData icon, String label, String value, Color color, bool isDark) {
     final captionColor = ThemeService.getCaptionColor(isDark);
     final textColor = ThemeService.getTextColor(isDark);
 

@@ -15,7 +15,8 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> with SingleTickerProviderStateMixin {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
   static const String _baseUrl = 'https://prm-tan.vercel.app/api';
   bool _isLoading = true;
   List<Map<String, dynamic>> _notifications = [];
@@ -89,7 +90,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
-            final idx = _notifications.indexWhere((n) => n['_id'] == notificationId);
+            final idx =
+                _notifications.indexWhere((n) => n['_id'] == notificationId);
             if (idx != -1) {
               _notifications[idx]['isRead'] = true;
             }
@@ -102,29 +104,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
 
   Future<void> _markAllAsRead() async {
-    final unread = _notifications.where((n) => n['isRead'] != true && n['type'] != 'invitation').toList();
+    final unread = _notifications
+        .where((n) => n['isRead'] != true && n['type'] != 'invitation')
+        .toList();
     for (final n in unread) {
       await _markAsRead(n['_id']);
     }
   }
 
-  Future<void> _respondToInvitation(String projectId, String notificationId, String action) async {
+  Future<void> _respondToInvitation(
+      String projectId, String notificationId, String action) async {
     try {
       final token = await AuthService.getToken();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/projects/$projectId/invitations/$notificationId/respond'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'action': action}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse(
+                '$_baseUrl/projects/$projectId/invitations/$notificationId/respond'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'action': action}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (mounted) {
           setState(() {
-            final idx = _notifications.indexWhere((n) => n['_id'] == notificationId);
+            final idx =
+                _notifications.indexWhere((n) => n['_id'] == notificationId);
             if (idx != -1) {
               _notifications[idx] = data['notification'];
             }
@@ -132,9 +141,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(action == 'accept'
-                  ? LocaleService.tr('Đã chấp nhận lời mời! 🎉', en: 'Invitation accepted! 🎉')
-                  : LocaleService.tr('Đã từ chối lời mời.', en: 'Invitation rejected.')),
-              backgroundColor: action == 'accept' ? Colors.green : Colors.orange,
+                  ? LocaleService.tr('Đã chấp nhận lời mời!',
+                      en: 'Invitation accepted!')
+                  : LocaleService.tr('Đã từ chối lời mời.',
+                      en: 'Invitation rejected.')),
+              backgroundColor:
+                  action == 'accept' ? Colors.green : Colors.orange,
             ),
           );
         }
@@ -142,7 +154,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(LocaleService.tr('Có lỗi xảy ra', en: 'An error occurred'))),
+          SnackBar(
+              content: Text(
+                  LocaleService.tr('Có lỗi xảy ra', en: 'An error occurred'))),
         );
       }
     }
@@ -202,10 +216,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       final now = DateTime.now();
       final diff = now.difference(date);
 
-      if (diff.inMinutes < 1) return LocaleService.tr('Vừa xong', en: 'Just now');
-      if (diff.inMinutes < 60) return '${diff.inMinutes} ${LocaleService.tr('phút trước', en: 'mins ago')}';
-      if (diff.inHours < 24) return '${diff.inHours} ${LocaleService.tr('giờ trước', en: 'hours ago')}';
-      if (diff.inDays < 7) return '${diff.inDays} ${LocaleService.tr('ngày trước', en: 'days ago')}';
+      if (diff.inMinutes < 1)
+        return LocaleService.tr('Vừa xong', en: 'Just now');
+      if (diff.inMinutes < 60)
+        return '${diff.inMinutes} ${LocaleService.tr('phút trước', en: 'mins ago')}';
+      if (diff.inHours < 24)
+        return '${diff.inHours} ${LocaleService.tr('giờ trước', en: 'hours ago')}';
+      if (diff.inDays < 7)
+        return '${diff.inDays} ${LocaleService.tr('ngày trước', en: 'days ago')}';
       return '${date.day}/${date.month}/${date.year}';
     } catch (_) {
       return '';
@@ -217,13 +235,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
     const themeColor = Color(0xFFF59E0B); // Amber for Notifications
 
     return ListenableBuilder(
-      listenable: Listenable.merge([ThemeService.isDarkMode, LocaleService.languageCode]),
+      listenable: Listenable.merge(
+          [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
 
-        final unreadCount = _notifications.where((n) => n['isRead'] != true).length;
+        final unreadCount =
+            _notifications.where((n) => n['isRead'] != true).length;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -231,7 +251,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
             onRefresh: _loadNotifications,
             color: themeColor,
             child: CustomScrollView(
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics()),
               slivers: [
                 // --- Header ---
                 SliverToBoxAdapter(
@@ -246,7 +267,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                LocaleService.tr('THÔNG BÁO', en: 'NOTIFICATIONS'),
+                                LocaleService.tr('THÔNG BÁO',
+                                    en: 'NOTIFICATIONS'),
                                 style: TextStyle(
                                   color: captionColor,
                                   fontSize: 11,
@@ -271,12 +293,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                                       animation: _pulseController,
                                       builder: (context, child) {
                                         return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: themeColor.withOpacity(0.12 + _pulseController.value * 0.08),
-                                            borderRadius: BorderRadius.circular(12),
+                                            color: themeColor.withOpacity(0.12 +
+                                                _pulseController.value * 0.08),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: themeColor.withOpacity(0.3),
+                                              color:
+                                                  themeColor.withOpacity(0.3),
                                               width: 1,
                                             ),
                                           ),
@@ -300,7 +326,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                             GestureDetector(
                               onTap: _markAllAsRead,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: themeColor.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
@@ -311,10 +338,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.done_all_rounded, color: themeColor, size: 16),
+                                    Icon(Icons.done_all_rounded,
+                                        color: themeColor, size: 16),
                                     const SizedBox(width: 6),
                                     Text(
-                                      LocaleService.tr('Đọc tất cả', en: 'Mark all as read'),
+                                      LocaleService.tr('Đọc tất cả',
+                                          en: 'Mark all as read'),
                                       style: TextStyle(
                                         color: themeColor,
                                         fontSize: 12,
@@ -333,7 +362,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                if (_notifications.any((n) => n['type'] == 'invitation' && n['invitationStatus'] == 'pending'))
+                if (_notifications.any((n) =>
+                    n['type'] == 'invitation' &&
+                    n['invitationStatus'] == 'pending'))
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -341,7 +372,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            LocaleService.tr('Lời mời dự án', en: 'Project Invitations'),
+                            LocaleService.tr('Lời mời dự án',
+                                en: 'Project Invitations'),
                             style: TextStyle(
                               color: textColor,
                               fontSize: 18,
@@ -350,8 +382,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                           ),
                           const SizedBox(height: 12),
                           ..._notifications
-                              .where((n) => n['type'] == 'invitation' && n['invitationStatus'] == 'pending')
-                              .map((invite) => _buildInvitationCard(invite, isDark)),
+                              .where((n) =>
+                                  n['type'] == 'invitation' &&
+                                  n['invitationStatus'] == 'pending')
+                              .map((invite) =>
+                                  _buildInvitationCard(invite, isDark)),
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -364,10 +399,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
-                        children: List.generate(5, (i) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: ShimmerLoading(width: double.infinity, height: 100, borderRadius: 20),
-                        )),
+                        children: List.generate(
+                            5,
+                            (i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: ShimmerLoading(
+                                      width: double.infinity,
+                                      height: 100,
+                                      borderRadius: 20),
+                                )),
                       ),
                     ),
                   )
@@ -394,7 +434,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              LocaleService.tr('You are all caught up! 🎉', en: 'You are all caught up! 🎉'),
+                              LocaleService.tr('You are all caught up!',
+                                  en: 'You are all caught up!'),
                               style: TextStyle(
                                 color: textColor,
                                 fontSize: 18,
@@ -403,7 +444,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              LocaleService.tr('Không có thông báo nào. Hãy quay lại sau!', en: 'No notifications. Check back later!'),
+                              LocaleService.tr(
+                                  'Không có thông báo nào. Hãy quay lại sau!',
+                                  en: 'No notifications. Check back later!'),
                               style: TextStyle(
                                 color: captionColor,
                                 fontSize: 13,
@@ -420,13 +463,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final notification = _notifications.where((n) => n['type'] != 'invitation' || n['invitationStatus'] != 'pending').toList()[index];
+                          final notification = _notifications
+                              .where((n) =>
+                                  n['type'] != 'invitation' ||
+                                  n['invitationStatus'] != 'pending')
+                              .toList()[index];
                           return FadeInSlide(
                             delayMs: 80 * index,
                             child: _buildNotificationCard(notification, isDark),
                           );
                         },
-                        childCount: _notifications.where((n) => n['type'] != 'invitation' || n['invitationStatus'] != 'pending').length,
+                        childCount: _notifications
+                            .where((n) =>
+                                n['type'] != 'invitation' ||
+                                n['invitationStatus'] != 'pending')
+                            .length,
                       ),
                     ),
                   ),
@@ -441,7 +492,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
     );
   }
 
-  Widget _buildNotificationCard(Map<String, dynamic> notification, bool isDark) {
+  Widget _buildNotificationCard(
+      Map<String, dynamic> notification, bool isDark) {
     final isRead = notification['isRead'] == true;
     final type = notification['type'] as String?;
     final color = _colorForType(type);
@@ -498,7 +550,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                       children: [
                         // Type label
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: color.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(6),
@@ -534,7 +587,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      notification['title'] ?? LocaleService.tr('Thông báo', en: 'Notification'),
+                      notification['title'] ??
+                          LocaleService.tr('Thông báo', en: 'Notification'),
                       style: TextStyle(
                         color: isRead ? subTextColor : textColor,
                         fontSize: 14,
@@ -570,15 +624,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       ),
     );
   }
+
   Widget _buildInvitationCard(
     Map<String, dynamic> invite,
     bool isDark,
   ) {
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
-    final projectName = invite['relatedId'] != null ? invite['relatedId']['name'] : 'Unknown Project';
-    final senderName = invite['sender'] != null ? (invite['sender']['name'] ?? invite['sender']['email']) : 'Someone';
-    final projectId = invite['relatedId'] != null ? invite['relatedId']['_id'] : '';
+    final projectName = invite['relatedId'] != null
+        ? invite['relatedId']['name']
+        : 'Unknown Project';
+    final senderName = invite['sender'] != null
+        ? (invite['sender']['name'] ?? invite['sender']['email'])
+        : 'Someone';
+    final projectId =
+        invite['relatedId'] != null ? invite['relatedId']['_id'] : '';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -635,7 +695,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
               children: [
                 Expanded(
                   child: PremiumButton.icon(
-                    onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'accept'),
+                    onPressed: projectId.isEmpty
+                        ? null
+                        : () => _respondToInvitation(
+                            projectId, invite['_id'], 'accept'),
                     icon: Icons.check,
                     label: LocaleService.tr('Chấp nhận', en: 'Accept'),
                     backgroundColor: Colors.green,
@@ -644,7 +707,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                 const SizedBox(width: 10),
                 Expanded(
                   child: PremiumButton.icon(
-                    onPressed: projectId.isEmpty ? null : () => _respondToInvitation(projectId, invite['_id'], 'reject'),
+                    onPressed: projectId.isEmpty
+                        ? null
+                        : () => _respondToInvitation(
+                            projectId, invite['_id'], 'reject'),
                     icon: Icons.close,
                     label: LocaleService.tr('Từ chối', en: 'Reject'),
                     backgroundColor: Colors.redAccent,

@@ -20,6 +20,18 @@ const projectSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    memberRoles: [{
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        role: {
+            type: String,
+            enum: ['Manager', 'Member'],
+            default: 'Member'
+        }
+    }],
     deadline: {
         type: Date
     },
@@ -31,5 +43,9 @@ const projectSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+projectSchema.index({ owner: 1, createdAt: -1 });
+projectSchema.index({ members: 1, createdAt: -1 });
+projectSchema.index({ 'memberRoles.user': 1 });
 
 module.exports = mongoose.model('Project', projectSchema);

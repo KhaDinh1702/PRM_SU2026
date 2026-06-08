@@ -26,6 +26,7 @@ const isProjectMember = (project, userId) => {
 router.get('/', chatMessagesLimiter, auth, async (req, res) => {
     try {
         const { projectId } = req.params;
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 50);
 
         const project = await Project.findById(projectId);
         if (!project) {
@@ -38,10 +39,11 @@ router.get('/', chatMessagesLimiter, auth, async (req, res) => {
 
         const messages = await Message.find({ project: projectId })
             .populate('sender', 'name email username profile')
-            .sort({ createdAt: 1 })
-            .limit(100);
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .lean();
 
-        res.json(messages);
+        res.json(messages.reverse());
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
