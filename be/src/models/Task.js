@@ -29,9 +29,19 @@ const taskSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    sourceType: {
+        type: String,
+        enum: ['personal', 'project', 'schedule'],
+        default: 'personal'
+    },
     project: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Project',
+        default: null
+    },
+    scheduleId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Event',
         default: null
     },
     assignedTo: {
@@ -41,6 +51,24 @@ const taskSchema = new mongoose.Schema({
     assignedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    startDate: {
+        type: Date
+    },
+    dueDate: {
+        type: Date
+    },
+    dueTime: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    completedAt: {
+        type: Date
     },
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -54,5 +82,7 @@ const taskSchema = new mongoose.Schema({
 taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ user: 1, status: 1, createdAt: -1 });
 taskSchema.index({ project: 1, assignedTo: 1, status: 1 });
+taskSchema.index({ assignedTo: 1, deadline: 1, status: 1 });
+taskSchema.index({ sourceType: 1, deadline: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

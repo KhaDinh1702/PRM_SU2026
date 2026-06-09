@@ -1,10 +1,18 @@
 const Task = require('../models/Task');
 const Session = require('../models/Session');
 
+const userTaskScope = (userId) => ({
+    $or: [
+        { user: userId },
+        { assignedTo: userId },
+        { createdBy: userId }
+    ]
+});
+
 // GET /api/analytics/reports
 exports.getReports = async (req, res) => {
     try {
-        const { range } = req.query; // 'day', 'week', 'month' - mặc định 'week'
+        const { range } = req.query;
         const userId = req.user.id;
 
         const start = new Date();
@@ -14,30 +22,27 @@ exports.getReports = async (req, res) => {
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
         } else if (range === 'month') {
-            // Lùi lại 30 ngày
             start.setDate(start.getDate() - 30);
             start.setHours(0, 0, 0, 0);
         } else {
-            // week (mặc định) - lùi lại 7 ngày
             start.setDate(start.getDate() - 7);
             start.setHours(0, 0, 0, 0);
         }
 
-        // 1. Thống kê Tasks
+        const taskScope = userTaskScope(userId);
         const totalTasks = await Task.countDocuments({
-            user: userId,
+            ...taskScope,
             createdAt: { $gte: start, $lte: end }
         });
 
         const completedTasks = await Task.countDocuments({
-            user: userId,
+            ...taskScope,
             status: 'Completed',
             createdAt: { $gte: start, $lte: end }
         });
 
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-        // 2. Thống kê Focus Sessions
         const focusSessions = await Session.find({
             user: userId,
             mode: 'Focus',
@@ -47,7 +52,6 @@ exports.getReports = async (req, res) => {
         const totalFocusSeconds = focusSessions.reduce((total, session) => total + session.durationSeconds, 0);
         const focusSessionsCount = focusSessions.length;
 
-        // 3. Biểu đồ chi tiết theo từng ngày trong khoảng thời gian
         const dailyStats = [];
         const tempDate = new Date(start);
 
@@ -58,7 +62,7 @@ exports.getReports = async (req, res) => {
             dayEnd.setHours(23, 59, 59, 999);
 
             const dayTasksCount = await Task.countDocuments({
-                user: userId,
+                ...taskScope,
                 status: 'Completed',
                 updatedAt: { $gte: dayStart, $lte: dayEnd }
             });
@@ -90,7 +94,7 @@ exports.getReports = async (req, res) => {
             dailyStats
         });
     } catch (error) {
-        console.error('Lỗi trong analyticsController.getReports:', error);
+        console.error('Error in analyticsController.getReports:', error);
         res.status(500).json({ error: error.message });
     }
 };

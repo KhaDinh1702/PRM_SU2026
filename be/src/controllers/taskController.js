@@ -1,44 +1,194 @@
 const Task = require('../models/Task');
+const Project = require('../models/Project');
+
+const getId = (value) => {
+    if (!value) return '';
+    if (value._id) return value._id.toString();
+    return value.toString();
+};
+
+const getProjectRole = (project, userId) => {
+    const uid = userId.toString();
+    if (getId(project.owner) === uid) return 'Owner';
+
+    const roleEntry = (project.memberRoles || []).find(item => getId(item.user) === uid);
+    if (roleEntry) return roleEntry.role || 'Member';
+
+    const isMember = (project.members || []).some(member => getId(member) === uid);
+    return isMember ? 'Member' : null;
+};
+
+const canManageProject = (project, userId) => ['Owner', 'Manager'].includes(getProjectRole(project, userId));
+
+const getManagedProjectIds = async (userId) => {
+    const projects = await Project.find({
+        $or: [
+            { owner: userId },
+            { memberRoles: { $elemMatch: { user: userId, role: 'Manager' } } }
+        ]
+    }).select('_id').lean();
+
+    return projects.map(project => project._id);
+};
+
+const taskSourceType = (task) => {
+    if (task.sourceType) return task.sourceType;
+    if (task.project) return 'project';
+    if (task.scheduleId) return 'schedule';
+    return 'personal';
+};
+
+const normalizeTask = (task) => {
+    const plainTask = task.toObject ? task.toObject() : task;
+    return {
+        ...plainTask,
+        sourceType: taskSourceType(plainTask),
+        createdBy: plainTask.createdBy || plainTask.assignedBy || plainTask.user,
+        dueDate: plainTask.dueDate || plainTask.deadline || null
+    };
+};
+
+const startOfToday = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const endOfToday = () => {
+    const date = new Date();
+    date.setHours(23, 59, 59, 999);
+    return date;
+};
+
+const deadlineRangeFilter = (start, end) => ({
+    $or: [
+        { deadline: { $gte: start, $lte: end } },
+        { dueDate: { $gte: start, $lte: end } }
+    ]
+});
+
+const personalSourceFilter = {
+    $and: [
+        { $or: [{ sourceType: 'personal' }, { sourceType: { $exists: false } }] },
+        { project: null },
+        { scheduleId: null }
+    ]
+};
+
+const projectSourceFilter = {
+    $or: [{ sourceType: 'project' }, { project: { $ne: null } }]
+};
+
+const scheduleSourceFilter = {
+    $or: [{ sourceType: 'schedule' }, { scheduleId: { $ne: null } }]
+};
 
 // GET /api/tasks
+// Unified inbox: personal, assigned project tasks, created tasks, and managed project tasks.
 exports.getTasks = async (req, res) => {
     try {
-        const { status, priority, project, search } = req.query;
-        const query = {
+        const { status, priority, project, search, source, tab, sort } = req.query;
+        const managedProjectIds = await getManagedProjectIds(req.user.id);
+        const filters = [{
             $or: [
                 { user: req.user.id },
-                { assignedTo: req.user.id }
+                { assignedTo: req.user.id },
+                { createdBy: req.user.id },
+                ...(managedProjectIds.length ? [{ project: { $in: managedProjectIds } }] : [])
             ]
-        };
+        }];
 
-        if (status) query.status = status;
-        if (priority) query.priority = priority;
-        if (project) {
-            query.project = project === 'null' ? null : project;
+        if (status && status !== 'All') filters.push({ status });
+        if (priority && priority !== 'All') filters.push({ priority });
+        if (project) filters.push({ project: project === 'null' ? null : project });
+
+        if (source === 'personal') filters.push(personalSourceFilter);
+        if (source === 'project') filters.push(projectSourceFilter);
+        if (source === 'schedule') filters.push(scheduleSourceFilter);
+
+        if (tab) {
+            const now = new Date();
+            const todayStart = startOfToday();
+            const todayEnd = endOfToday();
+
+            if (tab === 'Today') filters.push(deadlineRangeFilter(todayStart, todayEnd));
+            if (tab === 'Upcoming') {
+                filters.push({
+                    $or: [
+                        { deadline: { $gt: todayEnd } },
+                        { dueDate: { $gt: todayEnd } }
+                    ]
+                });
+            }
+            if (tab === 'Overdue') {
+                filters.push({
+                    status: { $ne: 'Completed' },
+                    $or: [
+                        { deadline: { $lt: now } },
+                        { dueDate: { $lt: now } }
+                    ]
+                });
+            }
+            if (tab === 'Project') filters.push(projectSourceFilter);
+            if (tab === 'Personal') filters.push(personalSourceFilter);
+            if (tab === 'Completed') filters.push({ status: 'Completed' });
         }
-        if (search) {
-            query.title = { $regex: search, $options: 'i' };
-        }
+
+        if (search) filters.push({ title: { $regex: search, $options: 'i' } });
+
+        const query = filters.length === 1 ? filters[0] : { $and: filters };
+        const sortOption = sort === 'deadline'
+            ? { deadline: 1, dueDate: 1, updatedAt: -1 }
+            : sort === 'priority'
+                ? { priority: -1, updatedAt: -1 }
+                : { updatedAt: -1, createdAt: -1 };
 
         const tasks = await Task.find(query)
             .populate('project', 'name')
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
-            .sort({ createdAt: -1 });
-        res.status(200).json(tasks);
+            .populate('createdBy', 'name email')
+            .sort(sortOption);
+
+        res.status(200).json(tasks.map(normalizeTask));
     } catch (error) {
-        console.error('Lỗi trong taskController.getTasks:', error);
+        console.error('Error in taskController.getTasks:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
 // POST /api/tasks
+// Creates personal tasks only. Project tasks must use /api/projects/:projectId/tasks.
 exports.createTask = async (req, res) => {
     try {
-        const { title, description, status, priority, deadline, label, project, assignedTo } = req.body;
+        const {
+            title,
+            description,
+            status,
+            priority,
+            deadline,
+            label,
+            project,
+            assignedTo,
+            sourceType,
+            scheduleId,
+            startDate,
+            dueDate,
+            dueTime
+        } = req.body;
 
         if (!title) {
-            return res.status(400).json({ error: 'Tiêu đề công việc là bắt buộc' });
+            return res.status(400).json({ error: 'Task title is required' });
+        }
+        if (project || sourceType === 'project') {
+            return res.status(400).json({
+                error: 'Project tasks must be created via /api/projects/:projectId/tasks so the same task record stays linked to its project.'
+            });
+        }
+        if (scheduleId || sourceType === 'schedule') {
+            return res.status(400).json({
+                error: 'Schedule tasks must be created from the schedule flow so the shared task record keeps its schedule context.'
+            });
         }
 
         const task = new Task({
@@ -46,62 +196,115 @@ exports.createTask = async (req, res) => {
             description,
             status: status || 'Pending',
             priority: priority || 'Medium',
-            deadline,
+            deadline: dueDate || deadline,
             label,
-            project: project || null,
+            sourceType: 'personal',
+            project: null,
+            scheduleId: null,
             assignedTo: assignedTo || req.user.id,
             assignedBy: req.user.id,
+            createdBy: req.user.id,
+            startDate,
+            dueDate: dueDate || deadline,
+            dueTime,
+            completedAt: status === 'Completed' ? new Date() : null,
             user: assignedTo || req.user.id
         });
 
         await task.save();
-        res.status(201).json(task);
+        res.status(201).json(normalizeTask(task));
     } catch (error) {
-        console.error('Lỗi trong taskController.createTask:', error);
+        console.error('Error in taskController.createTask:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
 // PUT /api/tasks/:taskId
+// Updates the same task document shown in Project Detail, Home, and Main Tasks.
 exports.updateTask = async (req, res) => {
     try {
         const { taskId } = req.params;
-        const { title, description, status, priority, deadline, label, project, assignedTo } = req.body;
+        const {
+            title,
+            description,
+            status,
+            priority,
+            deadline,
+            label,
+            project,
+            assignedTo,
+            sourceType,
+            scheduleId,
+            startDate,
+            dueDate,
+            dueTime
+        } = req.body;
 
+        if (project !== undefined || sourceType !== undefined || scheduleId !== undefined) {
+            return res.status(400).json({
+                error: 'Task source cannot be changed from the main Tasks endpoint. Use the Project or Schedule flow for source-specific changes.'
+            });
+        }
+
+        const managedProjectIds = await getManagedProjectIds(req.user.id);
         const task = await Task.findOne({
             _id: taskId,
             $or: [
                 { user: req.user.id },
-                { assignedTo: req.user.id }
+                { assignedTo: req.user.id },
+                { createdBy: req.user.id },
+                ...(managedProjectIds.length ? [{ project: { $in: managedProjectIds } }] : [])
             ]
-        });
+        }).populate('project');
+
         if (!task) {
-            return res.status(404).json({ error: 'Công việc không tồn tại hoặc bạn không có quyền chỉnh sửa' });
+            return res.status(404).json({ error: 'Task not found or you do not have permission.' });
         }
 
-        const ownsTask = task.user.toString() === req.user.id.toString();
-        const assignedTask = task.assignedTo?.toString() === req.user.id.toString();
+        const ownsTask = getId(task.user) === req.user.id.toString() || getId(task.createdBy) === req.user.id.toString();
+        const assignedTask = getId(task.assignedTo) === req.user.id.toString();
+        const managesProjectTask = task.project ? canManageProject(task.project, req.user.id) : false;
+        const canEditFields = ownsTask || managesProjectTask;
 
-        if (assignedTask && !ownsTask && Object.keys(req.body).some(key => key !== 'status')) {
-            return res.status(403).json({ error: 'Bạn chỉ có thể cập nhật trạng thái task được giao' });
+        if (assignedTask && !canEditFields && Object.keys(req.body).some(key => key !== 'status')) {
+            return res.status(403).json({ error: 'You can only update the status of tasks assigned to you.' });
+        }
+        if (!assignedTask && !canEditFields && status !== undefined) {
+            return res.status(403).json({ error: 'You do not have permission to update this task.' });
         }
 
-        if (ownsTask && title !== undefined) task.title = title;
-        if (ownsTask && description !== undefined) task.description = description;
-        if (status !== undefined) task.status = status;
-        if (ownsTask && priority !== undefined) task.priority = priority;
-        if (ownsTask && deadline !== undefined) task.deadline = deadline;
-        if (ownsTask && label !== undefined) task.label = label;
-        if (ownsTask && project !== undefined) task.project = project || null;
-        if (ownsTask && assignedTo !== undefined) {
+        if (canEditFields && title !== undefined) task.title = title;
+        if (canEditFields && description !== undefined) task.description = description;
+        if (status !== undefined) {
+            task.status = status;
+            task.completedAt = status === 'Completed' ? new Date() : null;
+        }
+        if (canEditFields && priority !== undefined) task.priority = priority;
+        if (canEditFields && deadline !== undefined) {
+            task.deadline = deadline;
+            task.dueDate = deadline;
+        }
+        if (canEditFields && dueDate !== undefined) {
+            task.dueDate = dueDate;
+            task.deadline = dueDate;
+        }
+        if (canEditFields && startDate !== undefined) task.startDate = startDate;
+        if (canEditFields && dueTime !== undefined) task.dueTime = dueTime;
+        if (canEditFields && label !== undefined) task.label = label;
+        if (canEditFields && assignedTo !== undefined) {
             task.assignedTo = assignedTo || req.user.id;
             task.user = assignedTo || req.user.id;
         }
 
         await task.save();
-        res.status(200).json(task);
+        await task.populate('project', 'name');
+        await task.populate('assignedTo', 'name email');
+        await task.populate('assignedBy', 'name email');
+        await task.populate('createdBy', 'name email');
+
+        res.status(200).json(normalizeTask(task));
     } catch (error) {
-        console.error('Lỗi trong taskController.updateTask:', error);
+        console.error('Error in taskController.updateTask:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -110,15 +313,26 @@ exports.updateTask = async (req, res) => {
 exports.deleteTask = async (req, res) => {
     try {
         const { taskId } = req.params;
+        const task = await Task.findById(taskId).populate('project');
 
-        const task = await Task.findOneAndDelete({ _id: taskId, user: req.user.id });
         if (!task) {
-            return res.status(404).json({ error: 'Công việc không tồn tại hoặc bạn không có quyền xóa' });
+            return res.status(404).json({ error: 'Task not found or you do not have permission.' });
         }
 
-        res.status(200).json({ message: 'Xóa công việc thành công' });
+        const ownsTask = getId(task.user) === req.user.id.toString() || getId(task.createdBy) === req.user.id.toString();
+        const managesProjectTask = task.project ? canManageProject(task.project, req.user.id) : false;
+
+        if (task.project && !managesProjectTask) {
+            return res.status(403).json({ error: 'Only Owner or Manager can delete project tasks.' });
+        }
+        if (!task.project && !ownsTask) {
+            return res.status(403).json({ error: 'You do not have permission to delete this task.' });
+        }
+
+        await task.deleteOne();
+        res.status(200).json({ message: 'Task deleted successfully' });
     } catch (error) {
-        console.error('Lỗi trong taskController.deleteTask:', error);
+        console.error('Error in taskController.deleteTask:', error);
         res.status(500).json({ error: error.message });
     }
 };

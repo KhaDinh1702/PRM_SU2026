@@ -402,9 +402,12 @@ exports.createProjectTask = async (req, res) => {
             priority: priority || 'Medium',
             status: 'Pending',
             deadline,
+            dueDate: deadline,
+            sourceType: 'project',
             project: projectId,
             assignedTo: assigneeId,
             assignedBy: req.user.id,
+            createdBy: req.user.id,
             user: assigneeId
         });
 
@@ -461,12 +464,18 @@ exports.updateProjectTask = async (req, res) => {
 
         const previousAssignee = getId(task.assignedTo || task.user);
 
-        if (status !== undefined) task.status = status;
+        if (status !== undefined) {
+            task.status = status;
+            task.completedAt = status === 'Completed' ? new Date() : null;
+        }
         if (manage) {
             if (title !== undefined) task.title = title;
             if (description !== undefined) task.description = description;
             if (priority !== undefined) task.priority = priority;
-            if (deadline !== undefined) task.deadline = deadline;
+            if (deadline !== undefined) {
+                task.deadline = deadline;
+                task.dueDate = deadline;
+            }
             if (assignedTo !== undefined) {
                 if (!isUserInProject(project, assignedTo)) {
                     return res.status(400).json({ error: 'Assignee must be a project member' });

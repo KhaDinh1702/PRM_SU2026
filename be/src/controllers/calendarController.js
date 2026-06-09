@@ -1,6 +1,21 @@
 const Event = require('../models/Event');
 const Task = require('../models/Task');
 
+const userTaskScope = (userId) => ({
+    $or: [
+        { user: userId },
+        { assignedTo: userId },
+        { createdBy: userId }
+    ]
+});
+
+const taskSourceType = (task) => {
+    if (task.sourceType) return task.sourceType;
+    if (task.project) return 'project';
+    if (task.scheduleId) return 'schedule';
+    return 'personal';
+};
+
 // GET /api/calendar/events
 exports.getEvents = async (req, res) => {
     try {
@@ -8,41 +23,42 @@ exports.getEvents = async (req, res) => {
         const userId = req.user.id;
 
         const eventQuery = { user: userId };
-        const taskQuery = { user: userId, deadline: { $ne: null } };
+        const taskQuery = {
+            ...userTaskScope(userId),
+            deadline: { $ne: null }
+        };
 
         if (start && end) {
             const startDate = new Date(start);
             const endDate = new Date(end);
-            
+
             eventQuery.startTime = { $gte: startDate, $lte: endDate };
             taskQuery.deadline = { $gte: startDate, $lte: endDate };
         }
 
-        // Lấy danh sách sự kiện lịch
         const events = await Event.find(eventQuery).sort({ startTime: 1 });
-
-        // Lấy các task có deadline làm lịch trình deadline
         const tasks = await Task.find(taskQuery).populate('project', 'name').sort({ deadline: 1 });
 
-        // Gộp hai danh sách thành một lịch trình trực quan
         const formattedEvents = events.map(event => ({
             id: event._id,
             title: event.title,
             description: event.description,
             start: event.startTime,
             end: event.endTime,
-            type: event.type, // 'meeting', 'reminder', 'other'
+            type: event.type,
             source: 'event'
         }));
 
         const formattedTasks = tasks.map(task => ({
             id: task._id,
             title: `[TASK DEADLINE] ${task.title}`,
-            description: task.description || `Độ ưu tiên: ${task.priority}`,
+            description: task.description || `Priority: ${task.priority}`,
             start: task.deadline,
             end: task.deadline,
             type: 'reminder',
             source: 'task',
+            sourceType: taskSourceType(task),
+            projectName: task.project?.name || null,
             status: task.status,
             priority: task.priority
         }));
@@ -51,7 +67,7 @@ exports.getEvents = async (req, res) => {
 
         res.status(200).json(schedule);
     } catch (error) {
-        console.error('Lỗi trong calendarController.getEvents:', error);
+        console.error('Error in calendarController.getEvents:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -62,11 +78,11 @@ exports.createEvent = async (req, res) => {
         const { title, description, startTime, endTime, type } = req.body;
 
         if (!title || !startTime || !endTime) {
-            return res.status(400).json({ error: 'Tiêu đề, thời gian bắt đầu và kết thúc là bắt buộc' });
+            return res.status(400).json({ error: 'Title, start time, and end time are required' });
         }
 
         if (new Date(startTime) > new Date(endTime)) {
-            return res.status(400).json({ error: 'Thời gian bắt đầu phải trước thời gian kết thúc' });
+            return res.status(400).json({ error: 'Start time must be before end time' });
         }
 
         const event = new Event({
@@ -81,7 +97,7 @@ exports.createEvent = async (req, res) => {
         await event.save();
         res.status(201).json(event);
     } catch (error) {
-        console.error('Lỗi trong calendarController.createEvent:', error);
+        console.error('Error in calendarController.createEvent:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -94,7 +110,7 @@ exports.updateEvent = async (req, res) => {
 
         const event = await Event.findOne({ _id: eventId, user: req.user.id });
         if (!event) {
-            return res.status(404).json({ error: 'Sự kiện không tồn tại hoặc bạn không có quyền sửa' });
+            return res.status(404).json({ error: 'Event not found or you do not have permission.' });
         }
 
         if (title !== undefined) event.title = title;
@@ -104,13 +120,13 @@ exports.updateEvent = async (req, res) => {
         if (type !== undefined) event.type = type;
 
         if (new Date(event.startTime) > new Date(event.endTime)) {
-            return res.status(400).json({ error: 'Thời gian bắt đầu phải trước thời gian kết thúc' });
+            return res.status(400).json({ error: 'Start time must be before end time' });
         }
 
         await event.save();
         res.status(200).json(event);
     } catch (error) {
-        console.error('Lỗi trong calendarController.updateEvent:', error);
+        console.error('Error in calendarController.updateEvent:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -122,12 +138,12 @@ exports.deleteEvent = async (req, res) => {
 
         const event = await Event.findOneAndDelete({ _id: eventId, user: req.user.id });
         if (!event) {
-            return res.status(404).json({ error: 'Sự kiện không tồn tại hoặc bạn không có quyền xóa' });
+            return res.status(404).json({ error: 'Event not found or you do not have permission.' });
         }
 
-        res.status(200).json({ message: 'Xóa sự kiện thành công' });
+        res.status(200).json({ message: 'Event deleted successfully' });
     } catch (error) {
-        console.error('Lỗi trong calendarController.deleteEvent:', error);
+        console.error('Error in calendarController.deleteEvent:', error);
         res.status(500).json({ error: error.message });
     }
 };
