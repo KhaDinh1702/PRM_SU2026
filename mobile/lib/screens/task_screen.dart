@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
+
 import '../services/auth_service.dart';
-import '../services/theme_service.dart';
 import '../services/locale_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/premium_widgets.dart';
 
 class TaskScreen extends StatefulWidget {
@@ -16,9 +17,24 @@ class TaskScreen extends StatefulWidget {
 }
 
 class _TaskScreenState extends State<TaskScreen> {
+  static const Color _accent = Color(0xFF06B6D4);
+  static const List<String> _tabs = [
+    'Today',
+    'Upcoming',
+    'Overdue',
+    'Project',
+    'Personal',
+    'Completed',
+  ];
+
   bool _isLoading = true;
   List<dynamic> _tasks = [];
-  String _selectedStatus = 'All';
+  String _selectedTab = 'Today';
+  String _sourceFilter = 'All';
+  String _statusFilter = 'All';
+  String _priorityFilter = 'All';
+  String _sortBy = 'recent';
+
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
@@ -41,44 +57,39 @@ class _TaskScreenState extends State<TaskScreen> {
   Future<void> _loadTasks() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+
     try {
       final token = await AuthService.getToken();
-      String url = 'https://prm-tan.vercel.app/api/tasks';
-      List<String> queryParams = [];
+      final query = <String, String>{
+        'tab': _selectedTab,
+        'sort': _sortBy,
+        if (_sourceFilter != 'All') 'source': _sourceFilter.toLowerCase(),
+        if (_statusFilter != 'All') 'status': _statusFilter,
+        if (_priorityFilter != 'All') 'priority': _priorityFilter,
+        if (_searchController.text.trim().isNotEmpty)
+          'search': _searchController.text.trim(),
+      };
 
-      if (_selectedStatus != 'All') {
-        queryParams.add('status=$_selectedStatus');
-      }
-      if (_searchController.text.trim().isNotEmpty) {
-        queryParams.add(
-            'search=${Uri.encodeComponent(_searchController.text.trim())}');
-      }
-      if (queryParams.isNotEmpty) {
-        url += '?${queryParams.join('&')}';
-      }
-
+      final uri = Uri.parse('${AuthService.apiBaseUrl}/tasks')
+          .replace(queryParameters: query);
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            _tasks = jsonDecode(response.body);
-            _isLoading = false;
-          });
-        }
-      } else {
-        throw Exception();
+      if (response.statusCode != 200) throw Exception(response.body);
+
+      if (mounted) {
+        setState(() {
+          _tasks = jsonDecode(response.body) as List<dynamic>;
+          _isLoading = false;
+        });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -90,7 +101,7 @@ class _TaskScreenState extends State<TaskScreen> {
       final token = await AuthService.getToken();
       final response = await http
           .post(
-            Uri.parse('https://prm-tan.vercel.app/api/tasks'),
+            Uri.parse('${AuthService.apiBaseUrl}/tasks'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -99,7 +110,7 @@ class _TaskScreenState extends State<TaskScreen> {
               'title': title,
               'description': _descController.text.trim(),
               'priority': _taskPriority,
-              'status': 'Pending'
+              'status': 'Pending',
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -107,30 +118,30 @@ class _TaskScreenState extends State<TaskScreen> {
       if (response.statusCode == 201) {
         _titleController.clear();
         _descController.clear();
+        _taskPriority = 'Medium';
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã thêm công việc mới thành công!',
-                  en: 'Task added successfully!')),
-              backgroundColor: const Color(0xFF8B5CF6),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          Navigator.pop(context);
+          _showSnack('Task added successfully', _accent);
         }
         _loadTasks();
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) _showSnack('Could not create task', Colors.redAccent);
+    }
   }
 
-  Future<void> _toggleTaskComplete(String taskId, String currentStatus) async {
+  Future<void> _toggleTaskComplete(Map<String, dynamic> task) async {
+    final taskId = task['_id']?.toString();
+    if (taskId == null || taskId.isEmpty) return;
+
+    final currentStatus = task['status']?.toString() ?? 'Pending';
     final newStatus = currentStatus == 'Completed' ? 'Pending' : 'Completed';
+
     try {
       final token = await AuthService.getToken();
       final response = await http
           .put(
-            Uri.parse('https://prm-tan.vercel.app/api/tasks/$taskId'),
+            Uri.parse('${AuthService.apiBaseUrl}/tasks/$taskId'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -140,32 +151,27 @@ class _TaskScreenState extends State<TaskScreen> {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(newStatus == 'Completed'
-                  ? LocaleService.tr('Đã hoàn thành công việc!',
-                      en: 'Task completed!')
-                  : LocaleService.tr('Đã mở lại công việc.',
-                      en: 'Task reopened.')),
-              backgroundColor: newStatus == 'Completed'
-                  ? const Color(0xFF10B981)
-                  : Colors.amber[800],
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        _showSnack(
+          newStatus == 'Completed' ? 'Task completed' : 'Task reopened',
+          newStatus == 'Completed' ? const Color(0xFF10B981) : Colors.amber,
+        );
         _loadTasks();
+      } else {
+        _showSnack('You can only update allowed task fields', Colors.redAccent);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) _showSnack('Could not update task', Colors.redAccent);
+    }
   }
 
-  Future<void> _deleteTask(String taskId) async {
+  Future<void> _deleteTask(Map<String, dynamic> task) async {
+    final taskId = task['_id']?.toString();
+    if (taskId == null || taskId.isEmpty) return;
+
     try {
       final token = await AuthService.getToken();
       final response = await http.delete(
-        Uri.parse('https://prm-tan.vercel.app/api/tasks/$taskId'),
+        Uri.parse('${AuthService.apiBaseUrl}/tasks/$taskId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -173,20 +179,26 @@ class _TaskScreenState extends State<TaskScreen> {
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr('Đã xóa công việc thành công!',
-                  en: 'Task deleted successfully!')),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        _showSnack('Task deleted successfully', Colors.redAccent);
         _loadTasks();
+      } else {
+        _showSnack('You cannot delete this task', Colors.redAccent);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) _showSnack('Could not delete task', Colors.redAccent);
+    }
+  }
+
+  void _showSnack(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showCreateTaskDialog() {
@@ -204,104 +216,91 @@ class _TaskScreenState extends State<TaskScreen> {
             return BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: AlertDialog(
-                backgroundColor: dialogBg.withOpacity(0.9),
+                backgroundColor: dialogBg.withOpacity(0.94),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(28),
                   side: BorderSide(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.black.withOpacity(0.08)),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.black.withOpacity(0.08),
+                  ),
                 ),
                 title: Text(
-                  LocaleService.tr('TẠO CÔNG VIỆC MỚI', en: 'CREATE NEW TASK'),
+                  'CREATE PERSONAL TASK',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: textColor,
-                      letterSpacing: 1.5),
+                    color: textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
                 ),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     PremiumInputField(
                       controller: _titleController,
-                      label: LocaleService.tr('Tiêu đề công việc *',
-                          en: 'Task title *'),
-                      hintText: LocaleService.tr('Nhập tiêu đề...',
-                          en: 'Enter title...'),
-                      prefixIcon: Icons.title_rounded,
+                      label: 'Task title *',
+                      hintText: 'Enter title...',
+                      prefixIcon: Icons.check_circle_outline_rounded,
                     ),
                     const SizedBox(height: 14),
                     PremiumInputField(
                       controller: _descController,
-                      label: LocaleService.tr('Mô tả ngắn',
-                          en: 'Short description'),
-                      hintText: LocaleService.tr('Nhập mô tả chi tiết...',
-                          en: 'Enter detailed description...'),
-                      prefixIcon: Icons.description_outlined,
+                      label: 'Short description',
+                      hintText: 'Enter details...',
+                      prefixIcon: Icons.notes_rounded,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.white.withOpacity(0.02)
-                            : Colors.black.withOpacity(0.02),
+                            ? Colors.white.withOpacity(0.03)
+                            : Colors.black.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.06)
-                                : Colors.black.withOpacity(0.06)),
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.08),
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(LocaleService.tr('Độ ưu tiên:', en: 'Priority:'),
-                              style: TextStyle(
-                                  color: subTextColor,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500)),
+                          Text(
+                            'Priority',
+                            style: TextStyle(
+                              color: subTextColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _taskPriority,
                               dropdownColor: dialogBg,
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: subTextColor),
-                              items: <String>['Low', 'Medium', 'High']
-                                  .map((String value) {
-                                Color badgeColor;
-                                if (value == 'High') {
-                                  badgeColor = const Color(0xFFF43F5E);
-                                } else if (value == 'Medium') {
-                                  badgeColor = const Color(0xFFEAB308);
-                                } else {
-                                  badgeColor = const Color(0xFF10B981);
-                                }
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                            color: badgeColor,
-                                            shape: BoxShape.circle),
+                              items: ['Low', 'Medium', 'High']
+                                  .map(
+                                    (value) => DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value,
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(value,
-                                          style: TextStyle(
-                                              color: textColor,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setDialogState(() => _taskPriority = val);
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setDialogState(() => _taskPriority = value);
                                 }
                               },
                             ),
@@ -309,24 +308,34 @@ class _TaskScreenState extends State<TaskScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Project tasks are assigned inside Project Detail and appear here automatically.',
+                      style: TextStyle(color: captionColor, fontSize: 11),
+                    ),
                   ],
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
-                        style: TextStyle(
-                            color: captionColor, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: captionColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   PremiumButton(
-                    onPressed: () {
-                      _createTask();
-                      Navigator.pop(context);
-                    },
-                    backgroundColor: const Color(0xFF8B5CF6),
-                    child: Text(LocaleService.tr('Tạo', en: 'Create'),
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
+                    onPressed: _createTask,
+                    backgroundColor: _accent,
+                    child: const Text(
+                      'Create',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -337,336 +346,495 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
+  void _showFilterSheet() {
+    String source = _sourceFilter;
+    String status = _statusFilter;
+    String priority = _priorityFilter;
+    String sort = _sortBy;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final isDark = ThemeService.isDarkMode.value;
+            final bg = ThemeService.getDialogBackgroundColor(isDark);
+            final textColor = ThemeService.getTextColor(isDark);
+            final subTextColor = ThemeService.getSubTextColor(isDark);
+
+            return Container(
+              padding: EdgeInsets.fromLTRB(
+                22,
+                14,
+                22,
+                MediaQuery.of(context).padding.bottom + 22,
+              ),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(30)),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.black.withOpacity(0.08),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: subTextColor.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Filter tasks',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _FilterChoiceGroup(
+                    title: 'Source',
+                    value: source,
+                    options: const ['All', 'Personal', 'Project', 'Schedule'],
+                    onChanged: (value) => setSheetState(() => source = value),
+                  ),
+                  _FilterChoiceGroup(
+                    title: 'Status',
+                    value: status,
+                    options: const [
+                      'All',
+                      'Pending',
+                      'In Progress',
+                      'Completed'
+                    ],
+                    onChanged: (value) => setSheetState(() => status = value),
+                  ),
+                  _FilterChoiceGroup(
+                    title: 'Priority',
+                    value: priority,
+                    options: const ['All', 'Low', 'Medium', 'High'],
+                    onChanged: (value) =>
+                        setSheetState(() => priority = value),
+                  ),
+                  _FilterChoiceGroup(
+                    title: 'Sort by',
+                    value: sort,
+                    options: const ['recent', 'deadline', 'priority'],
+                    onChanged: (value) => setSheetState(() => sort = value),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceFilter = 'All';
+                              _statusFilter = 'All';
+                              _priorityFilter = 'All';
+                              _sortBy = 'recent';
+                            });
+                            Navigator.pop(context);
+                            _loadTasks();
+                          },
+                          child: Text(
+                            'Reset',
+                            style: TextStyle(
+                              color: subTextColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: PremiumButton(
+                          onPressed: () {
+                            setState(() {
+                              _sourceFilter = source;
+                              _statusFilter = status;
+                              _priorityFilter = priority;
+                              _sortBy = sort;
+                            });
+                            Navigator.pop(context);
+                            _loadTasks();
+                          },
+                          backgroundColor: _accent,
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Map<String, List<Map<String, dynamic>>> _groupTasks() {
+    final groups = <String, List<Map<String, dynamic>>>{
+      'Overdue': [],
+      'Today': [],
+      'Tomorrow': [],
+      'This Week': [],
+      'Later': [],
+      'No Due Date': [],
+    };
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final weekEnd = today.add(const Duration(days: 7));
+
+    for (final rawTask in _tasks) {
+      final task = Map<String, dynamic>.from(rawTask as Map);
+      final status = task['status']?.toString() ?? 'Pending';
+      final due = _taskDueDate(task);
+
+      if (due == null) {
+        groups['No Due Date']!.add(task);
+        continue;
+      }
+
+      final dueDay = DateTime(due.year, due.month, due.day);
+      if (due.isBefore(now) && status != 'Completed') {
+        groups['Overdue']!.add(task);
+      } else if (dueDay == today) {
+        groups['Today']!.add(task);
+      } else if (dueDay == tomorrow) {
+        groups['Tomorrow']!.add(task);
+      } else if (dueDay.isBefore(weekEnd)) {
+        groups['This Week']!.add(task);
+      } else {
+        groups['Later']!.add(task);
+      }
+    }
+
+    groups.removeWhere((_, value) => value.isEmpty);
+    return groups;
+  }
+
+  DateTime? _taskDueDate(Map<String, dynamic> task) {
+    final value = task['deadline'] ?? task['dueDate'];
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  String _sourceLabel(Map<String, dynamic> task) {
+    final source = task['sourceType']?.toString();
+    if (source == 'project' || task['project'] != null) return 'Project';
+    if (source == 'schedule' || task['scheduleId'] != null) return 'Schedule';
+    return 'Personal';
+  }
+
+  String _projectName(Map<String, dynamic> task) {
+    final project = task['project'];
+    if (project is Map && project['name'] != null) {
+      return project['name'].toString();
+    }
+    return '';
+  }
+
+  String _assigneeName(Map<String, dynamic> task) {
+    final assignee = task['assignedTo'];
+    if (assignee is Map) {
+      return assignee['name']?.toString().isNotEmpty == true
+          ? assignee['name'].toString()
+          : assignee['email']?.toString() ?? '';
+    }
+    return '';
+  }
+
+  String _dueText(Map<String, dynamic> task) {
+    final due = _taskDueDate(task);
+    if (due == null) return 'No due date';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(due.year, due.month, due.day);
+    final days = dueDay.difference(today).inDays;
+    final time =
+        '${due.hour.toString().padLeft(2, '0')}:${due.minute.toString().padLeft(2, '0')}';
+
+    if (days == 0) return 'Due today · $time';
+    if (days == 1) return 'Tomorrow · $time';
+    if (days == -1) return 'Yesterday · $time';
+    if (days < -1) return '${days.abs()} days overdue';
+    return '${due.day}/${due.month}/${due.year} · $time';
+  }
+
+  Color _priorityColor(String priority) {
+    if (priority == 'High') return const Color(0xFFF43F5E);
+    if (priority == 'Medium') return const Color(0xFFF59E0B);
+    return const Color(0xFF10B981);
+  }
+
+  Color _sourceColor(String source) {
+    if (source == 'Project') return _accent;
+    if (source == 'Schedule') return const Color(0xFF8B5CF6);
+    return const Color(0xFF10B981);
+  }
+
+  Color _statusColor(String status, bool overdue) {
+    if (overdue) return const Color(0xFFF43F5E);
+    if (status == 'Completed') return const Color(0xFF10B981);
+    if (status == 'In Progress') return _accent;
+    return const Color(0xFF94A3B8);
+  }
+
   @override
   Widget build(BuildContext context) {
-    const themeColor = Color(0xFF8B5CF6);
-
     return ListenableBuilder(
       listenable: Listenable.merge(
-          [ThemeService.isDarkMode, LocaleService.languageCode]),
+        [ThemeService.isDarkMode, LocaleService.languageCode],
+      ),
       builder: (context, child) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
-        final cardBgColor = ThemeService.getCardColor(isDark);
+        final cardColor = ThemeService.getCardColor(isDark);
         final borderColor = ThemeService.getBorderColor(isDark);
+        final groupedTasks = _groupTasks();
+        final projectCount =
+            _tasks.where((task) => _sourceLabel(Map<String, dynamic>.from(task as Map)) == 'Project').length;
+        final overdueCount = _tasks.where((task) {
+          final map = Map<String, dynamic>.from(task as Map);
+          final due = _taskDueDate(map);
+          return due != null &&
+              due.isBefore(DateTime.now()) &&
+              map['status'] != 'Completed';
+        }).length;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          LocaleService.tr('QUẢN LÝ TIẾN ĐỘ',
-                              en: 'PROGRESS MANAGEMENT'),
-                          style: TextStyle(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'UNIFIED INBOX',
+                            style: TextStyle(
                               color: captionColor,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 2),
-                        ),
-                        Text(
-                          LocaleService.tr('Công Việc', en: 'Tasks'),
-                          style: TextStyle(
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tasks',
+                            style: TextStyle(
                               color: textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900),
-                        ),
-                      ],
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    PremiumButton.icon(
-                      onPressed: _showCreateTaskDialog,
-                      icon: Icons.add,
-                      label: LocaleService.tr('Thêm task', en: 'Add task'),
-                      backgroundColor: themeColor,
-                    )
+                    IconButton(
+                      tooltip: 'Filters',
+                      onPressed: _showFilterSheet,
+                      icon: Icon(Icons.tune_rounded, color: subTextColor),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 42,
+                      child: PremiumButton.icon(
+                        onPressed: _showCreateTaskDialog,
+                        icon: Icons.add_rounded,
+                        label: 'New',
+                        backgroundColor: _accent,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 18),
-
-                // Search Bar & Filter Tab
+                const SizedBox(height: 14),
                 Row(
                   children: [
-                    Expanded(
-                      child: ThemeService.isSketchyMode.value
-                          ? sketchy.SketchyTextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText: LocaleService.tr(
-                                    'Tìm kiếm công việc...',
-                                    en: 'Search tasks...'),
-                                hintStyle: TextStyle(
-                                    color: captionColor, fontSize: 14),
-                                prefixIcon: Icon(Icons.search,
-                                    color: captionColor, size: 20),
-                              ),
-                              onSubmitted: (_) => _loadTasks(),
-                            )
-                          : Container(
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: cardBgColor,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: LocaleService.tr(
-                                      'Tìm kiếm công việc...',
-                                      en: 'Search tasks...'),
-                                  hintStyle: TextStyle(
-                                      color: captionColor, fontSize: 14),
-                                  prefixIcon: Icon(Icons.search,
-                                      color: captionColor, size: 20),
-                                  border: InputBorder.none,
-                                ),
-                                style: TextStyle(color: textColor),
-                                onSubmitted: (_) => _loadTasks(),
-                              ),
-                            ),
+                    _SummaryPill(
+                      label: '${_tasks.length} Tasks',
+                      color: _accent,
                     ),
-                    const SizedBox(width: 12),
-                    DropdownButton<String>(
-                      value: _selectedStatus,
-                      dropdownColor:
-                          isDark ? const Color(0xFF0F1524) : Colors.white,
-                      underline: const SizedBox(),
-                      icon:
-                          Icon(Icons.filter_list_rounded, color: subTextColor),
-                      items: <String>[
-                        'All',
-                        'Pending',
-                        'In Progress',
-                        'Completed',
-                        'Overdue'
-                      ].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(
-                              value == 'All'
-                                  ? LocaleService.tr('Tất cả', en: 'All')
-                                  : value,
-                              style: TextStyle(color: textColor, fontSize: 14)),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _selectedStatus = val);
-                          _loadTasks();
-                        }
-                      },
+                    const SizedBox(width: 8),
+                    _SummaryPill(
+                      label: '$projectCount Project',
+                      color: const Color(0xFF8B5CF6),
+                    ),
+                    const SizedBox(width: 8),
+                    _SummaryPill(
+                      label: '$overdueCount Overdue',
+                      color: const Color(0xFFF43F5E),
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-
-                // Tasks List
+                const SizedBox(height: 16),
+                Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onSubmitted: (_) => _loadTasks(),
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      hintText: 'Search tasks...',
+                      hintStyle: TextStyle(color: captionColor, fontSize: 14),
+                      prefixIcon:
+                          Icon(Icons.search_rounded, color: captionColor),
+                      suffixIcon: _searchController.text.trim().isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _loadTasks();
+                              },
+                              icon: Icon(Icons.close_rounded,
+                                  color: captionColor, size: 18),
+                            ),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _tabs.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final tab = _tabs[index];
+                      final selected = _selectedTab == tab;
+                      return ChoiceChip(
+                        label: Text(tab),
+                        selected: selected,
+                        showCheckmark: false,
+                        selectedColor: _accent.withOpacity(0.18),
+                        backgroundColor: cardColor,
+                        side: BorderSide(
+                          color: selected ? _accent : borderColor,
+                        ),
+                        labelStyle: TextStyle(
+                          color: selected ? _accent : subTextColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                        onSelected: (_) {
+                          setState(() => _selectedTab = tab);
+                          _loadTasks();
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Expanded(
                   child: _isLoading
                       ? ListView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
                           itemCount: 6,
-                          itemBuilder: (context, index) => const Padding(
-                            padding: EdgeInsets.only(bottom: 12.0),
+                          itemBuilder: (_, index) => const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
                             child: ShimmerLoading(
-                                width: double.infinity,
-                                height: 86,
-                                borderRadius: 20),
+                              width: double.infinity,
+                              height: 112,
+                              borderRadius: 22,
+                            ),
                           ),
                         )
-                      : _tasks.isEmpty
-                          ? FadeInSlide(
-                              delayMs: 100,
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.playlist_add_check_rounded,
-                                        size: 54,
-                                        color: captionColor.withOpacity(0.4)),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                        LocaleService.tr(
-                                            'Chưa có công việc nào.',
-                                            en: 'No tasks yet.'),
-                                        style: TextStyle(
-                                            color: captionColor, fontSize: 14)),
-                                  ],
-                                ),
-                              ),
+                      : groupedTasks.isEmpty
+                          ? _TaskEmptyState(
+                              textColor: textColor,
+                              captionColor: captionColor,
+                              onAddTask: _showCreateTaskDialog,
                             )
                           : RefreshIndicator(
+                              color: _accent,
                               onRefresh: _loadTasks,
-                              color: themeColor,
-                              child: ListView.builder(
-                                itemCount: _tasks.length,
+                              child: ListView(
                                 physics: const BouncingScrollPhysics(),
-                                itemBuilder: (context, index) {
-                                  final task = _tasks[index];
-                                  final taskId = task['_id'];
-                                  final title = task['title'] ??
-                                      LocaleService.tr('Công việc không tên',
-                                          en: 'Untitled task');
-                                  final desc = task['description'] ?? '';
-                                  final status = task['status'] ?? 'Pending';
-                                  final priority = task['priority'] ?? 'Medium';
-
-                                  Color priorityColor;
-                                  if (priority == 'High') {
-                                    priorityColor = const Color(0xFFF43F5E);
-                                  } else if (priority == 'Medium') {
-                                    priorityColor = const Color(0xFFEAB308);
-                                  } else {
-                                    priorityColor = const Color(0xFF10B981);
-                                  }
-
-                                  return FadeInSlide(
-                                    delayMs: index * 60,
-                                    child: Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 12.0),
-                                      child: GlassCard(
-                                        borderRadius: 20,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 14),
-                                        child: Row(
-                                          children: [
-                                            GestureDetector(
-                                              onTap: () => _toggleTaskComplete(
-                                                  taskId, status),
-                                              child: Container(
-                                                width: 24,
-                                                height: 24,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                    color: status == 'Completed'
-                                                        ? const Color(
-                                                            0xFF10B981)
-                                                        : (isDark
-                                                            ? Colors.white24
-                                                            : Colors.black26),
-                                                    width: 2,
-                                                  ),
-                                                  color: status == 'Completed'
-                                                      ? const Color(0xFF10B981)
-                                                          .withOpacity(0.1)
-                                                      : Colors.transparent,
-                                                ),
-                                                child: status == 'Completed'
-                                                    ? const Icon(Icons.check,
-                                                        size: 14,
-                                                        color:
-                                                            Color(0xFF10B981))
-                                                    : null,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    title,
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: textColor,
-                                                      decoration:
-                                                          status == 'Completed'
-                                                              ? TextDecoration
-                                                                  .lineThrough
-                                                              : null,
-                                                    ),
-                                                  ),
-                                                  if (desc.isNotEmpty) ...[
-                                                    const SizedBox(height: 3),
-                                                    Text(
-                                                      desc,
-                                                      style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: subTextColor),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                  const SizedBox(height: 8),
-                                                  Row(
-                                                    children: [
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                horizontal: 8,
-                                                                vertical: 2),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: priorityColor
-                                                              .withOpacity(0.1),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(6),
-                                                        ),
-                                                        child: Text(
-                                                          priority
-                                                              .toUpperCase(),
-                                                          style: TextStyle(
-                                                              fontSize: 9,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color:
-                                                                  priorityColor),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Text(
-                                                        status.toUpperCase(),
-                                                        style: TextStyle(
-                                                          fontSize: 9,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: status ==
-                                                                  'Completed'
-                                                              ? const Color(
-                                                                  0xFF10B981)
-                                                              : captionColor,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: Colors.redAccent
-                                                      .withOpacity(0.8),
-                                                  size: 22),
-                                              onPressed: () =>
-                                                  _deleteTask(taskId),
-                                            ),
-                                          ],
+                                children: [
+                                  for (final entry in groupedTasks.entries) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 8,
+                                        bottom: 10,
+                                      ),
+                                      child: Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          color: captionColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 1.4,
                                         ),
                                       ),
                                     ),
-                                  );
-                                },
+                                    for (final task in entry.value)
+                                      _TaskInboxCard(
+                                        task: task,
+                                        textColor: textColor,
+                                        subTextColor: subTextColor,
+                                        captionColor: captionColor,
+                                        source: _sourceLabel(task),
+                                        sourceColor: _sourceColor(
+                                            _sourceLabel(task)),
+                                        projectName: _projectName(task),
+                                        assigneeName: _assigneeName(task),
+                                        dueText: _dueText(task),
+                                        priorityColor: _priorityColor(
+                                          task['priority']?.toString() ??
+                                              'Medium',
+                                        ),
+                                        statusColor: _statusColor(
+                                          task['status']?.toString() ??
+                                              'Pending',
+                                          entry.key == 'Overdue',
+                                        ),
+                                        onToggle: () =>
+                                            _toggleTaskComplete(task),
+                                        onDelete: _sourceLabel(task) ==
+                                                'Personal'
+                                            ? () => _deleteTask(task)
+                                            : null,
+                                      ),
+                                  ],
+                                  const SizedBox(height: 24),
+                                ],
                               ),
                             ),
                 ),
@@ -675,6 +843,380 @@ class _TaskScreenState extends State<TaskScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _SummaryPill({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.22)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChoiceGroup extends StatelessWidget {
+  final String title;
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+
+  const _FilterChoiceGroup({
+    required this.title,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeService.isDarkMode.value;
+    final textColor = ThemeService.getTextColor(isDark);
+    final subTextColor = ThemeService.getSubTextColor(isDark);
+    final cardColor = ThemeService.getCardColor(isDark);
+    final borderColor = ThemeService.getBorderColor(isDark);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: subTextColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final option in options)
+                ChoiceChip(
+                  label: Text(_labelFor(option)),
+                  selected: value == option,
+                  showCheckmark: false,
+                  selectedColor: _TaskScreenState._accent.withOpacity(0.18),
+                  backgroundColor: cardColor,
+                  side: BorderSide(
+                    color: value == option
+                        ? _TaskScreenState._accent
+                        : borderColor,
+                  ),
+                  labelStyle: TextStyle(
+                    color:
+                        value == option ? _TaskScreenState._accent : textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  onSelected: (_) => onChanged(option),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _labelFor(String option) {
+    if (option == 'recent') return 'Recent';
+    if (option == 'deadline') return 'Due date';
+    if (option == 'priority') return 'Priority';
+    return option;
+  }
+}
+
+class _TaskInboxCard extends StatelessWidget {
+  final Map<String, dynamic> task;
+  final Color textColor;
+  final Color subTextColor;
+  final Color captionColor;
+  final String source;
+  final Color sourceColor;
+  final String projectName;
+  final String assigneeName;
+  final String dueText;
+  final Color priorityColor;
+  final Color statusColor;
+  final VoidCallback onToggle;
+  final VoidCallback? onDelete;
+
+  const _TaskInboxCard({
+    required this.task,
+    required this.textColor,
+    required this.subTextColor,
+    required this.captionColor,
+    required this.source,
+    required this.sourceColor,
+    required this.projectName,
+    required this.assigneeName,
+    required this.dueText,
+    required this.priorityColor,
+    required this.statusColor,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = task['title']?.toString() ?? 'Untitled task';
+    final description = task['description']?.toString() ?? '';
+    final status = task['status']?.toString() ?? 'Pending';
+    final priority = task['priority']?.toString() ?? 'Medium';
+    final completed = status == 'Completed';
+    final metaParts = [
+      dueText,
+      if (projectName.isNotEmpty) projectName else source,
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 22,
+        padding: EdgeInsets.zero,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(
+                width: 5,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(22),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: onToggle,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: completed
+                                ? const Color(0xFF10B981).withOpacity(0.12)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: completed
+                                  ? const Color(0xFF10B981)
+                                  : captionColor.withOpacity(0.45),
+                              width: 2,
+                            ),
+                          ),
+                          child: completed
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Color(0xFF10B981),
+                                  size: 16,
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      decoration: completed
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _TinyBadge(
+                                  label: source,
+                                  color: sourceColor,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              metaParts.join(' · '),
+                              style: TextStyle(
+                                color: subTextColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (description.isNotEmpty) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: captionColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                _TinyBadge(label: status, color: statusColor),
+                                _TinyBadge(
+                                  label: priority,
+                                  color: priorityColor,
+                                ),
+                                if (assigneeName.isNotEmpty && source == 'Project')
+                                  _TinyBadge(
+                                    label: 'Assigned to $assigneeName',
+                                    color: captionColor,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (onDelete != null)
+                        IconButton(
+                          tooltip: 'Delete task',
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.redAccent.withOpacity(0.85),
+                            size: 21,
+                          ),
+                          onPressed: onDelete,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TinyBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _TinyBadge({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskEmptyState extends StatelessWidget {
+  final Color textColor;
+  final Color captionColor;
+  final VoidCallback onAddTask;
+
+  const _TaskEmptyState({
+    required this.textColor,
+    required this.captionColor,
+    required this.onAddTask,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.task_alt_rounded,
+            size: 58,
+            color: captionColor.withOpacity(0.45),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No tasks here',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Project tasks assigned to you will appear in this inbox.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: captionColor,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 42,
+            child: PremiumButton.icon(
+              onPressed: onAddTask,
+              icon: Icons.add_rounded,
+              label: 'New personal task',
+              backgroundColor: _TaskScreenState._accent,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -3,22 +3,29 @@ const Project = require('../models/Project');
 const Event = require('../models/Event');
 const Session = require('../models/Session');
 
+const userTaskScope = (userId) => ({
+    $or: [
+        { user: userId },
+        { assignedTo: userId },
+        { createdBy: userId }
+    ]
+});
+
 // GET /api/dashboard/summary
 exports.getSummary = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // 1. Task cần làm (Pending, In Progress) và Task đã hoàn thành
-        const pendingTasksCount = await Task.countDocuments({ 
-            user: userId, 
-            status: { $in: ['Pending', 'In Progress'] } 
+        // Home counts the same shared Task records used by Project Detail and Main Tasks.
+        const pendingTasksCount = await Task.countDocuments({
+            ...userTaskScope(userId),
+            status: { $in: ['Pending', 'In Progress'] }
         });
-        const completedTasksCount = await Task.countDocuments({ 
-            user: userId, 
-            status: 'Completed' 
+        const completedTasksCount = await Task.countDocuments({
+            ...userTaskScope(userId),
+            status: 'Completed'
         });
 
-        // 2. Lịch họp gần nhất (meeting sắp tới)
         const now = new Date();
         const nextMeeting = await Event.findOne({
             user: userId,
@@ -26,7 +33,6 @@ exports.getSummary = async (req, res) => {
             startTime: { $gte: now }
         }).sort({ startTime: 1 });
 
-        // 3. Project đang tham gia (chủ sở hữu hoặc là thành viên)
         const projectsCount = await Project.countDocuments({
             $or: [
                 { owner: userId },
@@ -34,7 +40,6 @@ exports.getSummary = async (req, res) => {
             ]
         });
 
-        // 4. Tổng thời gian focus trong ngày hôm nay (tính bằng giây)
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date();
@@ -62,7 +67,7 @@ exports.getSummary = async (req, res) => {
             } : null
         });
     } catch (error) {
-        console.error('Lỗi trong dashboardController.getSummary:', error);
+        console.error('Error in dashboardController.getSummary:', error);
         res.status(500).json({ error: error.message });
     }
 };

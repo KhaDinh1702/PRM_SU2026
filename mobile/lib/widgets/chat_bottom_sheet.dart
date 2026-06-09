@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -33,7 +34,9 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   List<dynamic> messages = [];
   bool isLoading = true;
   bool isSending = false;
+  bool _isPollingMessages = false;
   String currentUserId = '';
+  Timer? _pollTimer;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -54,6 +57,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
 
       await _fetchMessages();
       _connectSocket();
+      _startMessagePolling();
     } catch (e) {
       print('Error initializing chat: $e');
       setState(() {
@@ -62,7 +66,17 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     }
   }
 
-  Future<void> _fetchMessages() async {
+  void _startMessagePolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _fetchMessages(silent: true);
+    });
+  }
+
+  Future<void> _fetchMessages({bool silent = false}) async {
+    if (_isPollingMessages) return;
+    _isPollingMessages = true;
+
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
@@ -75,24 +89,68 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        setState(() {
-          messages = jsonDecode(response.body);
-          isLoading = false;
-        });
-        _scrollToBottom();
+        final freshMessages = jsonDecode(response.body) as List<dynamic>;
+        if (!mounted) return;
+
+        if (silent) {
+          _mergeMessages(freshMessages);
+        } else {
+          setState(() {
+            messages = freshMessages;
+            isLoading = false;
+          });
+          _scrollToBottom();
+        }
       } else {
         print(
             '❌ Fetch messages failed: ${response.statusCode} ${response.body}');
+        if (mounted && !silent) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error fetching messages: $e');
+      if (mounted && !silent) {
         setState(() {
           isLoading = false;
         });
       }
-    } catch (e) {
-      print('❌ Error fetching messages: $e');
-      setState(() {
-        isLoading = false;
-      });
+    } finally {
+      _isPollingMessages = false;
     }
+  }
+
+  void _mergeMessages(List<dynamic> freshMessages) {
+    if (!mounted || freshMessages.isEmpty) return;
+
+    final existingIds = messages
+        .map((message) => message['_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    var changed = false;
+    for (final message in freshMessages) {
+      final id = message['_id']?.toString() ?? '';
+      if (id.isEmpty || existingIds.contains(id)) continue;
+      messages.add(message);
+      existingIds.add(id);
+      changed = true;
+    }
+
+    if (!changed) return;
+
+    messages.sort((a, b) {
+      final aDate = DateTime.tryParse(a['createdAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = DateTime.tryParse(b['createdAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return aDate.compareTo(bDate);
+    });
+
+    setState(() {});
+    _scrollToBottom();
   }
 
   void _connectSocket() {
@@ -120,12 +178,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     });
 
     socket!.on('receiveMessage', (data) {
-      if (mounted) {
-        setState(() {
-          messages.add(data);
-        });
-        _scrollToBottom();
-      }
+      _mergeMessages([data]);
     });
 
     socket!.onDisconnect((_) => print('🔌 Disconnected from socket server'));
@@ -154,16 +207,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
 
       if (response.statusCode == 201) {
         final newMessage = jsonDecode(response.body);
-        // Nếu socket không kết nối được, tự thêm tin nhắn vào list
-        if (socket == null || !socket!.connected) {
-          if (mounted) {
-            setState(() {
-              messages.add(newMessage);
-            });
-            _scrollToBottom();
-          }
-        }
-        // Nếu socket đang kết nối, tin nhắn sẽ được nhận qua receiveMessage event
+        _mergeMessages([newMessage]);
       } else {
         print('❌ Send message failed: ${response.statusCode} ${response.body}');
         // Khôi phục text nếu gửi thất bại
@@ -209,6 +253,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     socket?.disconnect();
     socket?.dispose();
     _messageController.dispose();
