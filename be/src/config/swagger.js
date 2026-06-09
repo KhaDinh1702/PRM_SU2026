@@ -16,10 +16,6 @@ const options = {
             {
                 url: 'https://prm-tan.vercel.app',
                 description: 'Production Cloud Server'
-            },
-            {
-                url: 'http://localhost:5000',
-                description: 'Development Server'
             }
         ],
         components: {
