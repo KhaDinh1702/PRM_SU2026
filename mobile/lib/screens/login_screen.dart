@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:async' as async_timer;
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/locale_service.dart';
@@ -24,10 +25,15 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
   bool _isLoginMode = true;
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isSendingOtp = false;
+  bool _otpSent = false;
+  int _otpCountdown = 0;
+  async_timer.Timer? _timer;
 
   // Animation controller for switching modes smoothly
   late AnimationController _fadeController;
@@ -55,8 +61,64 @@ class _LoginScreenState extends State<LoginScreen>
     _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _otpController.dispose();
+    _timer?.cancel();
     _fadeController.dispose();
     super.dispose();
+  }
+
+  void _startOtpCountdown() {
+    _timer?.cancel();
+    setState(() {
+      _otpCountdown = 60;
+    });
+    _timer = async_timer.Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() {
+        if (_otpCountdown > 0) {
+          _otpCountdown--;
+        } else {
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  Future<void> _sendOtpCode() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnackBar(
+          LocaleService.tr('Vui lòng nhập Email trước', en: 'Please enter Email first'),
+          Colors.redAccent);
+      return;
+    }
+    final emailRegex = RegExp(r'^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$');
+    if (!emailRegex.hasMatch(email)) {
+      _showSnackBar(
+          LocaleService.tr('Định dạng email không hợp lệ', en: 'Invalid email format'),
+          Colors.redAccent);
+      return;
+    }
+
+    setState(() => _isSendingOtp = true);
+    try {
+      final result = await AuthService.sendOtp(email);
+      if (mounted) {
+        if (result['success']) {
+          _showSnackBar(result['message'], Colors.teal);
+          setState(() => _otpSent = true);
+          _startOtpCountdown();
+        } else {
+          _showSnackBar(result['message'], Colors.redAccent);
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Lỗi gửi OTP: $e', Colors.redAccent);
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingOtp = false);
+      }
+    }
   }
 
   void _toggleMode() {
@@ -65,12 +127,12 @@ class _LoginScreenState extends State<LoginScreen>
       _formKey.currentState?.reset();
       _passwordController.clear();
       _confirmPasswordController.clear();
+      _otpController.clear();
+      _otpSent = false;
+      _otpCountdown = 0;
+      _timer?.cancel();
     });
-    if (_isLoginMode) {
-      _fadeController.forward(from: 0.0);
-    } else {
-      _fadeController.forward(from: 0.0);
-    }
+    _fadeController.forward(from: 0.0);
   }
 
   // Xử lý submit Form
@@ -89,6 +151,12 @@ class _LoginScreenState extends State<LoginScreen>
         if (_emailController.text.trim().isEmpty) {
           _showSnackBar(
               LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email'),
+              Colors.redAccent);
+          return;
+        }
+        if (_otpController.text.trim().isEmpty) {
+          _showSnackBar(
+              LocaleService.tr('Vui lòng nhập mã OTP', en: 'Please enter OTP code'),
               Colors.redAccent);
           return;
         }
@@ -153,6 +221,7 @@ class _LoginScreenState extends State<LoginScreen>
           _emailController.text,
           _phoneController.text,
           _passwordController.text,
+          _otpController.text,
           username: _usernameController.text,
         );
 
@@ -373,6 +442,73 @@ class _LoginScreenState extends State<LoginScreen>
                                                 }
                                                 return null;
                                               },
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: _buildTextField(
+                                                    controller: _otpController,
+                                                    labelText: LocaleService.tr(
+                                                        'Mã xác thực OTP',
+                                                        en: 'OTP Verification Code'),
+                                                    icon: Icons.domain_verification_rounded,
+                                                    keyboardType: TextInputType.number,
+                                                    validator: (value) {
+                                                      if (value == null ||
+                                                          value.trim().isEmpty) {
+                                                        return LocaleService.tr(
+                                                            'Vui lòng nhập OTP',
+                                                            en: 'Please enter OTP');
+                                                      }
+                                                      if (value.trim().length != 6) {
+                                                        return LocaleService.tr(
+                                                            'OTP gồm 6 chữ số',
+                                                            en: 'OTP must be 6 digits');
+                                                      }
+                                                      return null;
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                SizedBox(
+                                                  height: 56,
+                                                  child: ElevatedButton(
+                                                    onPressed: (_otpCountdown > 0 || _isSendingOtp)
+                                                        ? null
+                                                        : _sendOtpCode,
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: const Color(0xFF8B5CF6).withOpacity(0.1),
+                                                      foregroundColor: const Color(0xFF8B5CF6),
+                                                      side: BorderSide(
+                                                        color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(20),
+                                                      ),
+                                                    ),
+                                                    child: _isSendingOtp
+                                                        ? const SizedBox(
+                                                            width: 16,
+                                                            height: 16,
+                                                            child: CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                              color: Color(0xFF8B5CF6),
+                                                            ),
+                                                          )
+                                                        : Text(
+                                                            _otpCountdown > 0
+                                                                ? '${_otpCountdown}s'
+                                                                : (_otpSent
+                                                                    ? LocaleService.tr('Gửi lại', en: 'Resend')
+                                                                    : LocaleService.tr('Gửi mã', en: 'Send OTP')),
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             const SizedBox(height: 16),
                                             _buildTextField(
@@ -706,6 +842,47 @@ class _LoginScreenState extends State<LoginScreen>
                                   en: 'Email Address'),
                             ),
                             keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: sketchy.SketchyTextField(
+                                  controller: _otpController,
+                                  decoration: InputDecoration(
+                                    hintText: LocaleService.tr('Mã xác thực OTP',
+                                        en: 'OTP Verification Code'),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              sketchy.SketchyButton(
+                                onPressed: (_otpCountdown > 0 || _isSendingOtp)
+                                    ? null
+                                    : _sendOtpCode,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                  child: _isSendingOtp
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF8B5CF6),
+                                          ),
+                                        )
+                                      : sketchy.SketchyText(
+                                          _otpCountdown > 0
+                                              ? '${_otpCountdown}s'
+                                              : (_otpSent
+                                                  ? LocaleService.tr('Gửi lại', en: 'Resend')
+                                                  : LocaleService.tr('Gửi mã', en: 'Send')),
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           sketchy.SketchyTextField(

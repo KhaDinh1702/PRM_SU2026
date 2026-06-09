@@ -47,6 +47,32 @@ router.post('/register', authController.register);
 
 /**
  * @swagger
+ * /api/auth/send-otp:
+ *   post:
+ *     summary: Gửi mã OTP qua Email
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "nguyenbao2004vn@gmail.com"
+ *     responses:
+ *       200:
+ *         description: Mã OTP đã được gửi thành công
+ *       400:
+ *         description: Thiếu email hoặc email đã đăng ký
+ */
+router.post('/send-otp', authController.sendOtp);
+
+/**
+ * @swagger
  * /api/auth/login:
  *   post:
  *     summary: Đăng nhập tài khoản

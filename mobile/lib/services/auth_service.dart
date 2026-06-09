@@ -10,9 +10,29 @@ class AuthService {
   static const String tokenKey = 'jwt_token';
   static const String userKey = 'user_info';
 
-  // Đăng ký tài khoản mới
+  // Gửi mã OTP qua email
+  static Future<Map<String, dynamic>> sendOtp(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/send-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email.trim()}),
+      ).timeout(const Duration(seconds: 25));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'message': data['message'] ?? 'OTP đã được gửi'};
+      } else {
+        return {'success': false, 'message': data['error'] ?? 'Gửi OTP thất bại'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Lỗi gửi OTP: $e'};
+    }
+  }
+
+  // Đăng ký tài khoản mới kèm OTP
   static Future<Map<String, dynamic>> register(
-      String email, String phone, String password,
+      String email, String phone, String password, String otp,
       {String username = ''}) async {
     try {
       final response = await http
@@ -23,6 +43,7 @@ class AuthService {
               'email': email.trim(),
               'phone': phone.trim().isEmpty ? null : phone.trim(),
               'password': password,
+              'otp': otp.trim(),
               if (username.trim().isNotEmpty) 'username': username.trim(),
             }),
           )
