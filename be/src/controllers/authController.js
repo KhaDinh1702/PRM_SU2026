@@ -101,6 +101,12 @@ exports.register = async (req, res) => {
             return res.status(400).json({ error: 'Mật khẩu phải chứa ít nhất 6 ký tự' });
         }
 
+        // Kiểm tra mật khẩu mạnh (ít nhất 1 chữ hoa, 1 ký tự đặc biệt)
+        const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ error: 'Mật khẩu phải chứa ít nhất 1 chữ cái in hoa và 1 ký tự đặc biệt' });
+        }
+
         // Kiểm tra định dạng email
         const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
         if (!emailRegex.test(email)) {

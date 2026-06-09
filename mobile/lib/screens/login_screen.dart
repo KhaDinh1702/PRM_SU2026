@@ -594,6 +594,21 @@ class _LoginScreenState extends State<LoginScreen>
                                                     'Mật khẩu phải chứa ít nhất 6 ký tự',
                                                     en: 'Password must be at least 6 characters');
                                               }
+                                              // Không kiểm tra độ mạnh nếu đang ở màn hình Đăng Nhập
+                                              if (!_isLoginMode) {
+                                                final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
+                                                final hasSpecialChar = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value);
+                                                if (!hasUppercase) {
+                                                  return LocaleService.tr(
+                                                      'Yêu cầu ít nhất 1 chữ cái in hoa',
+                                                      en: 'Requires at least 1 uppercase letter');
+                                                }
+                                                if (!hasSpecialChar) {
+                                                  return LocaleService.tr(
+                                                      'Yêu cầu ít nhất 1 ký tự đặc biệt',
+                                                      en: 'Requires at least 1 special character');
+                                                }
+                                              }
                                               return null;
                                             },
                                           ),
