@@ -12,7 +12,7 @@ import '../services/locale_service.dart';
 // - Khi chạy local trên Android Emulator: 'http://10.0.2.2:5000'
 // - Khi chạy local trên thiết bị thật: 'http://<IP_MÁY_TÍNH>:5000' (ví dụ: 'http://192.168.1.5:5000')
 // - Khi deploy production: 'https://prm-tan.vercel.app' (chỉ HTTP, KHÔNG có Socket.IO)
-const String _kBackendBaseUrl = 'http://10.0.2.2:5000';
+const String _kBackendBaseUrl = 'https://prm-tan.vercel.app';
 
 class ChatBottomSheet extends StatefulWidget {
   final String projectId;
