@@ -376,10 +376,26 @@ exports.getProjectTasks = async (req, res) => {
 exports.createProjectTask = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { title, description, priority, deadline, assignedTo } = req.body;
+        const {
+            title,
+            description,
+            priority,
+            deadline,
+            dueDate,
+            dueTime,
+            startDate,
+            reminderType,
+            reminderOffset,
+            notificationEnabled,
+            assignedTo
+        } = req.body;
+        const taskDueDate = dueDate || deadline;
 
         if (!title) {
             return res.status(400).json({ error: 'Task title is required' });
+        }
+        if (!taskDueDate) {
+            return res.status(400).json({ error: 'Due date is required for assigned project tasks' });
         }
 
         const project = await Project.findById(projectId);
@@ -401,8 +417,13 @@ exports.createProjectTask = async (req, res) => {
             description,
             priority: priority || 'Medium',
             status: 'Pending',
-            deadline,
-            dueDate: deadline,
+            deadline: taskDueDate,
+            dueDate: taskDueDate,
+            dueTime: dueTime || '',
+            startDate,
+            reminderType: reminderType || 'none',
+            reminderOffset: reminderOffset ?? null,
+            notificationEnabled: Boolean(notificationEnabled && (reminderType || 'none') !== 'none'),
             sourceType: 'project',
             project: projectId,
             assignedTo: assigneeId,
@@ -439,7 +460,20 @@ exports.createProjectTask = async (req, res) => {
 exports.updateProjectTask = async (req, res) => {
     try {
         const { projectId, taskId } = req.params;
-        const { title, description, status, priority, deadline, assignedTo } = req.body;
+        const {
+            title,
+            description,
+            status,
+            priority,
+            deadline,
+            dueDate,
+            dueTime,
+            startDate,
+            reminderType,
+            reminderOffset,
+            notificationEnabled,
+            assignedTo
+        } = req.body;
 
         const project = await Project.findById(projectId);
         if (!project || !isProjectParticipant(project, req.user.id)) {
@@ -472,9 +506,17 @@ exports.updateProjectTask = async (req, res) => {
             if (title !== undefined) task.title = title;
             if (description !== undefined) task.description = description;
             if (priority !== undefined) task.priority = priority;
-            if (deadline !== undefined) {
-                task.deadline = deadline;
-                task.dueDate = deadline;
+            if (deadline !== undefined || dueDate !== undefined) {
+                const nextDueDate = dueDate !== undefined ? dueDate : deadline;
+                task.deadline = nextDueDate;
+                task.dueDate = nextDueDate;
+            }
+            if (dueTime !== undefined) task.dueTime = dueTime;
+            if (startDate !== undefined) task.startDate = startDate;
+            if (reminderType !== undefined) task.reminderType = reminderType || 'none';
+            if (reminderOffset !== undefined) task.reminderOffset = reminderOffset;
+            if (notificationEnabled !== undefined) {
+                task.notificationEnabled = Boolean(notificationEnabled && task.reminderType !== 'none');
             }
             if (assignedTo !== undefined) {
                 if (!isUserInProject(project, assignedTo)) {

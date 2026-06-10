@@ -1334,7 +1334,11 @@ class TasksTab extends StatelessWidget {
                             final priority =
                                 (task['priority'] ?? 'Medium').toString();
                             final assignee = task['assignedTo'] ?? task['user'];
-                            final color = _taskStatusColor(status);
+                            final overdue = _taskIsVisuallyOverdue(task);
+                            final color = overdue
+                                ? const Color(0xFFF43F5E)
+                                : _taskStatusColor(status);
+                            final reminderLabel = _taskReminderLabel(task);
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _DetailCard(
@@ -1365,15 +1369,38 @@ class TasksTab extends StatelessWidget {
                                           ),
                                           const SizedBox(height: 5),
                                           Text(
-                                            '${assigneeName(assignee)} · $priority',
+                                            '${_taskDueText(task)} · ${assigneeName(assignee)}',
                                             style: TextStyle(
                                                 color: captionColor,
                                                 fontSize: 11),
                                           ),
+                                          const SizedBox(height: 8),
+                                          Wrap(
+                                            spacing: 7,
+                                            runSpacing: 6,
+                                            children: [
+                                              _StatusPill(
+                                                label: overdue
+                                                    ? 'Overdue'
+                                                    : status,
+                                                color: color,
+                                              ),
+                                              _StatusPill(
+                                                label: priority,
+                                                color: _taskPriorityColor(
+                                                    priority),
+                                              ),
+                                              if (reminderLabel.isNotEmpty)
+                                                _StatusPill(
+                                                  label: reminderLabel,
+                                                  color:
+                                                      const Color(0xFF8B5CF6),
+                                                ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     ),
-                                    _StatusPill(label: status, color: color),
                                     if (canUpdateTask(task))
                                       PopupMenuButton<String>(
                                         icon: Icon(Icons.more_vert_rounded,
@@ -1397,7 +1424,6 @@ class TasksTab extends StatelessWidget {
                                             'Pending',
                                             'In Progress',
                                             'Completed',
-                                            'Overdue'
                                           ].map((value) => PopupMenuItem(
                                                 value: value,
                                                 child: Text(value),
@@ -1421,7 +1447,9 @@ class MembersTab extends StatelessWidget {
   final List<dynamic> managers;
   final List<dynamic> members;
   final bool canInvite;
+  final bool canEditRoles;
   final VoidCallback onInvite;
+  final Future<void> Function(dynamic user, String role) onRoleChanged;
 
   const MembersTab({
     super.key,
@@ -1429,7 +1457,9 @@ class MembersTab extends StatelessWidget {
     required this.managers,
     required this.members,
     required this.canInvite,
+    required this.canEditRoles,
     required this.onInvite,
+    required this.onRoleChanged,
   });
 
   @override
@@ -1447,9 +1477,27 @@ class MembersTab extends StatelessWidget {
               label: const Text('Invite member'),
             ),
           ),
-        _MemberGroup(title: 'Owner', users: owners, role: 'Owner'),
-        _MemberGroup(title: 'Managers', users: managers, role: 'Manager'),
-        _MemberGroup(title: 'Members', users: members, role: 'Member'),
+        _MemberGroup(
+          title: 'Owner',
+          users: owners,
+          role: 'Owner',
+          canEditRoles: false,
+          onRoleChanged: onRoleChanged,
+        ),
+        _MemberGroup(
+          title: 'Managers',
+          users: managers,
+          role: 'Manager',
+          canEditRoles: canEditRoles,
+          onRoleChanged: onRoleChanged,
+        ),
+        _MemberGroup(
+          title: 'Members',
+          users: members,
+          role: 'Member',
+          canEditRoles: canEditRoles,
+          onRoleChanged: onRoleChanged,
+        ),
       ],
     );
   }
@@ -1459,11 +1507,15 @@ class _MemberGroup extends StatelessWidget {
   final String title;
   final List<dynamic> users;
   final String role;
+  final bool canEditRoles;
+  final Future<void> Function(dynamic user, String role) onRoleChanged;
 
   const _MemberGroup({
     required this.title,
     required this.users,
     required this.role,
+    required this.canEditRoles,
+    required this.onRoleChanged,
   });
 
   @override
@@ -1528,20 +1580,144 @@ class _MemberGroup extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _StatusPill(
-                    label: role,
-                    color: role == 'Owner'
-                        ? const Color(0xFFEAB308)
-                        : role == 'Manager'
-                            ? const Color(0xFF8B5CF6)
-                            : const Color(0xFF06B6D4),
-                  ),
+                  canEditRoles
+                      ? _RoleEditButton(
+                          user: user,
+                          role: role,
+                          onRoleChanged: onRoleChanged,
+                        )
+                      : _StatusPill(
+                          label: role,
+                          color: role == 'Owner'
+                              ? const Color(0xFFEAB308)
+                              : role == 'Manager'
+                                  ? const Color(0xFF8B5CF6)
+                                  : const Color(0xFF06B6D4),
+                        ),
                 ],
               ),
             ),
           );
         }),
       ],
+    );
+  }
+}
+
+class _RoleEditButton extends StatelessWidget {
+  final dynamic user;
+  final String role;
+  final Future<void> Function(dynamic user, String role) onRoleChanged;
+
+  const _RoleEditButton({
+    required this.user,
+    required this.role,
+    required this.onRoleChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        role == 'Manager' ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: () => _showEditRoleDialog(context),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StatusPill(label: role, color: color),
+          const SizedBox(width: 4),
+          Icon(Icons.edit_rounded, size: 15, color: color),
+        ],
+      ),
+    );
+  }
+
+  void _showEditRoleDialog(BuildContext context) {
+    String selectedRole = role == 'Manager' ? 'Manager' : 'Member';
+    var saving = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = ThemeService.isDarkMode.value;
+            final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+            final textColor = ThemeService.getTextColor(isDark);
+            final subTextColor = ThemeService.getSubTextColor(isDark);
+
+            return AlertDialog(
+              backgroundColor: dialogBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Text(
+                'Edit role',
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Choose this member role in the project.',
+                    style: TextStyle(color: subTextColor, fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: const InputDecoration(labelText: 'Role'),
+                    items: const ['Manager', 'Member']
+                        .map(
+                          (value) => DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: saving
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              setDialogState(() => selectedRole = value);
+                            }
+                          },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          setDialogState(() => saving = true);
+                          await onRoleChanged(user, selectedRole);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -1658,8 +1834,91 @@ class _DetailCard extends StatelessWidget {
 Color _taskStatusColor(String status) {
   if (status == 'Completed') return const Color(0xFF10B981);
   if (status == 'In Progress') return const Color(0xFF06B6D4);
-  if (status == 'Overdue') return Colors.redAccent;
   return Colors.blueGrey;
+}
+
+Color _taskPriorityColor(String priority) {
+  if (priority == 'Urgent') return const Color(0xFFDC2626);
+  if (priority == 'High') return const Color(0xFFF43F5E);
+  if (priority == 'Medium') return const Color(0xFFF59E0B);
+  return const Color(0xFF10B981);
+}
+
+DateTime? _taskDate(dynamic value) {
+  if (value == null) return null;
+  return DateTime.tryParse(value.toString())?.toLocal();
+}
+
+TimeOfDay? _taskTime(dynamic value) {
+  final raw = value?.toString() ?? '';
+  final parts = raw.split(':');
+  if (parts.length < 2) return null;
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) return null;
+  return TimeOfDay(hour: hour, minute: minute);
+}
+
+String _taskTimeText(TimeOfDay? time) {
+  if (time == null) return 'End of day';
+  final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+  final minute = time.minute.toString().padLeft(2, '0');
+  final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+  return '$hour:$minute $period';
+}
+
+String _taskDueText(dynamic task) {
+  if (task is! Map) return 'No due date';
+  final due = _taskDate(task['dueDate'] ?? task['deadline']);
+  if (due == null) return 'No due date';
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dueDay = DateTime(due.year, due.month, due.day);
+  final diff = dueDay.difference(today).inDays;
+  final dateText = diff == 0
+      ? 'Today'
+      : diff == 1
+          ? 'Tomorrow'
+          : diff == -1
+              ? 'Yesterday'
+              : '${due.day}/${due.month}/${due.year}';
+  return '$dateText · ${_taskTimeText(_taskTime(task['dueTime']))}';
+}
+
+bool _taskIsVisuallyOverdue(dynamic task) {
+  if (task is! Map) return false;
+  if ((task['status'] ?? '').toString() == 'Completed') return false;
+  final due = _taskDate(task['dueDate'] ?? task['deadline']);
+  if (due == null) return false;
+  final time = _taskTime(task['dueTime']);
+  final dueAt = DateTime(
+    due.year,
+    due.month,
+    due.day,
+    time?.hour ?? 23,
+    time?.minute ?? 59,
+  );
+  return dueAt.isBefore(DateTime.now());
+}
+
+String _taskReminderLabel(dynamic task) {
+  if (task is! Map || task['notificationEnabled'] != true) return '';
+  switch ((task['reminderType'] ?? 'none').toString()) {
+    case 'at_time':
+      return 'Reminder: due time';
+    case '15_min_before':
+      return 'Reminder: 15 min';
+    case '30_min_before':
+      return 'Reminder: 30 min';
+    case '1_hour_before':
+      return 'Reminder: 1 hour';
+    case '1_day_before':
+      return 'Reminder: 1 day';
+    case 'custom':
+      return 'Reminder: custom';
+    default:
+      return '';
+  }
 }
 
 class ProjectDetailScreen extends StatelessWidget {

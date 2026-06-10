@@ -284,7 +284,7 @@ class _TaskScreenState extends State<TaskScreen> {
                               dropdownColor: dialogBg,
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: subTextColor),
-                              items: ['Low', 'Medium', 'High']
+                              items: ['Low', 'Medium', 'High', 'Urgent']
                                   .map(
                                     (value) => DropdownMenuItem<String>(
                                       value: value,
@@ -425,9 +425,8 @@ class _TaskScreenState extends State<TaskScreen> {
                   _FilterChoiceGroup(
                     title: 'Priority',
                     value: priority,
-                    options: const ['All', 'Low', 'Medium', 'High'],
-                    onChanged: (value) =>
-                        setSheetState(() => priority = value),
+                    options: const ['All', 'Low', 'Medium', 'High', 'Urgent'],
+                    onChanged: (value) => setSheetState(() => priority = value),
                   ),
                   _FilterChoiceGroup(
                     title: 'Sort by',
@@ -539,7 +538,27 @@ class _TaskScreenState extends State<TaskScreen> {
   DateTime? _taskDueDate(Map<String, dynamic> task) {
     final value = task['deadline'] ?? task['dueDate'];
     if (value == null) return null;
-    return DateTime.tryParse(value.toString())?.toLocal();
+    final parsed = DateTime.tryParse(value.toString())?.toLocal();
+    if (parsed == null) return null;
+    final dueTime = _parseTaskTime(task['dueTime']);
+    if (dueTime == null) return parsed;
+    return DateTime(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      dueTime.hour,
+      dueTime.minute,
+    );
+  }
+
+  TimeOfDay? _parseTaskTime(dynamic value) {
+    final raw = value?.toString() ?? '';
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
   }
 
   String _sourceLabel(Map<String, dynamic> task) {
@@ -585,7 +604,28 @@ class _TaskScreenState extends State<TaskScreen> {
     return '${due.day}/${due.month}/${due.year} · $time';
   }
 
+  String _reminderLabel(Map<String, dynamic> task) {
+    if (task['notificationEnabled'] != true) return '';
+    switch ((task['reminderType'] ?? 'none').toString()) {
+      case 'at_time':
+        return 'Reminder: due time';
+      case '15_min_before':
+        return 'Reminder: 15 min before';
+      case '30_min_before':
+        return 'Reminder: 30 min before';
+      case '1_hour_before':
+        return 'Reminder: 1 hour before';
+      case '1_day_before':
+        return 'Reminder: 1 day before';
+      case 'custom':
+        return 'Reminder: custom';
+      default:
+        return '';
+    }
+  }
+
   Color _priorityColor(String priority) {
+    if (priority == 'Urgent') return const Color(0xFFDC2626);
     if (priority == 'High') return const Color(0xFFF43F5E);
     if (priority == 'Medium') return const Color(0xFFF59E0B);
     return const Color(0xFF10B981);
@@ -618,8 +658,11 @@ class _TaskScreenState extends State<TaskScreen> {
         final cardColor = ThemeService.getCardColor(isDark);
         final borderColor = ThemeService.getBorderColor(isDark);
         final groupedTasks = _groupTasks();
-        final projectCount =
-            _tasks.where((task) => _sourceLabel(Map<String, dynamic>.from(task as Map)) == 'Project').length;
+        final projectCount = _tasks
+            .where((task) =>
+                _sourceLabel(Map<String, dynamic>.from(task as Map)) ==
+                'Project')
+            .length;
         final overdueCount = _tasks.where((task) {
           final map = Map<String, dynamic>.from(task as Map);
           final due = _taskDueDate(map);
@@ -811,11 +854,12 @@ class _TaskScreenState extends State<TaskScreen> {
                                         subTextColor: subTextColor,
                                         captionColor: captionColor,
                                         source: _sourceLabel(task),
-                                        sourceColor: _sourceColor(
-                                            _sourceLabel(task)),
+                                        sourceColor:
+                                            _sourceColor(_sourceLabel(task)),
                                         projectName: _projectName(task),
                                         assigneeName: _assigneeName(task),
                                         dueText: _dueText(task),
+                                        reminderLabel: _reminderLabel(task),
                                         priorityColor: _priorityColor(
                                           task['priority']?.toString() ??
                                               'Medium',
@@ -827,10 +871,10 @@ class _TaskScreenState extends State<TaskScreen> {
                                         ),
                                         onToggle: () =>
                                             _toggleTaskComplete(task),
-                                        onDelete: _sourceLabel(task) ==
-                                                'Personal'
-                                            ? () => _deleteTask(task)
-                                            : null,
+                                        onDelete:
+                                            _sourceLabel(task) == 'Personal'
+                                                ? () => _deleteTask(task)
+                                                : null,
                                       ),
                                   ],
                                   const SizedBox(height: 24),
@@ -961,6 +1005,7 @@ class _TaskInboxCard extends StatelessWidget {
   final String projectName;
   final String assigneeName;
   final String dueText;
+  final String reminderLabel;
   final Color priorityColor;
   final Color statusColor;
   final VoidCallback onToggle;
@@ -976,6 +1021,7 @@ class _TaskInboxCard extends StatelessWidget {
     required this.projectName,
     required this.assigneeName,
     required this.dueText,
+    required this.reminderLabel,
     required this.priorityColor,
     required this.statusColor,
     required this.onToggle,
@@ -1104,10 +1150,16 @@ class _TaskInboxCard extends StatelessWidget {
                                   label: priority,
                                   color: priorityColor,
                                 ),
-                                if (assigneeName.isNotEmpty && source == 'Project')
+                                if (assigneeName.isNotEmpty &&
+                                    source == 'Project')
                                   _TinyBadge(
                                     label: 'Assigned to $assigneeName',
                                     color: captionColor,
+                                  ),
+                                if (reminderLabel.isNotEmpty)
+                                  _TinyBadge(
+                                    label: reminderLabel,
+                                    color: const Color(0xFF8B5CF6),
                                   ),
                               ],
                             ),
@@ -1189,7 +1241,7 @@ class _TaskEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No tasks here',
+            'No tasks for now',
             style: TextStyle(
               color: textColor,
               fontSize: 16,
@@ -1198,7 +1250,7 @@ class _TaskEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Project tasks assigned to you will appear in this inbox.',
+            'Personal tasks, scheduled tasks, and project tasks assigned to you will appear here.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: captionColor,

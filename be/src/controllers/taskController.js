@@ -174,7 +174,10 @@ exports.createTask = async (req, res) => {
             scheduleId,
             startDate,
             dueDate,
-            dueTime
+            dueTime,
+            reminderType,
+            reminderOffset,
+            notificationEnabled
         } = req.body;
 
         if (!title) {
@@ -207,6 +210,9 @@ exports.createTask = async (req, res) => {
             startDate,
             dueDate: dueDate || deadline,
             dueTime,
+            reminderType: reminderType || 'none',
+            reminderOffset: reminderOffset ?? null,
+            notificationEnabled: Boolean(notificationEnabled && (reminderType || 'none') !== 'none'),
             completedAt: status === 'Completed' ? new Date() : null,
             user: assignedTo || req.user.id
         });
@@ -237,7 +243,10 @@ exports.updateTask = async (req, res) => {
             scheduleId,
             startDate,
             dueDate,
-            dueTime
+            dueTime,
+            reminderType,
+            reminderOffset,
+            notificationEnabled
         } = req.body;
 
         if (project !== undefined || sourceType !== undefined || scheduleId !== undefined) {
@@ -290,6 +299,11 @@ exports.updateTask = async (req, res) => {
         }
         if (canEditFields && startDate !== undefined) task.startDate = startDate;
         if (canEditFields && dueTime !== undefined) task.dueTime = dueTime;
+        if (canEditFields && reminderType !== undefined) task.reminderType = reminderType || 'none';
+        if (canEditFields && reminderOffset !== undefined) task.reminderOffset = reminderOffset;
+        if (canEditFields && notificationEnabled !== undefined) {
+            task.notificationEnabled = Boolean(notificationEnabled && task.reminderType !== 'none');
+        }
         if (canEditFields && label !== undefined) task.label = label;
         if (canEditFields && assignedTo !== undefined) {
             task.assignedTo = assignedTo || req.user.id;

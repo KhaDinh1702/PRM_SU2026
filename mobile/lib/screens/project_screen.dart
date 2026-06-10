@@ -40,6 +40,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
   bool _projectTasksLoaded = false;
   String _taskPriority = 'Medium';
   String _taskFilter = 'All';
+  DateTime? _taskDueDate;
+  TimeOfDay? _taskDueTime;
+  String _taskReminderType = 'none';
+  int? _taskReminderOffset;
+  bool _taskNotificationEnabled = false;
   String _projectSearchQuery = '';
   String _projectTab = 'All';
   String _roleFilter = 'All';
@@ -535,7 +540,30 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Future<void> _createProjectTask(
       String projectId, StateSetter sheetSetState) async {
     final title = _taskTitleController.text.trim();
-    if (title.isEmpty || _selectedAssigneeId == null) return;
+    if (title.isEmpty || _selectedAssigneeId == null || _taskDueDate == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Task title, assignee, and due date are required.'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+    if (_combinedTaskDueDateTime().isBefore(DateTime.now())) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Due date and time cannot be in the past.'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     try {
       final token = await AuthService.getToken();
@@ -549,6 +577,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         'priority': _taskPriority,
         'assignedTo': _selectedAssigneeId,
         'project': projectId,
+        ..._taskSchedulePayload(),
       });
 
       final response = await http
@@ -572,6 +601,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         }
         _taskTitleController.clear();
         _taskDescController.clear();
+        _resetTaskScheduleFields();
         if (mounted) Navigator.pop(context);
         await _loadProjectTasks(projectId, sheetSetState);
         await _loadProjects();
@@ -684,8 +714,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
-  // ignore: unused_element
-  Future<void> _updateMemberRole(String projectId, String userId, String role,
+  Future<bool> _updateMemberRole(String projectId, String userId, String role,
       Map<String, dynamic> projectData, StateSetter sheetSetState) async {
     try {
       final token = await AuthService.getToken();
@@ -707,8 +736,39 @@ class _ProjectScreenState extends State<ProjectScreen> {
         projectData['currentUserRole'] = data['currentUserRole'];
         await _loadProjects();
         sheetSetState(() {});
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Member role updated successfully'),
+              backgroundColor: Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return true;
+      } else if (mounted) {
+        final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text((data['error'] ?? 'Cannot update member role').toString()),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating member role: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    return false;
   }
 
   @override

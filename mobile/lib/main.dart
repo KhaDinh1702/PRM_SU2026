@@ -160,31 +160,50 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             final eventId = event['id'];
             final source = event['source'] ?? 'event';
             // Chỉ thông báo các sự kiện từ calendar (source là 'event'), bỏ qua task deadline
-            if (source != 'event') continue;
 
             final startStr = event['start'];
             if (startStr == null || eventId == null) continue;
 
-            final eventTime = DateTime.parse(startStr).toLocal();
+            final notificationId = source == 'task'
+                ? 'task:$eventId:${event['reminderType'] ?? 'reminder'}'
+                : eventId.toString();
+            final eventTime = source == 'task'
+                ? DateTime.tryParse(
+                        (event['reminderAt'] ?? event['start']).toString())
+                    ?.toLocal()
+                : DateTime.parse(startStr).toLocal();
+            if (eventTime == null) continue;
+
+            if (source == 'task') {
+              if (event['notificationEnabled'] != true ||
+                  event['status'] == 'Completed') {
+                continue;
+              }
+            }
             final title =
                 event['title'] ?? LocaleService.tr('Sự kiện', en: 'Event');
             final message = event['description'] ??
                 LocaleService.tr('Đã đến thời gian diễn ra sự kiện.',
                     en: 'It is time for your event.');
-            final type = event['type'] ?? 'reminder';
+            final type =
+                source == 'task' ? 'task' : (event['type'] ?? 'reminder');
+            final notificationTitle =
+                source == 'task' ? 'Task Reminder' : title;
+            final notificationMessage =
+                source == 'task' ? _taskReminderMessage(event) : message;
 
             // Nếu thời gian hiện tại đã vượt qua hoặc bằng thời gian sự kiện
             // và sự kiện chưa được thông báo trong phiên làm việc này
             if (now.isAfter(eventTime) &&
-                !_notifiedEventIds.contains(eventId)) {
+                !_notifiedEventIds.contains(notificationId)) {
               // Đảm bảo không thông báo các sự kiện quá cũ (quá 2 giờ trước) khi ứng dụng vừa khởi động
               if (now.difference(eventTime).inHours < 2) {
-                _notifiedEventIds.add(eventId);
-                _triggerEventNotification(
-                    eventId, title, message, type, token!);
+                _notifiedEventIds.add(notificationId);
+                _triggerEventNotification(notificationId, notificationTitle,
+                    notificationMessage, type, token!);
               } else {
                 // Đánh dấu đã qua nhưng không thông báo vì quá cũ
-                _notifiedEventIds.add(eventId);
+                _notifiedEventIds.add(notificationId);
               }
             }
           }
@@ -193,6 +212,28 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         // Lỗi kết nối âm thầm bỏ qua để tránh ảnh hưởng trải nghiệm người dùng
       }
     });
+  }
+
+  String _taskReminderMessage(Map<String, dynamic> task) {
+    final rawTitle = (task['title'] ?? 'Task').toString();
+    final title = rawTitle.replaceFirst('[TASK DEADLINE] ', '');
+    final reminderType = (task['reminderType'] ?? '').toString();
+    if (reminderType == 'at_time') {
+      return '$title is due now.';
+    }
+    if (reminderType == '15_min_before') {
+      return '$title is due in 15 minutes.';
+    }
+    if (reminderType == '30_min_before') {
+      return '$title is due in 30 minutes.';
+    }
+    if (reminderType == '1_hour_before') {
+      return '$title is due in 1 hour.';
+    }
+    if (reminderType == '1_day_before') {
+      return '$title is due tomorrow.';
+    }
+    return '$title is due soon.';
   }
 
   Future<void> _triggerEventNotification(
