@@ -18,7 +18,7 @@ const taskSchema = new mongoose.Schema({
     },
     priority: {
         type: String,
-        enum: ['Low', 'Medium', 'High'],
+        enum: ['Low', 'Medium', 'High', 'Urgent'],
         default: 'Medium'
     },
     deadline: {
@@ -66,6 +66,19 @@ const taskSchema = new mongoose.Schema({
         type: String,
         trim: true,
         default: ''
+    },
+    reminderType: {
+        type: String,
+        enum: ['none', 'at_time', '15_min_before', '30_min_before', '1_hour_before', '1_day_before', 'custom'],
+        default: 'none'
+    },
+    reminderOffset: {
+        type: Number,
+        default: null
+    },
+    notificationEnabled: {
+        type: Boolean,
+        default: false
     },
     completedAt: {
         type: Date

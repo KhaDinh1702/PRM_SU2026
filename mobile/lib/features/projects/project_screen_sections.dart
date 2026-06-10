@@ -1,12 +1,395 @@
 part of project_screen;
 
 extension _ProjectScreenSections on _ProjectScreenState {
+  Future<void> _pickTaskDueDate(
+    BuildContext context,
+    StateSetter setDialogState,
+  ) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _taskDueDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) {
+      setDialogState(() => _taskDueDate = picked);
+    }
+  }
+
+  Future<void> _pickTaskDueTime(
+    BuildContext context,
+    StateSetter setDialogState,
+  ) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _taskDueTime ?? const TimeOfDay(hour: 18, minute: 0),
+    );
+    if (picked != null) {
+      if (_isDueTimeInPast(_taskDueDate ?? DateTime.now(), picked)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Due time cannot be in the past.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+      setDialogState(() => _taskDueTime = picked);
+    }
+  }
+
+  Widget _buildQuickOptionTile({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    IconData? icon,
+    bool disabled = false,
+  }) {
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF06B6D4).withOpacity(0.14)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF06B6D4)
+                : ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 16,
+                color: disabled
+                    ? Colors.grey
+                    : selected
+                        ? const Color(0xFF06B6D4)
+                        : null,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: disabled
+                      ? Colors.grey
+                      : selected
+                          ? const Color(0xFF06B6D4)
+                          : null,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTwoColumnOptions({required List<Widget> children}) {
+    final rows = <Widget>[];
+    for (var i = 0; i < children.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: children[i]),
+            const SizedBox(width: 10),
+            Expanded(
+              child: i + 1 < children.length
+                  ? children[i + 1]
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < children.length) rows.add(const SizedBox(height: 10));
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: rows,
+    );
+  }
+
+  Widget _buildRoundedDropdown<T>({
+    required T? value,
+    required String label,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+    required Color dialogBg,
+    required Color textColor,
+  }) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      dropdownColor: dialogBg,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF06B6D4), width: 1.4),
+        ),
+      ),
+      style: TextStyle(color: textColor, fontWeight: FontWeight.w800),
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+
+  bool _isDueTimeInPast(DateTime date, TimeOfDay time) {
+    final now = DateTime.now();
+    final dueAt =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    return dueAt.isBefore(now);
+  }
+
+  Widget _buildTaskScheduleFields({
+    required BuildContext context,
+    required StateSetter setDialogState,
+    required Color textColor,
+    required Color captionColor,
+    required Color dialogBg,
+  }) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final thisWeek = today.add(const Duration(days: 7));
+    final dueDay = _taskDueDate == null
+        ? null
+        : DateTime(_taskDueDate!.year, _taskDueDate!.month, _taskDueDate!.day);
+    final customDateSelected = dueDay != null &&
+        dueDay != today &&
+        dueDay != tomorrow &&
+        dueDay != thisWeek;
+    final customTimeSelected = _taskDueTime != null &&
+        !(((_taskDueTime!.hour == 9 ||
+                _taskDueTime!.hour == 13 ||
+                _taskDueTime!.hour == 18) &&
+            _taskDueTime!.minute == 0));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Due date *',
+            style: TextStyle(
+              color: captionColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildTwoColumnOptions(
+          children: [
+            _buildQuickOptionTile(
+              label: 'Today',
+              selected: dueDay == today,
+              onTap: () => setDialogState(() => _taskDueDate = today),
+            ),
+            _buildQuickOptionTile(
+              label: 'Tomorrow',
+              selected: dueDay == tomorrow,
+              onTap: () => setDialogState(() => _taskDueDate = tomorrow),
+            ),
+            _buildQuickOptionTile(
+              label: 'This Week',
+              selected: dueDay == thisWeek,
+              onTap: () => setDialogState(() => _taskDueDate = thisWeek),
+            ),
+            _buildQuickOptionTile(
+              icon: Icons.calendar_month_rounded,
+              label:
+                  customDateSelected ? _dateLabel(_taskDueDate) : 'Pick Date',
+              selected: customDateSelected,
+              onTap: () => _pickTaskDueDate(context, setDialogState),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Due time *',
+            style: TextStyle(
+              color: captionColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildTwoColumnOptions(
+          children: [
+            for (final option in const [
+              TimeOfDay(hour: 9, minute: 0),
+              TimeOfDay(hour: 13, minute: 0),
+              TimeOfDay(hour: 18, minute: 0),
+            ])
+              _buildQuickOptionTile(
+                label: _timeLabel(option),
+                selected: _taskDueTime?.hour == option.hour &&
+                    _taskDueTime?.minute == option.minute,
+                disabled: _taskDueDate != null &&
+                    _isDueTimeInPast(_taskDueDate!, option),
+                onTap: () {
+                  if (_taskDueDate != null &&
+                      _isDueTimeInPast(_taskDueDate!, option)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Due time cannot be in the past.'),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  setDialogState(() => _taskDueTime = option);
+                },
+              ),
+            _buildQuickOptionTile(
+              icon: Icons.schedule_rounded,
+              label:
+                  customTimeSelected ? _timeLabel(_taskDueTime) : 'Pick Time',
+              selected: customTimeSelected,
+              onTap: () => _pickTaskDueTime(context, setDialogState),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _buildRoundedDropdown<String>(
+          value: _taskReminderType,
+          label: 'Reminder',
+          dialogBg: dialogBg,
+          textColor: textColor,
+          items: const [
+            'none',
+            'at_time',
+            '15_min_before',
+            '30_min_before',
+            '1_hour_before',
+            '1_day_before',
+          ].map((value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(
+                _taskReminderLabelFromType(value),
+                style: TextStyle(color: textColor),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setDialogState(() {
+                _taskReminderType = value;
+                _taskNotificationEnabled = value != 'none';
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildRoundedDropdown<String>(
+          value: _taskPriority,
+          label: 'Priority',
+          dialogBg: dialogBg,
+          textColor: textColor,
+          items: ['Low', 'Medium', 'High', 'Urgent']
+              .map(
+                (priority) => DropdownMenuItem(
+                  value: priority,
+                  child: Text(priority, style: TextStyle(color: textColor)),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setDialogState(() => _taskPriority = value);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAssigneeDropdown({
+    required List<dynamic> participants,
+    required StateSetter setDialogState,
+    required Color dialogBg,
+    required Color textColor,
+  }) {
+    final items = participants.map((user) {
+      final id = _itemId(user);
+      return DropdownMenuItem<String>(
+        value: id,
+        child: Text(
+          _memberDisplayName(user),
+          style: TextStyle(color: textColor),
+        ),
+      );
+    }).toList();
+    final selectedValue = items.any((item) => item.value == _selectedAssigneeId)
+        ? _selectedAssigneeId
+        : null;
+
+    return _buildRoundedDropdown<String>(
+      value: selectedValue,
+      label: LocaleService.tr('Nguoi nhan task', en: 'Assignee'),
+      dialogBg: dialogBg,
+      textColor: textColor,
+      items: items,
+      onChanged: items.isEmpty
+          ? (_) {}
+          : (value) => setDialogState(() => _selectedAssigneeId = value),
+    );
+  }
+
   void _showCreateProjectTaskDialog(
       Map<String, dynamic> project, StateSetter sheetSetState) {
     final participants = _projectParticipants(project);
     _selectedAssigneeId = participants.isNotEmpty
         ? _itemId(participants.first)
         : _currentUserId();
+    _taskTitleController.clear();
+    _taskDescController.clear();
+    _taskPriority = 'Medium';
+    _resetTaskScheduleFields();
+    _taskDueDate = DateTime.now();
+    _taskDueTime = const TimeOfDay(hour: 18, minute: 0);
 
     showDialog(
       context: context,
@@ -54,48 +437,19 @@ extension _ProjectScreenSections on _ProjectScreenState {
                         prefixIcon: Icons.description_outlined,
                       ),
                       const SizedBox(height: 14),
-                      DropdownButtonFormField<String>(
-                        value: _selectedAssigneeId,
-                        dropdownColor: dialogBg,
-                        decoration: InputDecoration(
-                          labelText: LocaleService.tr('Nguoi nhan task',
-                              en: 'Assignee'),
-                        ),
-                        items: participants.map((user) {
-                          final id = _itemId(user);
-                          return DropdownMenuItem<String>(
-                            value: id,
-                            child: Text(
-                              _memberDisplayName(user),
-                              style: TextStyle(color: textColor),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) =>
-                            setDialogState(() => _selectedAssigneeId = value),
+                      _buildAssigneeDropdown(
+                        participants: participants,
+                        setDialogState: setDialogState,
+                        dialogBg: dialogBg,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _taskPriority,
-                        dropdownColor: dialogBg,
-                        decoration: InputDecoration(
-                          labelText:
-                              LocaleService.tr('Do uu tien', en: 'Priority'),
-                        ),
-                        items: ['Low', 'Medium', 'High']
-                            .map(
-                              (priority) => DropdownMenuItem(
-                                value: priority,
-                                child: Text(priority,
-                                    style: TextStyle(color: textColor)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() => _taskPriority = value);
-                          }
-                        },
+                      _buildTaskScheduleFields(
+                        context: context,
+                        setDialogState: setDialogState,
+                        textColor: textColor,
+                        captionColor: captionColor,
+                        dialogBg: dialogBg,
                       ),
                     ],
                   ),
@@ -282,6 +636,19 @@ extension _ProjectScreenSections on _ProjectScreenState {
       managers: managers,
       members: regularMembers,
       canInvite: canManage,
+      canEditRoles: isOwner,
+      onRoleChanged: (user, role) async {
+        final userId = _itemId(user);
+        if (userId.isEmpty) return;
+        await _updateMemberRole(
+          project['_id'].toString(),
+          userId,
+          role,
+          projectData,
+          sheetSetState,
+        );
+        sheetSetState(() {});
+      },
       onInvite: () async {
         await showDialog(
           context: context,
@@ -343,6 +710,8 @@ extension _ProjectScreenSections on _ProjectScreenState {
     _taskTitleController.text = (task['title'] ?? '').toString();
     _taskDescController.text = (task['description'] ?? '').toString();
     _taskPriority = (task['priority'] ?? 'Medium').toString();
+    _setTaskScheduleFromTask(task);
+    _taskDueDate ??= DateTime.now();
     _selectedAssigneeId =
         participants.any((user) => _itemId(user) == currentAssigneeId)
             ? currentAssigneeId
@@ -399,58 +768,33 @@ extension _ProjectScreenSections on _ProjectScreenState {
                         prefixIcon: Icons.description_outlined,
                       ),
                       const SizedBox(height: 14),
-                      DropdownButtonFormField<String>(
-                        value: _selectedAssigneeId,
-                        dropdownColor: dialogBg,
-                        decoration: InputDecoration(
-                          labelText: LocaleService.tr('Nguoi nhan task',
-                              en: 'Assignee'),
-                        ),
-                        items: participants.map((user) {
-                          final id = _itemId(user);
-                          return DropdownMenuItem<String>(
-                            value: id,
-                            child: Text(_memberDisplayName(user),
-                                style: TextStyle(color: textColor)),
-                          );
-                        }).toList(),
-                        onChanged: (value) =>
-                            setDialogState(() => _selectedAssigneeId = value),
+                      _buildAssigneeDropdown(
+                        participants: participants,
+                        setDialogState: setDialogState,
+                        dialogBg: dialogBg,
+                        textColor: textColor,
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _taskPriority,
-                        dropdownColor: dialogBg,
-                        decoration: InputDecoration(
-                          labelText:
-                              LocaleService.tr('Do uu tien', en: 'Priority'),
-                        ),
-                        items: ['Low', 'Medium', 'High']
-                            .map((priority) => DropdownMenuItem(
-                                  value: priority,
-                                  child: Text(priority,
+                      _buildTaskScheduleFields(
+                        context: context,
+                        setDialogState: setDialogState,
+                        textColor: textColor,
+                        captionColor: captionColor,
+                        dialogBg: dialogBg,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRoundedDropdown<String>(
+                        value: taskStatus,
+                        label: 'Status',
+                        dialogBg: dialogBg,
+                        textColor: textColor,
+                        items: ['Pending', 'In Progress', 'Completed']
+                            .map((status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(status,
                                       style: TextStyle(color: textColor)),
                                 ))
                             .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() => _taskPriority = value);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: taskStatus,
-                        dropdownColor: dialogBg,
-                        decoration: const InputDecoration(labelText: 'Status'),
-                        items:
-                            ['Pending', 'In Progress', 'Completed', 'Overdue']
-                                .map((status) => DropdownMenuItem(
-                                      value: status,
-                                      child: Text(status,
-                                          style: TextStyle(color: textColor)),
-                                    ))
-                                .toList(),
                         onChanged: (value) {
                           if (value != null) {
                             setDialogState(() => taskStatus = value);
@@ -485,11 +829,21 @@ extension _ProjectScreenSections on _ProjectScreenState {
                         ? null
                         : () async {
                             final title = _taskTitleController.text.trim();
-                            if (title.isEmpty || _selectedAssigneeId == null) {
+                            if (title.isEmpty ||
+                                _selectedAssigneeId == null ||
+                                _taskDueDate == null) {
                               setDialogState(() {
                                 editError = LocaleService.tr(
                                     'Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin.',
-                                    en: 'Please fill in all required fields.');
+                                    en: 'Task title, assignee, and due date are required.');
+                              });
+                              return;
+                            }
+                            if (_combinedTaskDueDateTime()
+                                .isBefore(DateTime.now())) {
+                              setDialogState(() {
+                                editError =
+                                    'Due date and time cannot be in the past.';
                               });
                               return;
                             }
@@ -508,6 +862,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                 'priority': _taskPriority,
                                 'assignedTo': _selectedAssigneeId,
                                 'status': taskStatus,
+                                ..._taskSchedulePayload(),
                               },
                               sheetSetState,
                             );

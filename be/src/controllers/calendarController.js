@@ -16,6 +16,23 @@ const taskSourceType = (task) => {
     return 'personal';
 };
 
+const reminderAtForTask = (task) => {
+    if (!task.notificationEnabled || !task.reminderType || task.reminderType === 'none') return null;
+    const due = new Date(task.deadline || task.dueDate);
+    if (Number.isNaN(due.getTime())) return null;
+
+    const offsets = {
+        at_time: 0,
+        '15_min_before': 15,
+        '30_min_before': 30,
+        '1_hour_before': 60,
+        '1_day_before': 1440,
+        custom: task.reminderOffset || 0
+    };
+    const minutes = offsets[task.reminderType] ?? 0;
+    return new Date(due.getTime() - minutes * 60 * 1000);
+};
+
 // GET /api/calendar/events
 exports.getEvents = async (req, res) => {
     try {
@@ -60,7 +77,12 @@ exports.getEvents = async (req, res) => {
             sourceType: taskSourceType(task),
             projectName: task.project?.name || null,
             status: task.status,
-            priority: task.priority
+            priority: task.priority,
+            dueTime: task.dueTime,
+            reminderType: task.reminderType,
+            reminderOffset: task.reminderOffset,
+            notificationEnabled: task.notificationEnabled,
+            reminderAt: reminderAtForTask(task)
         }));
 
         const schedule = [...formattedEvents, ...formattedTasks].sort((a, b) => new Date(a.start) - new Date(b.start));

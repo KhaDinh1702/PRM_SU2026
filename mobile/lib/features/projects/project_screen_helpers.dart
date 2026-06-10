@@ -535,6 +535,129 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
     return const Color(0xFFEAB308);
   }
 
+  void _resetTaskScheduleFields() {
+    _taskDueDate = null;
+    _taskDueTime = null;
+    _taskReminderType = 'none';
+    _taskReminderOffset = null;
+    _taskNotificationEnabled = false;
+  }
+
+  TimeOfDay? _parseTaskTime(dynamic value) {
+    final raw = value?.toString() ?? '';
+    final parts = raw.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  DateTime? _parseTaskDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toLocal();
+  }
+
+  void _setTaskScheduleFromTask(Map<String, dynamic> task) {
+    _taskDueDate = _parseTaskDate(task['dueDate'] ?? task['deadline']);
+    _taskDueTime = _parseTaskTime(task['dueTime']);
+    _taskReminderType = (task['reminderType'] ?? 'none').toString();
+    _taskReminderOffset = task['reminderOffset'] is num
+        ? (task['reminderOffset'] as num).round()
+        : int.tryParse(task['reminderOffset']?.toString() ?? '');
+    _taskNotificationEnabled =
+        task['notificationEnabled'] == true && _taskReminderType != 'none';
+  }
+
+  DateTime _combinedTaskDueDateTime() {
+    final date = _taskDueDate ?? DateTime.now();
+    final time = _taskDueTime ?? const TimeOfDay(hour: 23, minute: 59);
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  String _timeToApiString(TimeOfDay? time) {
+    if (time == null) return '';
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _dateLabel(DateTime? date) {
+    if (date == null) return 'Pick date';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final diff = day.difference(today).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Tomorrow';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _timeLabel(TimeOfDay? time) {
+    if (time == null) return 'End of day';
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
+  String _taskReminderLabelFromType(String type) {
+    switch (type) {
+      case 'at_time':
+        return 'At due time';
+      case '15_min_before':
+        return '15 min before';
+      case '30_min_before':
+        return '30 min before';
+      case '1_hour_before':
+        return '1 hour before';
+      case '1_day_before':
+        return '1 day before';
+      case 'custom':
+        return 'Custom';
+      default:
+        return 'No reminder';
+    }
+  }
+
+  String _taskDueLabel(Map<String, dynamic> task) {
+    final due = _parseTaskDate(task['dueDate'] ?? task['deadline']);
+    if (due == null) return 'No due date';
+    final time = _parseTaskTime(task['dueTime']);
+    return '${_dateLabel(due)} · ${_timeLabel(time)}';
+  }
+
+  bool _taskIsOverdue(Map<String, dynamic> task) {
+    final status = (task['status'] ?? '').toString();
+    if (status == 'Completed') return false;
+    final due = _parseTaskDate(task['dueDate'] ?? task['deadline']);
+    if (due == null) return false;
+    final time = _parseTaskTime(task['dueTime']);
+    final dueAt = DateTime(
+      due.year,
+      due.month,
+      due.day,
+      time?.hour ?? 23,
+      time?.minute ?? 59,
+    );
+    return dueAt.isBefore(DateTime.now());
+  }
+
+  Map<String, dynamic> _taskSchedulePayload() {
+    final dueAt = _combinedTaskDueDateTime();
+    return {
+      'deadline': dueAt.toIso8601String(),
+      'dueDate': dueAt.toIso8601String(),
+      'dueTime': _timeToApiString(_taskDueTime),
+      'reminderType': _taskReminderType,
+      'reminderOffset':
+          _taskReminderType == 'custom' ? (_taskReminderOffset ?? 0) : null,
+      'notificationEnabled':
+          _taskNotificationEnabled && _taskReminderType != 'none',
+    };
+  }
+
   bool _canManage(String? role) => role == 'Owner' || role == 'Manager';
 
   Widget _buildBadge(String label, Color color) {
