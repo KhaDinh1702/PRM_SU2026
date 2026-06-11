@@ -94,8 +94,10 @@ const taskSchema = new mongoose.Schema({
 
 taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ user: 1, status: 1, createdAt: -1 });
+taskSchema.index({ user: 1, deadline: 1, status: 1 });
 taskSchema.index({ project: 1, assignedTo: 1, status: 1 });
 taskSchema.index({ assignedTo: 1, deadline: 1, status: 1 });
+taskSchema.index({ createdBy: 1, deadline: 1, status: 1 });
 taskSchema.index({ sourceType: 1, deadline: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

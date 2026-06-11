@@ -53,8 +53,17 @@ exports.getEvents = async (req, res) => {
             taskQuery.deadline = { $gte: startDate, $lte: endDate };
         }
 
-        const events = await Event.find(eventQuery).sort({ startTime: 1 });
-        const tasks = await Task.find(taskQuery).populate('project', 'name').sort({ deadline: 1 });
+        const [events, tasks] = await Promise.all([
+            Event.find(eventQuery)
+                .select('title description startTime endTime type')
+                .sort({ startTime: 1 })
+                .lean(),
+            Task.find(taskQuery)
+                .select('title description deadline dueDate dueTime sourceType project scheduleId status priority reminderType reminderOffset notificationEnabled')
+                .populate({ path: 'project', select: 'name', options: { lean: true } })
+                .sort({ deadline: 1 })
+                .lean()
+        ]);
 
         const formattedEvents = events.map(event => ({
             id: event._id,
