@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeService {
-  static final ValueNotifier<bool> isDarkMode = ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> isDarkMode = ValueNotifier<bool>(false);
   static final ValueNotifier<bool> isSketchyMode = ValueNotifier<bool>(false);
   static const String _themeKey = 'is_dark_mode';
-  static const String _sketchyKey = 'is_sketchy_mode';
 
   // Initialize theme state from SharedPreferences
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    isDarkMode.value = prefs.getBool(_themeKey) ?? true;
-    isSketchyMode.value = prefs.getBool(_sketchyKey) ?? false;
+    isDarkMode.value = prefs.getBool(_themeKey) ?? false;
   }
 
   // Toggle between dark and light themes
@@ -21,46 +19,57 @@ class ThemeService {
     await prefs.setBool(_themeKey, isDarkMode.value);
   }
 
-  // Toggle between sketchy and standard themes
+  // Sketchy Mode has been deprecated
   static Future<void> toggleSketchyMode() async {
-    isSketchyMode.value = !isSketchyMode.value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_sketchyKey, isSketchyMode.value);
+    // Deprecated: Do nothing
   }
 
   // --- Dynamic Color Palettes adapting to Dark/Light Mode ---
 
   static Color getBackgroundColor(bool isDark) {
-    return isDark ? const Color(0xFF070B19) : const Color(0xFFF8FAFC);
+    return isDark ? const Color(0xFF0D1117) : const Color(0xFFFFFFFF);
   }
 
   static List<Color> getGradientColors(bool isDark) {
     return isDark
-        ? [const Color(0xFF070B19), const Color(0xFF0F172A), const Color(0xFF020617)]
-        : [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0), const Color(0xFFF1F5F9)];
+        ? [const Color(0xFF0D1117), const Color(0xFF161B22), const Color(0xFF0D1117)]
+        : [const Color(0xFFFFFFFF), const Color(0xFFF6F8FA), const Color(0xFFFFFFFF)];
   }
 
   static Color getCardColor(bool isDark) {
-    return isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.03);
+    return isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA);
   }
 
   static Color getBorderColor(bool isDark) {
-    return isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.05);
+    return isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE);
   }
 
   static Color getTextColor(bool isDark) {
-    return isDark ? Colors.white : const Color(0xFF0F172A);
+    return isDark ? const Color(0xFFC9D1D9) : const Color(0xFF24292F);
   }
 
   static Color getSubTextColor(bool isDark) {
-    return isDark ? Colors.white60 : const Color(0xFF475569);
+    return isDark ? const Color(0xFF8B949E) : const Color(0xFF57606A);
   }
 
   static Color getCaptionColor(bool isDark) {
-    return isDark ? Colors.white38 : const Color(0xFF64748B);
+    return isDark ? const Color(0xFF484F58) : const Color(0xFF8C959F);
   }
 
   static Color getDialogBackgroundColor(bool isDark) {
-    return isDark ? const Color(0xFF0F1524) : Colors.white;
+    return isDark ? const Color(0xFF161B22) : const Color(0xFFFFFFFF);
+  }
+
+  // GitHub Theme Accent & Primary colors
+  static Color getPrimaryColor(bool isDark) {
+    return isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA);
+  }
+
+  static Color getButtonColor(bool isDark) {
+    return isDark ? const Color(0xFF238636) : const Color(0xFF1F883D);
+  }
+
+  static Color getButtonHoverColor(bool isDark) {
+    return isDark ? const Color(0xFF2EA44F) : const Color(0xFF1A7F37);
   }
 }

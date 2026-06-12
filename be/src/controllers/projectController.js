@@ -214,8 +214,14 @@ exports.deleteProject = async (req, res) => {
             return res.status(404).json({ error: 'Dự án không tồn tại hoặc bạn không có quyền xóa (chỉ chủ sở hữu được xóa)' });
         }
 
-        // Mồ côi các task thuộc project này (hoặc xóa chúng)
-        await Task.updateMany({ project: projectId }, { project: null });
+        // Chuyển các task thuộc project này thành task cá nhân (personal) thay vì để mồ côi dữ liệu
+        await Task.updateMany(
+            { project: projectId },
+            { 
+                project: null,
+                sourceType: 'personal'
+            }
+        );
 
         res.status(200).json({ message: 'Xóa dự án thành công' });
     } catch (error) {
@@ -347,6 +353,7 @@ exports.getProjectTasks = async (req, res) => {
     try {
         const { projectId } = req.params;
         const userId = req.user.id;
+        const { status, priority, assignedTo, search, page, limit, sort } = req.query;
 
         const project = await Project.findOne({
             _id: projectId,
@@ -360,11 +367,37 @@ exports.getProjectTasks = async (req, res) => {
             return res.status(404).json({ error: 'Dự án không tồn tại hoặc bạn không có quyền truy cập' });
         }
 
-        const tasks = await Task.find({ project: projectId })
+        const filters = [{ project: projectId }];
+        if (status && status !== 'All') filters.push({ status });
+        if (priority && priority !== 'All') filters.push({ priority });
+        if (assignedTo) filters.push({ assignedTo });
+        if (search) filters.push({ title: { $regex: search, $options: 'i' } });
+
+        const query = filters.length === 1 ? filters[0] : { $and: filters };
+
+        const sortOption = sort === 'deadline'
+            ? { deadline: 1, dueDate: 1, updatedAt: -1 }
+            : sort === 'priority'
+                ? { priority: -1, updatedAt: -1 }
+                : { updatedAt: -1, createdAt: -1 };
+
+        let dbQuery = Task.find(query)
             .populate('assignedTo', 'name email')
             .populate('assignedBy', 'name email')
             .populate('user', 'name email')
-            .sort({ createdAt: -1 });
+            .sort(sortOption);
+
+        if (page && limit) {
+            const skip = (parseInt(page) - 1) * parseInt(limit);
+            dbQuery = dbQuery.skip(skip).limit(parseInt(limit));
+            
+            const totalTasks = await Task.countDocuments(query);
+            res.setHeader('X-Total-Count', totalTasks);
+            res.setHeader('X-Page', page);
+            res.setHeader('X-Limit', limit);
+        }
+
+        const tasks = await dbQuery;
         res.status(200).json(tasks);
     } catch (error) {
         console.error('Lỗi trong projectController.getProjectTasks:', error);
@@ -403,11 +436,16 @@ exports.createProjectTask = async (req, res) => {
             return res.status(404).json({ error: 'Project not found or access denied' });
         }
 
-        if (!canManageProject(project, req.user.id)) {
-            return res.status(403).json({ error: 'Only Owner or Manager can assign tasks' });
+        const isManagerOrOwner = canManageProject(project, req.user.id);
+        
+        // Nếu không phải Manager/Owner, Member thường chỉ được gán task cho bản thân
+        if (!isManagerOrOwner) {
+            if (assignedTo && assignedTo.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ error: 'Members can only assign tasks to themselves' });
+            }
         }
 
-        const assigneeId = assignedTo || req.user.id;
+        const assigneeId = isManagerOrOwner ? (assignedTo || req.user.id) : req.user.id;
         if (!isUserInProject(project, assigneeId)) {
             return res.status(400).json({ error: 'Assignee must be a project member' });
         }
@@ -448,6 +486,12 @@ exports.createProjectTask = async (req, res) => {
 
         await task.populate('assignedTo', 'name email');
         await task.populate('assignedBy', 'name email');
+
+        // Phát event thời gian thực qua Socket.io
+        const io = req.app.get('io');
+        if (io) {
+            io.to(projectId.toString()).emit('taskCreated', task);
+        }
 
         res.status(201).json(task);
     } catch (error) {
@@ -498,34 +542,15 @@ exports.updateProjectTask = async (req, res) => {
 
         const previousAssignee = getId(task.assignedTo || task.user);
 
-        if (status !== undefined) {
-            task.status = status;
-            task.completedAt = status === 'Completed' ? new Date() : null;
-        }
-        if (manage) {
-            if (title !== undefined) task.title = title;
-            if (description !== undefined) task.description = description;
-            if (priority !== undefined) task.priority = priority;
-            if (deadline !== undefined || dueDate !== undefined) {
-                const nextDueDate = dueDate !== undefined ? dueDate : deadline;
-                task.deadline = nextDueDate;
-                task.dueDate = nextDueDate;
-            }
-            if (dueTime !== undefined) task.dueTime = dueTime;
-            if (startDate !== undefined) task.startDate = startDate;
-            if (reminderType !== undefined) task.reminderType = reminderType || 'none';
-            if (reminderOffset !== undefined) task.reminderOffset = reminderOffset;
-            if (notificationEnabled !== undefined) {
-                task.notificationEnabled = Boolean(notificationEnabled && task.reminderType !== 'none');
-            }
-            if (assignedTo !== undefined) {
-                if (!isUserInProject(project, assignedTo)) {
-                    return res.status(400).json({ error: 'Assignee must be a project member' });
-                }
-                task.assignedTo = assignedTo;
-                task.user = assignedTo;
+        if (assignedTo !== undefined && manage) {
+            if (!isUserInProject(project, assignedTo)) {
+                return res.status(400).json({ error: 'Assignee must be a project member' });
             }
         }
+
+        // Sử dụng helper cập nhật task chung
+        const { updateTaskFields } = require('../utils/taskHelper');
+        updateTaskFields(task, req.body, manage);
 
         await task.save();
 
@@ -544,6 +569,12 @@ exports.updateProjectTask = async (req, res) => {
 
         await task.populate('assignedTo', 'name email');
         await task.populate('assignedBy', 'name email');
+
+        // Phát event Socket.io real-time
+        const io = req.app.get('io');
+        if (io) {
+            io.to(projectId.toString()).emit('taskUpdated', task);
+        }
 
         res.status(200).json(task);
     } catch (error) {

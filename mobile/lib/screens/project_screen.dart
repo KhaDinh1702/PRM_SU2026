@@ -52,6 +52,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   String _sortBy = 'Recent';
   String? _selectedAssigneeId;
   final Map<String, Set<String>> _localPendingInviteIds = {};
+  bool _isSavingProjectTask = false;
 
   @override
   void initState() {
@@ -85,7 +86,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(LocaleService.tr(
-                  'Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â£ xÃƒÆ’Ã‚Â³a dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng!',
+                  'Đã xóa dự án thành công!',
                   en: 'Project deleted successfully!')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
@@ -97,7 +98,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       } else {
         final data = jsonDecode(response.body);
         throw Exception(data['error'] ??
-            LocaleService.tr('XÃƒÆ’Ã‚Â³a thÃƒÂ¡Ã‚ÂºÃ‚Â¥t bÃƒÂ¡Ã‚ÂºÃ‚Â¡i',
+            LocaleService.tr('Xóa thất bại',
                 en: 'Deletion failed'));
       }
     } catch (e) {
@@ -105,7 +106,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${LocaleService.tr('LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi xÃƒÆ’Ã‚Â³a dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n:', en: 'Error deleting project:')} $e'),
+                '${LocaleService.tr('Lỗi khi xóa dự án:', en: 'Error deleting project:')} $e'),
             backgroundColor: Colors.amber[900],
             behavior: SnackBarBehavior.floating,
           ),
@@ -139,7 +140,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    LocaleService.tr('XÃƒÆ’Ã¢â‚¬Å“A DÃƒÂ¡Ã‚Â»Ã‚Â° ÃƒÆ’Ã‚ÂN?',
+                    LocaleService.tr('XÓA DỰ ÁN?',
                         en: 'DELETE PROJECT?'),
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -150,14 +151,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ],
             ),
             content: Text(
-              '${LocaleService.tr('BÃƒÂ¡Ã‚ÂºÃ‚Â¡n cÃƒÆ’Ã‚Â³ chÃƒÂ¡Ã‚ÂºÃ‚Â¯c chÃƒÂ¡Ã‚ÂºÃ‚Â¯n muÃƒÂ¡Ã‚Â»Ã¢â‚¬Ëœn xÃƒÆ’Ã‚Â³a dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n', en: 'Are you sure you want to delete project')} "$projectName"?\n${LocaleService.tr('HÃƒÆ’Ã‚Â nh Ãƒâ€žÃ¢â‚¬ËœÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢ng nÃƒÆ’Ã‚Â y sÃƒÂ¡Ã‚ÂºÃ‚Â½ xÃƒÆ’Ã‚Â³a toÃƒÆ’Ã‚Â n bÃƒÂ¡Ã‚Â»Ã¢â€žÂ¢ task vÃƒÆ’Ã‚Â  khÃƒÆ’Ã‚Â´ng thÃƒÂ¡Ã‚Â»Ã†â€™ khÃƒÆ’Ã‚Â´i phÃƒÂ¡Ã‚Â»Ã‚Â¥c!', en: 'This action will delete all tasks and cannot be undone!')}',
+              '${LocaleService.tr('Bạn có chắc chắn muốn xóa dự án', en: 'Are you sure you want to delete project')} "$projectName"?\n${LocaleService.tr('Hành động này sẽ xóa toàn bộ task và không thể khôi phục!', en: 'This action will delete all tasks and cannot be undone!')}',
               style: TextStyle(color: subTextColor, fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  LocaleService.tr('HÃƒÂ¡Ã‚Â»Ã‚Â§y', en: 'Cancel'),
+                  LocaleService.tr('Hủy', en: 'Cancel'),
                   style: TextStyle(
                       color: ThemeService.getCaptionColor(isDark),
                       fontWeight: FontWeight.bold),
@@ -171,7 +172,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 },
                 backgroundColor: Colors.redAccent,
                 child: Text(
-                  LocaleService.tr('XÃƒÆ’Ã‚Â³a', en: 'Delete'),
+                  LocaleService.tr('Xóa', en: 'Delete'),
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, color: Colors.white),
                 ),
@@ -303,7 +304,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(LocaleService.tr(
-                  'Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â£ khÃƒÂ¡Ã‚Â»Ã…Â¸i tÃƒÂ¡Ã‚ÂºÃ‚Â¡o dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n nhÃƒÆ’Ã‚Â³m thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng!',
+                  'Đã khởi tạo dự án nhóm thành công!',
                   en: 'Project created successfully!')),
               backgroundColor: const Color(0xFF06B6D4),
               behavior: SnackBarBehavior.floating,
@@ -391,7 +392,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(LocaleService.tr(
-                  'Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â£ gÃƒÂ¡Ã‚Â»Ã‚Â­i lÃƒÂ¡Ã‚Â»Ã‚Âi mÃƒÂ¡Ã‚Â»Ã‚Âi tham gia dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n!',
+                  'Đã gửi lời mời tham gia dự án!',
                   en: 'Project invitation sent!')),
               backgroundColor: Colors.indigo,
               behavior: SnackBarBehavior.floating,
@@ -406,7 +407,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (fallbackUserId != null &&
             (errorText.contains('pending') ||
                 errorText.contains('ch') ||
-                errorText.contains('mÃƒÂ¡Ã‚Â»Ã‚Âi') ||
+                errorText.contains('mời') ||
                 errorText.contains('moi'))) {
           _memberEmailController.clear();
           return fallbackUserId;
@@ -416,7 +417,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             SnackBar(
               content: Text(data['error'] ??
                   LocaleService.tr(
-                      'CÃƒÆ’Ã‚Â³ lÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i xÃƒÂ¡Ã‚ÂºÃ‚Â£y ra.',
+                      'Có lỗi xảy ra.',
                       en: 'An error occurred.')),
               backgroundColor: Colors.redAccent,
               behavior: SnackBarBehavior.floating,
@@ -450,7 +451,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             ),
             title: Text(
               LocaleService.tr(
-                  'TÃƒÂ¡Ã‚ÂºÃ‚Â O DÃƒÂ¡Ã‚Â»Ã‚Â° ÃƒÆ’Ã‚ÂN MÃƒÂ¡Ã‚Â»Ã…Â¡I',
+                  'TẠO DỰ ÁN MỚI',
                   en: 'CREATE NEW PROJECT'),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -464,10 +465,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 PremiumInputField(
                   controller: _nameController,
                   label: LocaleService.tr(
-                      'TÃƒÆ’Ã‚Âªn dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n *',
+                      'Tên dự án *',
                       en: 'Project name *'),
                   hintText: LocaleService.tr(
-                      'NhÃƒÂ¡Ã‚ÂºÃ‚Â­p tÃƒÆ’Ã‚Âªn dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n...',
+                      'Nhập tên dự án...',
                       en: 'Enter project name...'),
                   prefixIcon: Icons.folder_rounded,
                 ),
@@ -475,10 +476,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 PremiumInputField(
                   controller: _descController,
                   label: LocaleService.tr(
-                      'MÃƒÆ’Ã‚Â´ tÃƒÂ¡Ã‚ÂºÃ‚Â£ dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n',
+                      'Mô tả dự án',
                       en: 'Project description'),
                   hintText: LocaleService.tr(
-                      'NhÃƒÂ¡Ã‚ÂºÃ‚Â­p mÃƒÆ’Ã‚Â´ tÃƒÂ¡Ã‚ÂºÃ‚Â£ dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n...',
+                      'Nhập mô tả dự án...',
                       en: 'Enter project description...'),
                   prefixIcon: Icons.description_outlined,
                 ),
@@ -487,7 +488,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(LocaleService.tr('HÃƒÂ¡Ã‚Â»Ã‚Â§y', en: 'Cancel'),
+                child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
                     style: TextStyle(
                         color: captionColor, fontWeight: FontWeight.bold)),
               ),
@@ -497,9 +498,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   Navigator.pop(context);
                 },
                 backgroundColor: const Color(0xFF06B6D4),
-                child: Text(LocaleService.tr('TÃƒÂ¡Ã‚ÂºÃ‚Â¡o', en: 'Create'),
+                child: Text(LocaleService.tr('T�o', en: 'Create'),
                     style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    )),
               ),
             ],
           ),
@@ -507,6 +510,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       },
     );
   }
+
 
   Future<void> _loadProjectTasks(String projectId,
       [StateSetter? sheetSetState]) async {
@@ -538,7 +542,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   Future<void> _createProjectTask(
-      String projectId, StateSetter sheetSetState) async {
+      String projectId, StateSetter sheetSetState, [StateSetter? dialogSetState]) async {
+    if (_isSavingProjectTask) return;
     final title = _taskTitleController.text.trim();
     if (title.isEmpty || _selectedAssigneeId == null || _taskDueDate == null) {
       if (mounted) {
@@ -566,6 +571,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
 
     try {
+      if (mounted) {
+        setState(() => _isSavingProjectTask = true);
+        dialogSetState?.call(() {});
+      }
       final token = await AuthService.getToken();
       final headers = {
         'Content-Type': 'application/json',
@@ -609,7 +618,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(LocaleService.tr(
-                  'Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â£ phÃƒÆ’Ã‚Â¢n task thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng!',
+                  'Đã phân task thành công!',
                   en: 'Task assigned successfully!')),
               backgroundColor: const Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
@@ -631,15 +640,19 @@ class _ProjectScreenState extends State<ProjectScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${LocaleService.tr('LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi phÃƒÆ’Ã‚Â¢n task:', en: 'Error assigning task:')} $e'),
+                '${LocaleService.tr('Lỗi khi phân task:', en: 'Error assigning task:')} $e'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingProjectTask = false);
+        dialogSetState?.call(() {});
+      }
     }
   }
-
   Future<void> _updateProjectTaskStatus(String projectId, String taskId,
       String status, StateSetter sheetSetState) async {
     try {
@@ -691,7 +704,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(LocaleService.tr(
-                  'Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â£ cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t task thÃƒÆ’Ã‚Â nh cÃƒÆ’Ã‚Â´ng!',
+                  'Đã cập nhật task thành công!',
                   en: 'Task updated successfully!')),
               backgroundColor: const Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
@@ -703,14 +716,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
         final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
         if (response.statusCode == 404 || response.statusCode == 405) {
           return LocaleService.tr(
-              'Backend chÃƒâ€ Ã‚Â°a cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t API sÃƒÂ¡Ã‚Â»Ã‚Â­a task dÃƒÂ¡Ã‚Â»Ã‚Â± ÃƒÆ’Ã‚Â¡n. CÃƒÂ¡Ã‚ÂºÃ‚Â§n deploy backend mÃƒÂ¡Ã‚Â»Ã¢â‚¬Âºi.',
+              'Backend chưa cập nhật API sửa task dự án. Cần deploy backend mới.',
               en: 'Project task edit API is not deployed yet. Please deploy the updated backend.');
         }
         return (data['error'] ?? 'Cannot update task').toString();
       }
       return 'Cannot update task';
     } catch (e) {
-      return '${LocaleService.tr('LÃƒÂ¡Ã‚Â»Ã¢â‚¬â€i khi cÃƒÂ¡Ã‚ÂºÃ‚Â­p nhÃƒÂ¡Ã‚ÂºÃ‚Â­t task:', en: 'Error updating task:')} $e';
+      return '${LocaleService.tr('Lỗi khi cập nhật task:', en: 'Error updating task:')} $e';
     }
   }
 

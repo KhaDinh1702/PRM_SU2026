@@ -1,21 +1,17 @@
 const swaggerJSDoc = require('swagger-jsdoc');
-const path = require('path');
 
-const options = {
+const swaggerSpec = swaggerJSDoc({
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Space Timer & Productivity API Documentation',
+            title: 'Space Timer API',
             version: '1.0.0',
-            description: 'Tài liệu hướng dẫn sử dụng toàn bộ API của ứng dụng quản lý năng suất Space Timer (Pomodoro, Tasks, Projects, Calendar, Analytics).',
-            contact: {
-                name: 'Antigravity Developer',
-            },
+            description: 'Tài liệu hướng dẫn sử dụng API Space Timer (Pomodoro, Tasks, Projects, Calendar, Analytics).',
         },
         servers: [
             {
                 url: 'https://prm-tan.vercel.app',
-                description: 'Production Cloud Server'
+                description: 'Production'
             }
         ],
         components: {
@@ -24,19 +20,13 @@ const options = {
                     type: 'http',
                     scheme: 'bearer',
                     bearerFormat: 'JWT',
-                    description: 'Nhập JWT Token của ông chủ vào đây theo cú pháp: <Token>'
+                    description: 'Nhập JWT Token của ông chủ vào đây.'
                 }
             }
         },
-        security: [
-            {
-                bearerAuth: []
-            }
-        ]
+        security: [{ bearerAuth: [] }]
     },
-    apis: [path.join(__dirname, '../routes/*.js')] // Quét JSDoc định nghĩa bằng đường dẫn tuyệt đối
-};
-
-const swaggerSpec = swaggerJSDoc(options);
+    apis: ['./src/routes/*.js']
+});
 
 module.exports = swaggerSpec;

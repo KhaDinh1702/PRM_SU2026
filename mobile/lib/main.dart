@@ -16,7 +16,6 @@ import 'screens/calendar_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/profile_screen.dart';
-import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,58 +37,36 @@ class MyApp extends StatelessWidget {
         return ValueListenableBuilder<bool>(
           valueListenable: ThemeService.isDarkMode,
           builder: (context, isDark, child) {
-            return ValueListenableBuilder<bool>(
-              valueListenable: ThemeService.isSketchyMode,
-              builder: (context, isSketchy, child) {
-                if (isSketchy) {
-                  return sketchy.SketchyApp(
-                    debugShowCheckedModeBanner: false,
-                    title: 'FlowMate Productivity System',
-                    theme: sketchy.SketchyThemeData.fromTheme(
-                      sketchy.SketchyThemes.blue,
-                      roughness: 0.5,
-                    ),
-                    themeMode: isDark
-                        ? sketchy.SketchyThemeMode.dark
-                        : sketchy.SketchyThemeMode.light,
-                    initialRoute: isLoggedIn ? '/home' : '/login',
-                    routes: {
-                      '/login': (context) => const LoginScreen(),
-                      '/home': (context) => const MainNavigationScreen(),
-                    },
-                  );
-                } else {
-                  return MaterialApp(
-                    debugShowCheckedModeBanner: false,
-                    title: 'FlowMate Productivity System',
-                    themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-                    theme: ThemeData(
-                      useMaterial3: true,
-                      brightness: Brightness.light,
-                      colorScheme: ColorScheme.fromSeed(
-                        seedColor: const Color(0xFF8B5CF6), // Premium Violet
-                        brightness: Brightness.light,
-                        background: const Color(0xFFF8FAFC),
-                      ),
-                      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-                    ),
-                    darkTheme: ThemeData(
-                      useMaterial3: true,
-                      brightness: Brightness.dark,
-                      colorScheme: ColorScheme.fromSeed(
-                        seedColor: const Color(0xFF8B5CF6), // Cyber Violet
-                        brightness: Brightness.dark,
-                        background: const Color(0xFF070B19),
-                      ),
-                      scaffoldBackgroundColor: const Color(0xFF070B19),
-                    ),
-                    initialRoute: isLoggedIn ? '/home' : '/login',
-                    routes: {
-                      '/login': (context) => const LoginScreen(),
-                      '/home': (context) => const MainNavigationScreen(),
-                    },
-                  );
-                }
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'FlowMate Productivity System',
+              themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+              theme: ThemeData(
+                useMaterial3: true,
+                brightness: Brightness.light,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF0969DA), // GitHub Blue
+                  brightness: Brightness.light,
+                  background: const Color(0xFFFFFFFF),
+                ),
+                scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+                cardColor: const Color(0xFFF6F8FA),
+              ),
+              darkTheme: ThemeData(
+                useMaterial3: true,
+                brightness: Brightness.dark,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF58A6FF), // GitHub Dark Blue
+                  brightness: Brightness.dark,
+                  background: const Color(0xFF0D1117),
+                ),
+                scaffoldBackgroundColor: const Color(0xFF0D1117),
+                cardColor: const Color(0xFF161B22),
+              ),
+              initialRoute: isLoggedIn ? '/home' : '/login',
+              routes: {
+                '/login': (context) => const LoginScreen(),
+                '/home': (context) => const MainNavigationScreen(),
               },
             );
           },
@@ -391,262 +368,39 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic theme color matching current tab
-    Color activeColor;
-    switch (_currentIndex) {
-      case 0:
-        activeColor = const Color(0xFF8B5CF6); // Violet for Dashboard
-        break;
-      case 1:
-        activeColor = const Color(0xFF10B981); // Emerald for Tasks
-        break;
-      case 2:
-        activeColor = const Color(0xFF8B5CF6); // Cyber Violet for Timer
-        break;
-      case 3:
-        activeColor = const Color(0xFF06B6D4); // Cyan for Projects
-        break;
-      case 4:
-        activeColor = const Color(0xFFF43F5E); // Rose for Calendar
-        break;
-      case 5:
-        activeColor = const Color(0xFFEC4899); // Pink for Analytics
-        break;
-      case 6:
-        activeColor = const Color(0xFFF59E0B); // Amber for Notifications
-        break;
-      case 7:
-        activeColor = const Color(0xFF8B5CF6); // Violet for Profile
-        break;
-      default:
-        activeColor = const Color(0xFF8B5CF6);
-    }
-
     return ValueListenableBuilder<bool>(
-      valueListenable: ThemeService.isSketchyMode,
-      builder: (context, isSketchy, child) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: ThemeService.isDarkMode,
-          builder: (context, isDark, child) {
-            if (isSketchy) {
-              return sketchy.SketchyScaffold(
-                key: _scaffoldKey,
-                drawer: _buildDrawer(isDark),
-                body: SafeArea(
-                  bottom: false,
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: _screens,
-                  ),
-                ),
-                bottomNavigationBar: _buildSketchyNavBar(activeColor, isDark),
-              );
-            } else {
-              return Scaffold(
-                key: _scaffoldKey,
-                drawer: _buildDrawer(isDark),
-                body: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: ThemeService.getGradientColors(isDark),
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: IndexedStack(
-                      index: _currentIndex,
-                      children: _screens,
-                    ),
-                  ),
-                ),
-                bottomNavigationBar:
-                    _buildGlassmorphicNavBar(activeColor, isDark),
-              );
-            }
-          },
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, isDark, child) {
+        final activeColor = ThemeService.getPrimaryColor(isDark);
+
+        return Scaffold(
+          key: _scaffoldKey,
+          drawer: _buildDrawer(isDark),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: ThemeService.getGradientColors(isDark),
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
+            ),
+          ),
+          bottomNavigationBar:
+              _buildGlassmorphicNavBar(activeColor, isDark),
         );
       },
     );
   }
 
   Widget _buildDrawer(bool isDark) {
-    final isSketchy = ThemeService.isSketchyMode.value;
-    if (isSketchy) {
-      return Drawer(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: sketchy.SketchyCard(
-          margin: const EdgeInsets.all(8),
-          child: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.bolt,
-                          color: Color(0xFF8B5CF6), size: 32),
-                      const SizedBox(width: 12),
-                      sketchy.SketchyText(
-                        'FlowMate',
-                        style: TextStyle(
-                          color: ThemeService.getTextColor(isDark),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const sketchy.SketchyDivider(),
-                sketchy.SketchyListTile(
-                  leading: Icon(Icons.calendar_month_rounded,
-                      color: ThemeService.getTextColor(isDark)),
-                  title: sketchy.SketchyText(
-                      LocaleService.tr('Lịch', en: 'Calendar')),
-                  onTap: () {
-                    setState(() => _currentIndex = 4);
-                    Navigator.pop(context);
-                  },
-                ),
-                sketchy.SketchyListTile(
-                  leading: Icon(Icons.insights_rounded,
-                      color: ThemeService.getTextColor(isDark)),
-                  title: sketchy.SketchyText(
-                      LocaleService.tr('Thống kê', en: 'Analytics')),
-                  onTap: () {
-                    setState(() => _currentIndex = 5);
-                    Navigator.pop(context);
-                  },
-                ),
-                sketchy.SketchyListTile(
-                  leading: Icon(Icons.notifications_outlined,
-                      color: ThemeService.getTextColor(isDark)),
-                  title: sketchy.SketchyText(
-                      LocaleService.tr('Thông báo', en: 'Notifications')),
-                  onTap: () {
-                    setState(() => _currentIndex = 6);
-                    Navigator.pop(context);
-                  },
-                ),
-                // Theme toggle
-                sketchy.SketchyListTile(
-                  leading: Icon(
-                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    color: ThemeService.getTextColor(isDark),
-                  ),
-                  title: sketchy.SketchyText(
-                    LocaleService.tr(
-                      isDark ? 'Chế độ sáng' : 'Chế độ tối',
-                      en: isDark ? 'Light Mode' : 'Dark Mode',
-                    ),
-                  ),
-                  onTap: () => ThemeService.toggleTheme(),
-                ),
-                // Sketchy Mode toggle
-                sketchy.SketchyListTile(
-                  leading: const Icon(Icons.gesture_rounded,
-                      color: Color(0xFF8B5CF6)),
-                  title: sketchy.SketchyText(
-                    LocaleService.tr('Tắt giao diện vẽ tay',
-                        en: 'Disable Sketchy UI'),
-                  ),
-                  onTap: () async {
-                    await ThemeService.toggleSketchyMode();
-                    if (mounted) setState(() {});
-                  },
-                ),
-                // Language toggle
-                ValueListenableBuilder<String>(
-                  valueListenable: LocaleService.languageCode,
-                  builder: (context, lang, _) {
-                    final isEn = lang == 'en';
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () async {
-                          await LocaleService.toggleLanguage();
-                          setState(() {});
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: isDark
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.black.withOpacity(0.04),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.black.withOpacity(0.08),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                isEn ? '🇬🇧' : '🇻🇳',
-                                style: const TextStyle(fontSize: 22),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    sketchy.SketchyText(
-                                      LocaleService.tr('Ngôn ngữ',
-                                          en: 'Language'),
-                                      style: TextStyle(
-                                        color: ThemeService.getCaptionColor(
-                                            isDark),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    sketchy.SketchyText(
-                                      isEn ? 'English' : 'Tiếng Việt',
-                                      style: TextStyle(
-                                        color:
-                                            ThemeService.getTextColor(isDark),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const Spacer(),
-                const sketchy.SketchyDivider(),
-                sketchy.SketchyListTile(
-                  leading:
-                      const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                  title: sketchy.SketchyText(
-                    LocaleService.tr('Đăng xuất', en: 'Logout'),
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                  onTap: _handleLogout,
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return Drawer(
       backgroundColor: ThemeService.getBackgroundColor(isDark),
       child: SafeArea(
@@ -656,7 +410,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
-                  Icon(Icons.bolt, color: const Color(0xFF8B5CF6), size: 32),
+                  Icon(Icons.bolt, color: ThemeService.getPrimaryColor(isDark), size: 32),
                   const SizedBox(width: 12),
                   Text(
                     'FlowMate',
@@ -715,19 +469,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
               onTap: () => ThemeService.toggleTheme(),
             ),
-            // Sketchy Mode Toggle
-            ListTile(
-              leading:
-                  const Icon(Icons.gesture_rounded, color: Color(0xFF8B5CF6)),
-              title: Text(
-                LocaleService.tr('Giao diện vẽ tay', en: 'Sketchy UI'),
-                style: TextStyle(color: ThemeService.getTextColor(isDark)),
-              ),
-              onTap: () async {
-                await ThemeService.toggleSketchyMode();
-                if (mounted) setState(() {});
-              },
-            ),
+
             // Language toggle
             ValueListenableBuilder<String>(
               valueListenable: LocaleService.languageCode,
@@ -737,7 +479,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                     borderRadius: BorderRadius.circular(16),
                     onTap: () async {
                       await LocaleService.toggleLanguage();
                       setState(() {});
@@ -791,14 +533,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF8B5CF6).withOpacity(0.15),
+                              color: ThemeService.getPrimaryColor(isDark).withOpacity(0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               LocaleService.tr('Chuyển sang EN',
                                   en: 'Switch to VI'),
-                              style: const TextStyle(
-                                color: Color(0xFF8B5CF6),
+                              style: TextStyle(
+                                color: ThemeService.getPrimaryColor(isDark),
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1008,121 +750,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  // --- Sketchy Design UI Navigation Components ---
-
-  Widget _buildSketchyNavBar(Color activeColor, bool isDark) {
-    return sketchy.SketchyCard(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildSketchyNavItem(
-                0,
-                Icons.space_dashboard_outlined,
-                Icons.space_dashboard,
-                LocaleService.tr('Trang chủ', en: 'Home'),
-                activeColor,
-                isDark),
-            _buildSketchyNavItem(
-                1,
-                Icons.playlist_add_check_rounded,
-                Icons.playlist_add_check_rounded,
-                LocaleService.tr('Nhiệm vụ', en: 'Tasks'),
-                activeColor,
-                isDark),
-            _buildSketchyNavItem(
-                2,
-                Icons.hourglass_empty_rounded,
-                Icons.hourglass_full_rounded,
-                LocaleService.tr('Bấm giờ', en: 'Timer'),
-                activeColor,
-                isDark),
-            _buildSketchyNavItem(3, Icons.dns_outlined, Icons.dns_rounded,
-                LocaleService.tr('Dự án', en: 'Projects'), activeColor, isDark),
-            _buildSketchyNavItem(
-                7,
-                Icons.person_outline_rounded,
-                Icons.person_rounded,
-                LocaleService.tr('Hồ sơ', en: 'Profile'),
-                activeColor,
-                isDark),
-            _buildSketchyMenuButton(isDark),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSketchyMenuButton(bool isDark) {
-    final themeColor = isDark ? Colors.white70 : Colors.black87;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          _scaffoldKey.currentState?.openDrawer();
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.menu_rounded,
-              color: themeColor,
-              size: 20,
-            ),
-            const SizedBox(height: 2),
-            sketchy.SketchyText(
-              LocaleService.tr('Danh mục', en: 'Menu'),
-              style: TextStyle(
-                color: themeColor,
-                fontSize: 9,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSketchyNavItem(int index, IconData outlineIcon,
-      IconData solidIcon, String label, Color activeColor, bool isDark) {
-    final isSelected = _currentIndex == index;
-    final themeColor =
-        isSelected ? activeColor : (isDark ? Colors.white70 : Colors.black87);
-
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? solidIcon : outlineIcon,
-              color: themeColor,
-              size: isSelected ? 22 : 20,
-            ),
-            const SizedBox(height: 2),
-            sketchy.SketchyText(
-              label,
-              style: TextStyle(
-                color: themeColor,
-                fontSize: 9,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

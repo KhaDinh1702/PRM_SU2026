@@ -1,8 +1,6 @@
 import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
-import '../services/theme_service.dart';
 
 // --- PREMIUM SKELETON SHIMMER LOADER ---
 class ShimmerLoading extends StatefulWidget {
@@ -33,10 +31,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProvid
       vsync: this,
     );
     
-    // Chỉ repeat animation nếu KHÔNG ở chế độ sketchy
-    if (!ThemeService.isSketchyMode.value) {
-      _controller.repeat();
-    }
+    _controller.repeat();
 
     _animation = Tween<double>(begin: -2.0, end: 2.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
@@ -51,24 +46,6 @@ class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    if (ThemeService.isSketchyMode.value) {
-      return sketchy.SketchyCard(
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -189,14 +166,6 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (ThemeService.isSketchyMode.value) {
-      return sketchy.SketchyCard(
-        child: Padding(
-          padding: padding,
-          child: child,
-        ),
-      );
-    }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -259,20 +228,6 @@ class PremiumInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hintColor = isDark ? Colors.white30 : Colors.black38;
-
-    if (ThemeService.isSketchyMode.value) {
-      return sketchy.SketchyTextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: hintColor, fontSize: 13, fontWeight: FontWeight.w500),
-          hintText: hintText,
-          hintStyle: TextStyle(color: hintColor, fontSize: 13),
-          prefixIcon: Icon(prefixIcon, color: hintColor, size: 20),
-        ),
-      );
-    }
     
     final bgInputColor = isDark 
         ? Colors.white.withOpacity(0.02) 
@@ -334,44 +289,6 @@ class PremiumButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeColor = backgroundColor ?? const Color(0xFF8B5CF6);
-
-    if (ThemeService.isSketchyMode.value) {
-      if (icon != null && label != null) {
-        return sketchy.SketchyButton(
-          onPressed: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 16),
-                const SizedBox(width: 6),
-                sketchy.SketchyText(
-                  label!,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-      
-      Widget finalChild = child ?? const SizedBox();
-      if (finalChild is Text) {
-        finalChild = sketchy.SketchyText(
-          finalChild.data ?? '',
-          style: finalChild.style ?? const TextStyle(fontWeight: FontWeight.bold),
-        );
-      }
-
-      return sketchy.SketchyButton(
-        onPressed: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: finalChild,
-        ),
-      );
-    }
 
     if (icon != null && label != null) {
       return ElevatedButton.icon(

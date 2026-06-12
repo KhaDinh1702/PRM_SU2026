@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/locale_service.dart';
 import '../services/theme_service.dart';
-import 'package:sketchy_design_lang/sketchy_design_lang.dart' as sketchy;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -137,47 +136,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Xử lý submit Form
   Future<void> _submitForm() async {
-    final isSketchy = ThemeService.isSketchyMode.value;
-    if (isSketchy) {
-      if (_isLoginMode) {
-        if (_emailOrPhoneController.text.trim().isEmpty) {
-          _showSnackBar(
-              LocaleService.tr('Vui lòng nhập Email, SĐT hoặc Username',
-                  en: 'Please enter Email, Phone or Username'),
-              Colors.redAccent);
-          return;
-        }
-      } else {
-        if (_emailController.text.trim().isEmpty) {
-          _showSnackBar(
-              LocaleService.tr('Vui lòng nhập Email', en: 'Please enter Email'),
-              Colors.redAccent);
-          return;
-        }
-        if (_otpController.text.trim().isEmpty) {
-          _showSnackBar(
-              LocaleService.tr('Vui lòng nhập mã OTP', en: 'Please enter OTP code'),
-              Colors.redAccent);
-          return;
-        }
-        if (_passwordController.text.length < 6) {
-          _showSnackBar(
-              LocaleService.tr('Mật khẩu phải chứa ít nhất 6 ký tự',
-                  en: 'Password must be at least 6 characters'),
-              Colors.redAccent);
-          return;
-        }
-        if (_passwordController.text != _confirmPasswordController.text) {
-          _showSnackBar(
-              LocaleService.tr('Mật khẩu xác nhận không trùng khớp!',
-                  en: 'Passwords do not match!'),
-              Colors.redAccent);
-          return;
-        }
-      }
-    } else {
-      if (!_formKey.currentState!.validate()) return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -270,31 +229,36 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Dynamic themes & colors
-    const themeColor = Color(0xFF8B5CF6); // Premium Cyber Violet
-    const accentColor = Color(0xFFF43F5E); // Cyber Pink
-
     return ListenableBuilder(
       listenable: Listenable.merge(
-          [LocaleService.languageCode, ThemeService.isSketchyMode]),
+          [LocaleService.languageCode, ThemeService.isDarkMode]),
       builder: (context, child) {
-        final isSketchy = ThemeService.isSketchyMode.value;
-        if (isSketchy) {
-          return _buildSketchyLayout();
-        }
+        final isDark = ThemeService.isDarkMode.value;
+        final bgGradient = ThemeService.getGradientColors(isDark);
+        
+        // GitHub Theme Colors
+        final themeColor = ThemeService.getPrimaryColor(isDark); // GitHub Blue accent
+        final buttonColor = ThemeService.getButtonColor(isDark); // GitHub Green submit
+        final buttonHoverColor = ThemeService.getButtonHoverColor(isDark); // GitHub Green hover/gradient
+
+        final cardColor = isDark 
+            ? const Color(0xFF161B22).withOpacity(0.9) 
+            : const Color(0xFFFFFFFF).withOpacity(0.9);
+        final borderColor = isDark 
+            ? const Color(0xFF30363D)
+            : const Color(0xFFD0D7DE);
+        final titleTextColor = isDark ? const Color(0xFFC9D1D9) : const Color(0xFF24292F);
+        final subTextColor = isDark ? const Color(0xFF8B949E) : const Color(0xFF57606A);
+        final footerTextColor = isDark ? const Color(0xFF8B949E) : const Color(0xFF57606A);
 
         return Scaffold(
           body: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF070B19),
-                  Color(0xFF0F172A),
-                  Color(0xFF020617),
-                ],
-                stops: [0.0, 0.5, 1.0],
+                colors: bgGradient,
+                stops: const [0.0, 0.5, 1.0],
               ),
             ),
             child: SafeArea(
@@ -308,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // LOGO Space Timer & Glowing Title
+                            // LOGO GitHub & Glowing Title
                             Stack(
                               alignment: Alignment.center,
                               children: [
@@ -319,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: themeColor.withOpacity(0.2),
+                                        color: themeColor.withOpacity(0.15),
                                         blurRadius: 40,
                                         spreadRadius: 10,
                                       ),
@@ -330,25 +294,26 @@ class _LoginScreenState extends State<LoginScreen>
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Colors.white.withOpacity(0.03),
+                                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
                                     border: Border.all(
-                                        color: Colors.white.withOpacity(0.1)),
+                                        color: borderColor),
                                   ),
-                                  child: const Icon(
-                                    Icons.blur_on_rounded,
-                                    size: 48,
-                                    color: themeColor,
+                                  child: Image.asset(
+                                    'assets/github_logo.png',
+                                    width: 48,
+                                    height: 48,
+                                    color: titleTextColor,
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 20),
-                            const Text(
+                            Text(
                               'SPACE TIMER',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: titleTextColor,
                                 letterSpacing: 3,
                               ),
                             ),
@@ -361,10 +326,10 @@ class _LoginScreenState extends State<LoginScreen>
                                   : LocaleService.tr(
                                       'ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
                                       en: 'REGISTER SPACE MEMBER'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white38,
+                                color: subTextColor,
                                 letterSpacing: 2,
                               ),
                             ),
@@ -379,13 +344,19 @@ class _LoginScreenState extends State<LoginScreen>
                                 child: Container(
                                   padding: const EdgeInsets.all(28.0),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF0F1524)
-                                        .withOpacity(0.6),
+                                    color: cardColor,
                                     borderRadius: BorderRadius.circular(30),
                                     border: Border.all(
-                                      color: Colors.white.withOpacity(0.08),
+                                      color: borderColor,
                                       width: 1,
                                     ),
+                                    boxShadow: isDark ? [] : [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 10),
+                                      )
+                                    ],
                                   ),
                                   child: Form(
                                     key: _formKey,
@@ -405,6 +376,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   en: 'Email, Phone or Username'),
                                               icon:
                                                   Icons.person_outline_rounded,
+                                              isDark: isDark,
                                               validator: (value) {
                                                 if (value == null ||
                                                     value.trim().isEmpty) {
@@ -425,6 +397,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               icon: Icons.email_outlined,
                                               keyboardType:
                                                   TextInputType.emailAddress,
+                                              isDark: isDark,
                                               validator: (value) {
                                                 if (value == null ||
                                                     value.trim().isEmpty) {
@@ -454,6 +427,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                         en: 'OTP Verification Code'),
                                                     icon: Icons.domain_verification_rounded,
                                                     keyboardType: TextInputType.number,
+                                                    isDark: isDark,
                                                     validator: (value) {
                                                       if (value == null ||
                                                           value.trim().isEmpty) {
@@ -478,22 +452,22 @@ class _LoginScreenState extends State<LoginScreen>
                                                         ? null
                                                         : _sendOtpCode,
                                                     style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(0xFF8B5CF6).withOpacity(0.1),
-                                                      foregroundColor: const Color(0xFF8B5CF6),
+                                                      backgroundColor: themeColor.withOpacity(0.1),
+                                                      foregroundColor: themeColor,
                                                       side: BorderSide(
-                                                        color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                                                        color: themeColor.withOpacity(0.3),
                                                       ),
                                                       shape: RoundedRectangleBorder(
                                                         borderRadius: BorderRadius.circular(20),
                                                       ),
                                                     ),
                                                     child: _isSendingOtp
-                                                        ? const SizedBox(
+                                                        ? SizedBox(
                                                             width: 16,
                                                             height: 16,
                                                             child: CircularProgressIndicator(
                                                               strokeWidth: 2,
-                                                              color: Color(0xFF8B5CF6),
+                                                              color: themeColor,
                                                             ),
                                                           )
                                                         : Text(
@@ -518,6 +492,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   en: 'Phone number (Optional)'),
                                               icon: Icons.phone_android_rounded,
                                               keyboardType: TextInputType.phone,
+                                              isDark: isDark,
                                               validator: (value) {
                                                 if (value != null &&
                                                     value.trim().isNotEmpty) {
@@ -541,6 +516,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   en: 'Username (Optional)'),
                                               icon:
                                                   Icons.alternate_email_rounded,
+                                              isDark: isDark,
                                               validator: (value) {
                                                 if (value != null &&
                                                     value.trim().isNotEmpty) {
@@ -567,13 +543,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                 en: 'Password'),
                                             icon: Icons.lock_outline_rounded,
                                             obscureText: _obscurePassword,
+                                            isDark: isDark,
                                             suffixIcon: IconButton(
                                               icon: Icon(
                                                 _obscurePassword
                                                     ? Icons
                                                         .visibility_off_rounded
                                                     : Icons.visibility_rounded,
-                                                color: Colors.white38,
+                                                color: isDark ? Colors.white38 : Colors.black38,
                                                 size: 20,
                                               ),
                                               onPressed: () {
@@ -624,6 +601,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   en: 'Confirm Password'),
                                               icon: Icons.lock_reset_rounded,
                                               obscureText: _obscurePassword,
+                                              isDark: isDark,
                                               validator: (value) {
                                                 if (value == null ||
                                                     value.isEmpty) {
@@ -655,23 +633,27 @@ class _LoginScreenState extends State<LoginScreen>
                                               decoration: BoxDecoration(
                                                 borderRadius:
                                                     BorderRadius.circular(20),
-                                                gradient: const LinearGradient(
+                                                gradient: LinearGradient(
                                                   colors: [
-                                                    themeColor,
-                                                    accentColor
+                                                    buttonColor,
+                                                    buttonHoverColor,
                                                   ],
                                                   begin: Alignment.topLeft,
                                                   end: Alignment.bottomRight,
                                                 ),
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: themeColor
-                                                        .withOpacity(0.3),
+                                                    color: buttonColor
+                                                        .withOpacity(0.2),
                                                     blurRadius: 16,
                                                     spreadRadius: 1,
                                                     offset: const Offset(0, 4),
                                                   ),
                                                 ],
+                                                border: Border.all(
+                                                  color: isDark ? const Color(0xFF2EA44F).withOpacity(0.5) : const Color(0xFF1A7F37).withOpacity(0.5),
+                                                  width: 1,
+                                                ),
                                               ),
                                               alignment: Alignment.center,
                                               child: _isLoading
@@ -721,8 +703,8 @@ class _LoginScreenState extends State<LoginScreen>
                                           en: 'Don\'t have an account? ')
                                       : LocaleService.tr('Đã có tài khoản? ',
                                           en: 'Already have an account? '),
-                                  style: const TextStyle(
-                                      color: Colors.white38, fontSize: 14),
+                                  style: TextStyle(
+                                      color: footerTextColor, fontSize: 14),
                                 ),
                                 GestureDetector(
                                   onTap: _toggleMode,
@@ -732,7 +714,7 @@ class _LoginScreenState extends State<LoginScreen>
                                             en: 'Register now')
                                         : LocaleService.tr('Đăng nhập',
                                             en: 'Login'),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: themeColor,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
@@ -756,20 +738,20 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(20),
                           border:
-                              Border.all(color: Colors.white.withOpacity(0.1)),
+                              Border.all(color: borderColor),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.language,
-                                color: Colors.white70, size: 16),
+                            Icon(Icons.language,
+                                color: isDark ? Colors.white70 : Colors.black87, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               LocaleService.languageCode.value.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -788,224 +770,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildSketchyLayout() {
-    return sketchy.SketchyScaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo vẽ tay
-                sketchy.SketchyCard(
-                  child: const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Icon(
-                      Icons.blur_on_rounded,
-                      size: 48,
-                      color: Color(0xFF8B5CF6),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                sketchy.SketchyText(
-                  'SPACE TIMER',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                sketchy.SketchyText(
-                  _isLoginMode
-                      ? LocaleService.tr('ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH',
-                          en: 'LOGIN TO SYNC PROGRESS')
-                      : LocaleService.tr('ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
-                          en: 'REGISTER SPACE MEMBER'),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Form Card vẽ tay
-                sketchy.SketchyCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_isLoginMode) ...[
-                          sketchy.SketchyTextField(
-                            controller: _emailOrPhoneController,
-                            decoration: InputDecoration(
-                              hintText: LocaleService.tr(
-                                  'Email, SĐT hoặc Username',
-                                  en: 'Email, Phone or Username'),
-                            ),
-                          ),
-                        ] else ...[
-                          sketchy.SketchyTextField(
-                            controller: _emailController,
-                            decoration: InputDecoration(
-                              hintText: LocaleService.tr('Địa chỉ Email',
-                                  en: 'Email Address'),
-                            ),
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: sketchy.SketchyTextField(
-                                  controller: _otpController,
-                                  decoration: InputDecoration(
-                                    hintText: LocaleService.tr('Mã xác thực OTP',
-                                        en: 'OTP Verification Code'),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              sketchy.SketchyButton(
-                                onPressed: (_otpCountdown > 0 || _isSendingOtp)
-                                    ? null
-                                    : _sendOtpCode,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                  child: _isSendingOtp
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Color(0xFF8B5CF6),
-                                          ),
-                                        )
-                                      : sketchy.SketchyText(
-                                          _otpCountdown > 0
-                                              ? '${_otpCountdown}s'
-                                              : (_otpSent
-                                                  ? LocaleService.tr('Gửi lại', en: 'Resend')
-                                                  : LocaleService.tr('Gửi mã', en: 'Send')),
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          sketchy.SketchyTextField(
-                            controller: _phoneController,
-                            decoration: InputDecoration(
-                              hintText: LocaleService.tr(
-                                  'Số điện thoại (Tùy chọn)',
-                                  en: 'Phone number (Optional)'),
-                            ),
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const SizedBox(height: 16),
-                          sketchy.SketchyTextField(
-                            controller: _usernameController,
-                            decoration: InputDecoration(
-                              hintText: LocaleService.tr('Username (Tùy chọn)',
-                                  en: 'Username (Optional)'),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        sketchy.SketchyTextField(
-                          controller: _passwordController,
-                          decoration: InputDecoration(
-                            hintText:
-                                LocaleService.tr('Mật khẩu', en: 'Password'),
-                          ),
-                          obscureText: _obscurePassword,
-                        ),
-                        if (!_isLoginMode) ...[
-                          const SizedBox(height: 16),
-                          sketchy.SketchyTextField(
-                            controller: _confirmPasswordController,
-                            decoration: InputDecoration(
-                              hintText: LocaleService.tr('Xác nhận Mật khẩu',
-                                  en: 'Confirm Password'),
-                            ),
-                            obscureText: _obscurePassword,
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-
-                        // Submit Button vẽ tay
-                        _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: Color(0xFF8B5CF6)))
-                            : sketchy.SketchyButton(
-                                onPressed: _submitForm,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 12.0),
-                                  child: Center(
-                                    child: sketchy.SketchyText(
-                                      _isLoginMode
-                                          ? LocaleService.tr('Đăng Nhập',
-                                              en: 'Login')
-                                          : LocaleService.tr('Tạo Tài Khoản',
-                                              en: 'Create Account'),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Switch mode footer
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    sketchy.SketchyText(
-                      _isLoginMode
-                          ? LocaleService.tr('Chưa có tài khoản? ',
-                              en: 'Don\'t have an account? ')
-                          : LocaleService.tr('Đã có tài khoản? ',
-                              en: 'Already have an account? '),
-                    ),
-                    GestureDetector(
-                      onTap: _toggleMode,
-                      child: sketchy.SketchyText(
-                        _isLoginMode
-                            ? LocaleService.tr('Đăng ký ngay',
-                                en: 'Register now')
-                            : LocaleService.tr('Đăng nhập', en: 'Login'),
-                        style: const TextStyle(
-                          color: Color(0xFF8B5CF6),
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // Reusable Premium TextField Builder
   Widget _buildTextField({
     required TextEditingController controller,
@@ -1015,29 +779,36 @@ class _LoginScreenState extends State<LoginScreen>
     Widget? suffixIcon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    required bool isDark,
   }) {
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final labelColor = isDark ? Colors.white38 : const Color(0xFF64748B);
+    final iconColor = isDark ? Colors.white30 : const Color(0xFF94A3B8);
+    final fillColor = isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02);
+    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.06);
+
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: TextStyle(color: textColor, fontSize: 15),
       decoration: InputDecoration(
         labelText: labelText,
-        labelStyle: const TextStyle(color: Colors.white38, fontSize: 14),
-        prefixIcon: Icon(icon, color: Colors.white30, size: 20),
+        labelStyle: TextStyle(color: labelColor, fontSize: 14),
+        prefixIcon: Icon(icon, color: iconColor, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.02),
+        fillColor: fillColor,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 1.5),
+          borderSide: BorderSide(color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA), width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),

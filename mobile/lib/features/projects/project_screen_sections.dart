@@ -183,111 +183,95 @@ extension _ProjectScreenSections on _ProjectScreenState {
     required Color captionColor,
     required Color dialogBg,
   }) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final thisWeek = today.add(const Duration(days: 7));
-    final dueDay = _taskDueDate == null
-        ? null
-        : DateTime(_taskDueDate!.year, _taskDueDate!.month, _taskDueDate!.day);
-    final customDateSelected = dueDay != null &&
-        dueDay != today &&
-        dueDay != tomorrow &&
-        dueDay != thisWeek;
-    final customTimeSelected = _taskDueTime != null &&
-        !(((_taskDueTime!.hour == 9 ||
-                _taskDueTime!.hour == 13 ||
-                _taskDueTime!.hour == 18) &&
-            _taskDueTime!.minute == 0));
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Due date *',
-            style: TextStyle(
-              color: captionColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildTwoColumnOptions(
+        Row(
           children: [
-            _buildQuickOptionTile(
-              label: 'Today',
-              selected: dueDay == today,
-              onTap: () => setDialogState(() => _taskDueDate = today),
-            ),
-            _buildQuickOptionTile(
-              label: 'Tomorrow',
-              selected: dueDay == tomorrow,
-              onTap: () => setDialogState(() => _taskDueDate = tomorrow),
-            ),
-            _buildQuickOptionTile(
-              label: 'This Week',
-              selected: dueDay == thisWeek,
-              onTap: () => setDialogState(() => _taskDueDate = thisWeek),
-            ),
-            _buildQuickOptionTile(
-              icon: Icons.calendar_month_rounded,
-              label:
-                  customDateSelected ? _dateLabel(_taskDueDate) : 'Pick Date',
-              selected: customDateSelected,
-              onTap: () => _pickTaskDueDate(context, setDialogState),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Due time *',
-            style: TextStyle(
-              color: captionColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildTwoColumnOptions(
-          children: [
-            for (final option in const [
-              TimeOfDay(hour: 9, minute: 0),
-              TimeOfDay(hour: 13, minute: 0),
-              TimeOfDay(hour: 18, minute: 0),
-            ])
-              _buildQuickOptionTile(
-                label: _timeLabel(option),
-                selected: _taskDueTime?.hour == option.hour &&
-                    _taskDueTime?.minute == option.minute,
-                disabled: _taskDueDate != null &&
-                    _isDueTimeInPast(_taskDueDate!, option),
-                onTap: () {
-                  if (_taskDueDate != null &&
-                      _isDueTimeInPast(_taskDueDate!, option)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Due time cannot be in the past.'),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
+            Expanded(
+              child: InkWell(
+                onTap: () => _pickTaskDueDate(context, setDialogState),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: ThemeService.isDarkMode.value
+                        ? Colors.white.withOpacity(0.03)
+                        : Colors.black.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_month_rounded, color: Color(0xFF06B6D4), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Due date *',
+                              style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _taskDueDate == null ? 'Select Date' : _dateLabel(_taskDueDate),
+                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                    return;
-                  }
-                  setDialogState(() => _taskDueTime = option);
-                },
+                    ],
+                  ),
+                ),
               ),
-            _buildQuickOptionTile(
-              icon: Icons.schedule_rounded,
-              label:
-                  customTimeSelected ? _timeLabel(_taskDueTime) : 'Pick Time',
-              selected: customTimeSelected,
-              onTap: () => _pickTaskDueTime(context, setDialogState),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: InkWell(
+                onTap: () => _pickTaskDueTime(context, setDialogState),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: ThemeService.isDarkMode.value
+                        ? Colors.white.withOpacity(0.03)
+                        : Colors.black.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, color: Color(0xFF06B6D4), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Due time *',
+                              style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _taskDueTime == null ? 'Select Time' : _timeLabel(_taskDueTime),
+                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -461,12 +445,23 @@ extension _ProjectScreenSections on _ProjectScreenState {
                         style: TextStyle(color: captionColor)),
                   ),
                   PremiumButton(
-                    onPressed: () =>
-                        _createProjectTask(project['_id'], sheetSetState),
+                    onPressed: _isSavingProjectTask
+                        ? null
+                        : () => _createProjectTask(
+                            project['_id'], sheetSetState, setDialogState),
                     backgroundColor: const Color(0xFF06B6D4),
-                    child: const Text('Assign',
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: _isSavingProjectTask
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Assign',
+                            style: TextStyle(
+                                color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),

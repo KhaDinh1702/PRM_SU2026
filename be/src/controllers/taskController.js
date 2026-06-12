@@ -282,32 +282,14 @@ exports.updateTask = async (req, res) => {
             return res.status(403).json({ error: 'You do not have permission to update this task.' });
         }
 
-        if (canEditFields && title !== undefined) task.title = title;
-        if (canEditFields && description !== undefined) task.description = description;
-        if (status !== undefined) {
-            task.status = status;
-            task.completedAt = status === 'Completed' ? new Date() : null;
-        }
-        if (canEditFields && priority !== undefined) task.priority = priority;
-        if (canEditFields && deadline !== undefined) {
-            task.deadline = deadline;
-            task.dueDate = deadline;
-        }
-        if (canEditFields && dueDate !== undefined) {
-            task.dueDate = dueDate;
-            task.deadline = dueDate;
-        }
-        if (canEditFields && startDate !== undefined) task.startDate = startDate;
-        if (canEditFields && dueTime !== undefined) task.dueTime = dueTime;
-        if (canEditFields && reminderType !== undefined) task.reminderType = reminderType || 'none';
-        if (canEditFields && reminderOffset !== undefined) task.reminderOffset = reminderOffset;
-        if (canEditFields && notificationEnabled !== undefined) {
-            task.notificationEnabled = Boolean(notificationEnabled && task.reminderType !== 'none');
-        }
-        if (canEditFields && label !== undefined) task.label = label;
-        if (canEditFields && assignedTo !== undefined) {
-            task.assignedTo = assignedTo || req.user.id;
-            task.user = assignedTo || req.user.id;
+        // Sử dụng helper cập nhật task chung
+        const { updateTaskFields } = require('../utils/taskHelper');
+        updateTaskFields(task, req.body, canEditFields);
+
+        // Riêng ở updateTask chung, nếu gán assignedTo về rỗng thì set mặc định
+        if (canEditFields && assignedTo !== undefined && !assignedTo) {
+            task.assignedTo = req.user.id;
+            task.user = req.user.id;
         }
 
         await task.save();
@@ -315,6 +297,14 @@ exports.updateTask = async (req, res) => {
         await task.populate('assignedTo', 'name email');
         await task.populate('assignedBy', 'name email');
         await task.populate('createdBy', 'name email');
+
+        // Phát Socket.io real-time nếu task thuộc dự án
+        if (task.project) {
+            const io = req.app.get('io');
+            if (io) {
+                io.to(task.project._id.toString()).emit('taskUpdated', task);
+            }
+        }
 
         res.status(200).json(normalizeTask(task));
     } catch (error) {
@@ -336,14 +326,26 @@ exports.deleteTask = async (req, res) => {
         const ownsTask = getId(task.user) === req.user.id.toString() || getId(task.createdBy) === req.user.id.toString();
         const managesProjectTask = task.project ? canManageProject(task.project, req.user.id) : false;
 
-        if (task.project && !managesProjectTask) {
-            return res.status(403).json({ error: 'Only Owner or Manager can delete project tasks.' });
+        // Cho phép cả người tạo task (ownsTask) được quyền xóa task dự án
+        if (task.project && !managesProjectTask && !ownsTask) {
+            return res.status(403).json({ error: 'You do not have permission to delete this task. Only Owner, Manager, or the creator can delete it.' });
         }
         if (!task.project && !ownsTask) {
             return res.status(403).json({ error: 'You do not have permission to delete this task.' });
         }
 
+        const projectId = task.project ? task.project._id : null;
+
         await task.deleteOne();
+
+        // Phát Socket.io event delete nếu task thuộc dự án
+        if (projectId) {
+            const io = req.app.get('io');
+            if (io) {
+                io.to(projectId.toString()).emit('taskDeleted', { taskId });
+            }
+        }
+
         res.status(200).json({ message: 'Task deleted successfully' });
     } catch (error) {
         console.error('Error in taskController.deleteTask:', error);
