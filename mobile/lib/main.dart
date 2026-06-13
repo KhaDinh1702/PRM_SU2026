@@ -83,7 +83,7 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 3; // Default to Timer tab (center of 7)
 
@@ -94,6 +94,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _screens = [
       const DashboardScreen(), // 0: Home
       const TaskScreen(), // 1: Tasks
@@ -105,90 +106,108 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       const ProfileScreen(), // 7: Profile
     ];
     _startEventCheckTimer();
+    _checkEventsOnce();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _eventCheckTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _eventCheckTimer?.cancel();
+      _eventCheckTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _startEventCheckTimer();
+      _checkEventsOnce();
+    }
+  }
+
   void _startEventCheckTimer() {
+    _eventCheckTimer?.cancel();
     _eventCheckTimer =
-        Timer.periodic(const Duration(seconds: 10), (timer) async {
-      final isLoggedIn = await AuthService.isLoggedIn();
-      if (!isLoggedIn) return;
+        Timer.periodic(const Duration(seconds: 60), (timer) async {
+      await _checkEventsOnce();
+    });
+  }
 
-      try {
-        final token = await AuthService.getToken();
-        final response = await http.get(
-          Uri.parse('https://prm-tan.vercel.app/api/calendar/events'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ).timeout(const Duration(seconds: 10));
+  Future<void> _checkEventsOnce() async {
+    final isLoggedIn = await AuthService.isLoggedIn();
+    if (!isLoggedIn) return;
 
-        if (response.statusCode == 200) {
-          final List<dynamic> events = jsonDecode(response.body);
-          final now = DateTime.now();
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.get(
+        Uri.parse('https://prm-tan.vercel.app/api/calendar/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
 
-          for (final event in events) {
-            final eventId = event['id'];
-            final source = event['source'] ?? 'event';
-            // Chỉ thông báo các sự kiện từ calendar (source là 'event'), bỏ qua task deadline
+      if (response.statusCode == 200) {
+        final List<dynamic> events = jsonDecode(response.body);
+        final now = DateTime.now();
 
-            final startStr = event['start'];
-            if (startStr == null || eventId == null) continue;
+        for (final event in events) {
+          final eventId = event['id'];
+          final source = event['source'] ?? 'event';
+          // Chỉ thông báo các sự kiện từ calendar (source là 'event'), bỏ qua task deadline
 
-            final notificationId = source == 'task'
-                ? 'task:$eventId:${event['reminderType'] ?? 'reminder'}'
-                : eventId.toString();
-            final eventTime = source == 'task'
-                ? DateTime.tryParse(
-                        (event['reminderAt'] ?? event['start']).toString())
-                    ?.toLocal()
-                : DateTime.parse(startStr).toLocal();
-            if (eventTime == null) continue;
+          final startStr = event['start'];
+          if (startStr == null || eventId == null) continue;
 
-            if (source == 'task') {
-              if (event['notificationEnabled'] != true ||
-                  event['status'] == 'Completed') {
-                continue;
-              }
+          final notificationId = source == 'task'
+              ? 'task:$eventId:${event['reminderType'] ?? 'reminder'}'
+              : eventId.toString();
+          final eventTime = source == 'task'
+              ? DateTime.tryParse(
+                      (event['reminderAt'] ?? event['start']).toString())
+                  ?.toLocal()
+              : DateTime.parse(startStr).toLocal();
+          if (eventTime == null) continue;
+
+          if (source == 'task') {
+            if (event['notificationEnabled'] != true ||
+                event['status'] == 'Completed') {
+              continue;
             }
-            final title =
-                event['title'] ?? LocaleService.tr('Sự kiện', en: 'Event');
-            final message = event['description'] ??
-                LocaleService.tr('Đã đến thời gian diễn ra sự kiện.',
-                    en: 'It is time for your event.');
-            final type =
-                source == 'task' ? 'task' : (event['type'] ?? 'reminder');
-            final notificationTitle =
-                source == 'task' ? 'Task Reminder' : title;
-            final notificationMessage =
-                source == 'task' ? _taskReminderMessage(event) : message;
+          }
+          final title =
+              event['title'] ?? LocaleService.tr('Sự kiện', en: 'Event');
+          final message = event['description'] ??
+              LocaleService.tr('Đã đến thời gian diễn ra sự kiện.',
+                  en: 'It is time for your event.');
+          final type =
+              source == 'task' ? 'task' : (event['type'] ?? 'reminder');
+          final notificationTitle =
+              source == 'task' ? 'Task Reminder' : title;
+          final notificationMessage =
+              source == 'task' ? _taskReminderMessage(event) : message;
 
-            // Nếu thời gian hiện tại đã vượt qua hoặc bằng thời gian sự kiện
-            // và sự kiện chưa được thông báo trong phiên làm việc này
-            if (now.isAfter(eventTime) &&
-                !_notifiedEventIds.contains(notificationId)) {
-              // Đảm bảo không thông báo các sự kiện quá cũ (quá 2 giờ trước) khi ứng dụng vừa khởi động
-              if (now.difference(eventTime).inHours < 2) {
-                _notifiedEventIds.add(notificationId);
-                _triggerEventNotification(notificationId, notificationTitle,
-                    notificationMessage, type, token!);
-              } else {
-                // Đánh dấu đã qua nhưng không thông báo vì quá cũ
-                _notifiedEventIds.add(notificationId);
-              }
+          // Nếu thời gian hiện tại đã vượt qua hoặc bằng thời gian sự kiện
+          // và sự kiện chưa được thông báo trong phiên làm việc này
+          if (now.isAfter(eventTime) &&
+              !_notifiedEventIds.contains(notificationId)) {
+            // Đảm bảo không thông báo các sự kiện quá cũ (quá 2 giờ trước) khi ứng dụng vừa khởi động
+            if (now.difference(eventTime).inHours < 2) {
+              _notifiedEventIds.add(notificationId);
+              _triggerEventNotification(notificationId, notificationTitle,
+                  notificationMessage, type, token!);
+            } else {
+              // Đánh dấu đã qua nhưng không thông báo vì quá cũ
+              _notifiedEventIds.add(notificationId);
             }
           }
         }
-      } catch (_) {
-        // Lỗi kết nối âm thầm bỏ qua để tránh ảnh hưởng trải nghiệm người dùng
       }
-    });
+    } catch (_) {
+      // Lỗi kết nối âm thầm bỏ qua để tránh ảnh hưởng trải nghiệm người dùng
+    }
   }
 
   String _taskReminderMessage(Map<String, dynamic> task) {

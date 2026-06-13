@@ -69,6 +69,10 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   void _startMessagePolling() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (socket != null && socket!.connected) {
+        // Socket is connected, no need to poll via HTTP.
+        return;
+      }
       _fetchMessages(silent: true);
     });
   }
