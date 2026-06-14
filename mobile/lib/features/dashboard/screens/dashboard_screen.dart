@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
-import '../services/theme_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/premium_widgets.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../services/theme_service.dart';
+import '../../../services/locale_service.dart';
+import '../../../core/widgets/premium_widgets.dart';
+import '../../../features/dashboard/models/dashboard_summary.dart';
+import '../../../features/dashboard/services/dashboard_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,14 +13,10 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final _dashboardService = const DashboardService();
+
   bool _isLoading = true;
-  Map<String, dynamic> _summary = {
-    'pendingTasks': 0,
-    'completedTasks': 0,
-    'projects': 0,
-    'totalFocusTimeTodayMinutes': 0,
-    'nextMeeting': null
-  };
+  DashboardSummary _summary = DashboardSummary.empty;
 
   @override
   void initState() {
@@ -31,26 +25,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadSummary() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final token = await AuthService.getToken();
-      final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/dashboard/summary'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            _summary = jsonDecode(response.body);
-            _isLoading = false;
-          });
-        }
-      } else {
-        throw Exception();
+      // Gọi qua DashboardService — không http trực tiếp trong widget
+      final summary = await _dashboardService.getSummary();
+      if (mounted) {
+        setState(() {
+          _summary = summary;
+          _isLoading = false;
+        });
       }
     } catch (_) {
       if (mounted) {
@@ -162,7 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               delayMs: 100,
                               child: _buildSummaryCard(
                                 LocaleService.tr('Cần làm', en: 'Pending'),
-                                '${_summary['pendingTasks']}',
+                                '${_summary.pendingTasks}',
                                 LocaleService.tr('công việc', en: 'tasks'),
                                 Icons.playlist_add_check_rounded,
                                 themeColor,
@@ -173,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               delayMs: 200,
                               child: _buildSummaryCard(
                                 LocaleService.tr('Hoàn thành', en: 'Completed'),
-                                '${_summary['completedTasks']}',
+                                '${_summary.completedTasks}',
                                 LocaleService.tr('công việc', en: 'tasks'),
                                 Icons.task_alt_rounded,
                                 const Color(0xFF10B981),
@@ -185,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: _buildSummaryCard(
                                 LocaleService.tr('Dự án tham gia',
                                     en: 'Projects joined'),
-                                '${_summary['projects']}',
+                                '${_summary.projects}',
                                 LocaleService.tr('dự án', en: 'projects'),
                                 Icons.dns_outlined,
                                 const Color(0xFF06B6D4),
@@ -197,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: _buildSummaryCard(
                                 LocaleService.tr('Tập trung hôm nay',
                                     en: 'Focus today'),
-                                '${_summary['totalFocusTimeTodayMinutes']}',
+                                '${_summary.totalFocusTimeTodayMinutes}',
                                 LocaleService.tr('phút', en: 'mins'),
                                 Icons.bolt,
                                 accentColor,
@@ -326,7 +310,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildNextMeetingCard(Color color, bool isDark) {
-    final meeting = _summary['nextMeeting'];
+    // Dùng getter từ DashboardSummary model thay vì Map tùy tiện
+    final hasMeeting = _summary.nextMeeting != null;
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
@@ -334,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GlassCard(
       borderRadius: 24,
       padding: const EdgeInsets.all(22),
-      child: meeting == null
+      child: !hasMeeting
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -360,9 +345,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Dùng getter từ model thay vì map['field']
                       Text(
-                        meeting['title'] ??
-                            LocaleService.tr('Cuộc họp không có tên',
+                        _summary.nextMeetingTitle.isNotEmpty
+                            ? _summary.nextMeetingTitle
+                            : LocaleService.tr('Cuộc họp không có tên',
                                 en: 'Untitled meeting'),
                         style: TextStyle(
                           fontSize: 16,
@@ -372,8 +359,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        meeting['description']?.toString().isNotEmpty == true
-                            ? meeting['description']
+                        _summary.nextMeetingDescription.isNotEmpty
+                            ? _summary.nextMeetingDescription
                             : LocaleService.tr('Không có mô tả',
                                 en: 'No description'),
                         style: TextStyle(
@@ -390,7 +377,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: captionColor, size: 14),
                           const SizedBox(width: 6),
                           Text(
-                            _formatMeetingTime(meeting['startTime']),
+                            _formatMeetingTime(
+                                _summary.nextMeetingStartTime),
                             style: TextStyle(
                               fontSize: 12,
                               color: captionColor,
@@ -407,12 +395,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  String _formatMeetingTime(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr).toLocal();
-      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} - ${date.day}/${date.month}/${date.year}';
-    } catch (_) {}
-    return '';
+  /// Format thời gian cuộc họp từ DateTime (đã parse ở model)
+  String _formatMeetingTime(DateTime? date) {
+    if (date == null) return '';
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} - ${date.day}/${date.month}/${date.year}';
   }
 }

@@ -1,13 +1,12 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/theme_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/premium_widgets.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/theme_service.dart';
+import '../../../services/locale_service.dart';
+import '../../../core/widgets/premium_widgets.dart';
+import '../../../features/timer/services/timer_service.dart';
 
 class TimerScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -19,8 +18,7 @@ class TimerScreen extends StatefulWidget {
 
 class _TimerScreenState extends State<TimerScreen>
     with TickerProviderStateMixin {
-  // Backend API URL (Vercel deployment)
-  static const String _baseUrl = 'https://prm-tan.vercel.app/api/sessions';
+  final _timerService = const TimerService();
 
   // Timer settings
   int _totalSeconds = 25 * 60;
@@ -88,36 +86,22 @@ class _TimerScreenState extends State<TimerScreen>
 
   Future<void> _syncSessionToBackend(String mode, int durationSeconds) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse(_baseUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'mode': mode,
-              'durationSeconds': durationSeconds,
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã đồng bộ phiên làm việc thành công!',
-                  en: 'Session synced successfully!')),
-              backgroundColor: Colors.indigo,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
+      // Gọi qua TimerService — không http trực tiếp trong widget
+      await _timerService.syncSession(
+        mode: mode,
+        durationSeconds: durationSeconds,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr(
+                'Đã đồng bộ phiên làm việc thành công!',
+                en: 'Session synced successfully!')),
+            backgroundColor: Colors.indigo,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {

@@ -193,19 +193,22 @@ extension _ProjectScreenSections on _ProjectScreenState {
                 onTap: () => _pickTaskDueDate(context, setDialogState),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: ThemeService.isDarkMode.value
                         ? Colors.white.withOpacity(0.03)
                         : Colors.black.withOpacity(0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+                      color: ThemeService.getBorderColor(
+                          ThemeService.isDarkMode.value),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_month_rounded, color: Color(0xFF06B6D4), size: 20),
+                      const Icon(Icons.calendar_month_rounded,
+                          color: Color(0xFF06B6D4), size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -213,12 +216,20 @@ extension _ProjectScreenSections on _ProjectScreenState {
                           children: [
                             Text(
                               'Due date *',
-                              style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: captionColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _taskDueDate == null ? 'Select Date' : _dateLabel(_taskDueDate),
-                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                              _taskDueDate == null
+                                  ? 'Select Date'
+                                  : _dateLabel(_taskDueDate),
+                              style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -236,19 +247,22 @@ extension _ProjectScreenSections on _ProjectScreenState {
                 onTap: () => _pickTaskDueTime(context, setDialogState),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: ThemeService.isDarkMode.value
                         ? Colors.white.withOpacity(0.03)
                         : Colors.black.withOpacity(0.03),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: ThemeService.getBorderColor(ThemeService.isDarkMode.value),
+                      color: ThemeService.getBorderColor(
+                          ThemeService.isDarkMode.value),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.schedule_rounded, color: Color(0xFF06B6D4), size: 20),
+                      const Icon(Icons.schedule_rounded,
+                          color: Color(0xFF06B6D4), size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -256,12 +270,20 @@ extension _ProjectScreenSections on _ProjectScreenState {
                           children: [
                             Text(
                               'Due time *',
-                              style: TextStyle(color: captionColor, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: captionColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _taskDueTime == null ? 'Select Time' : _timeLabel(_taskDueTime),
-                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                              _taskDueTime == null
+                                  ? 'Select Time'
+                                  : _timeLabel(_taskDueTime),
+                              style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -461,7 +483,8 @@ extension _ProjectScreenSections on _ProjectScreenState {
                           )
                         : const Text('Assign',
                             style: TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold)),
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -585,7 +608,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
       tasksLoaded: _projectTasksLoaded,
       canManage: canManage,
       onFilterChanged: (filter) {
-        setState(() => _taskFilter = filter);
+        _updateProjectState(() => _taskFilter = filter);
         sheetSetState(() {});
       },
       onAddTask: () => _showCreateProjectTaskDialog(project, sheetSetState),

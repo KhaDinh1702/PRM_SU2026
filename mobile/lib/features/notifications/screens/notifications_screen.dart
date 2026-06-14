@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
-import '../services/theme_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/premium_widgets.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../services/theme_service.dart';
+import '../../../services/locale_service.dart';
+import '../../../core/widgets/premium_widgets.dart';
+import '../../../features/notifications/models/notification_model.dart';
+import '../../../features/notifications/services/notification_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   static final ValueNotifier<int> refreshTrigger = ValueNotifier(0);
@@ -17,9 +15,9 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
-  static const String _baseUrl = 'https://prm-tan.vercel.app/api';
+  final _notificationService = const NotificationService();
   bool _isLoading = true;
-  List<Map<String, dynamic>> _notifications = [];
+  List<NotificationModel> _notifications = [];
   late AnimationController _pulseController;
 
   @override
@@ -47,109 +45,74 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Future<void> _loadNotifications() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      final token = await AuthService.getToken();
-      final response = await http.get(
-        Uri.parse('$_baseUrl/notifications'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _notifications = data.cast<Map<String, dynamic>>();
-            _isLoading = false;
-          });
-        }
-      } else {
-        throw Exception('Failed to load notifications');
+      // Gọi qua NotificationService — không http trực tiếp trong widget
+      final notifications = await _notificationService.getNotifications();
+      if (mounted) {
+        setState(() {
+          _notifications = notifications;
+          _isLoading = false;
+        });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _markAsRead(String notificationId) async {
-    try {
-      final token = await AuthService.getToken();
-      final response = await http.put(
-        Uri.parse('$_baseUrl/notifications/$notificationId/read'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            final idx =
-                _notifications.indexWhere((n) => n['_id'] == notificationId);
-            if (idx != -1) {
-              _notifications[idx]['isRead'] = true;
-            }
-          });
+    // Gọi service, cập nhật local state ngay không cần reload
+    await _notificationService.markAsRead(notificationId);
+    if (mounted) {
+      setState(() {
+        final idx = _notifications.indexWhere((n) => n.id == notificationId);
+        if (idx != -1) {
+          _notifications[idx] = _notifications[idx].copyWithRead();
         }
-      }
-    } catch (_) {
-      // Silently fail — we can retry on next refresh
+      });
     }
   }
 
   Future<void> _markAllAsRead() async {
+    // Mark all unread (except invitations) as read
     final unread = _notifications
-        .where((n) => n['isRead'] != true && n['type'] != 'invitation')
+        .where((n) => !n.isRead && n.type != NotificationType.invitation)
         .toList();
     for (final n in unread) {
-      await _markAsRead(n['_id']);
+      await _markAsRead(n.id);
     }
   }
 
   Future<void> _respondToInvitation(
       String projectId, String notificationId, String action) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse(
-                '$_baseUrl/projects/$projectId/invitations/$notificationId/respond'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'action': action}),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            final idx =
-                _notifications.indexWhere((n) => n['_id'] == notificationId);
-            if (idx != -1) {
-              _notifications[idx] = data['notification'];
-            }
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(action == 'accept'
-                  ? LocaleService.tr('Đã chấp nhận lời mời!',
-                      en: 'Invitation accepted!')
-                  : LocaleService.tr('Đã từ chối lời mời.',
-                      en: 'Invitation rejected.')),
-              backgroundColor:
-                  action == 'accept' ? Colors.green : Colors.orange,
-            ),
-          );
-        }
+      // Gọi qua NotificationService — không http trực tiếp trong widget
+      final updatedNotification =
+          await _notificationService.respondToInvitation(
+        projectId: projectId,
+        notificationId: notificationId,
+        action: action,
+      );
+      if (mounted) {
+        setState(() {
+          final idx =
+              _notifications.indexWhere((n) => n.id == notificationId);
+          if (idx != -1) {
+            _notifications[idx] = updatedNotification;
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(action == 'accept'
+                ? LocaleService.tr('Đã chấp nhận lời mời!',
+                    en: 'Invitation accepted!')
+                : LocaleService.tr('Đã từ chối lời mời.',
+                    en: 'Invitation rejected.')),
+            backgroundColor:
+                action == 'accept' ? Colors.green : Colors.orange,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -162,72 +125,25 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
   }
 
-  // --- UI Helpers ---
+  // --- UI Helpers --- (giờ dùng model getters thay vì switch thô)
 
-  IconData _iconForType(String? type) {
-    switch (type) {
-      case 'task':
-        return Icons.task_alt_rounded;
-      case 'meeting':
-        return Icons.videocam_rounded;
-      case 'project':
-        return Icons.dns_rounded;
-      case 'invitation':
-        return Icons.group_add_rounded;
-      default:
-        return Icons.notifications_rounded;
+  String _timeAgo(DateTime? date) {
+    if (date == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 1) {
+      return LocaleService.tr('Vừa xong', en: 'Just now');
     }
-  }
-
-  Color _colorForType(String? type) {
-    switch (type) {
-      case 'task':
-        return const Color(0xFF10B981); // Emerald
-      case 'meeting':
-        return const Color(0xFFF43F5E); // Rose
-      case 'project':
-        return const Color(0xFF06B6D4); // Cyan
-      case 'invitation':
-        return Colors.blue;
-      default:
-        return const Color(0xFF8B5CF6); // Violet
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} ${LocaleService.tr('phút trước', en: 'mins ago')}';
     }
-  }
-
-  String _labelForType(String? type) {
-    switch (type) {
-      case 'task':
-        return LocaleService.tr('Công việc', en: 'Task');
-      case 'meeting':
-        return LocaleService.tr('Cuộc họp', en: 'Meeting');
-      case 'project':
-        return LocaleService.tr('Dự án', en: 'Project');
-      case 'invitation':
-        return LocaleService.tr('Lời mời', en: 'Invite');
-      default:
-        return LocaleService.tr('Hệ thống', en: 'System');
+    if (diff.inHours < 24) {
+      return '${diff.inHours} ${LocaleService.tr('giờ trước', en: 'hours ago')}';
     }
-  }
-
-  String _timeAgo(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr).toLocal();
-      final now = DateTime.now();
-      final diff = now.difference(date);
-
-      if (diff.inMinutes < 1)
-        return LocaleService.tr('Vừa xong', en: 'Just now');
-      if (diff.inMinutes < 60)
-        return '${diff.inMinutes} ${LocaleService.tr('phút trước', en: 'mins ago')}';
-      if (diff.inHours < 24)
-        return '${diff.inHours} ${LocaleService.tr('giờ trước', en: 'hours ago')}';
-      if (diff.inDays < 7)
-        return '${diff.inDays} ${LocaleService.tr('ngày trước', en: 'days ago')}';
-      return '${date.day}/${date.month}/${date.year}';
-    } catch (_) {
-      return '';
+    if (diff.inDays < 7) {
+      return '${diff.inDays} ${LocaleService.tr('ngày trước', en: 'days ago')}';
     }
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   @override
@@ -243,7 +159,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         final captionColor = ThemeService.getCaptionColor(isDark);
 
         final unreadCount =
-            _notifications.where((n) => n['isRead'] != true).length;
+            _notifications.where((n) => !n.isRead).length;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -267,7 +183,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                LocaleService.tr('THÔNG BÁO',
+                              LocaleService.tr('THÔNG BÁO',
                                     en: 'NOTIFICATIONS'),
                                 style: TextStyle(
                                   color: captionColor,
@@ -307,7 +223,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                             ),
                                           ),
                                           child: Text(
-                                            '$unreadCount ${LocaleService.tr('mới', en: 'new')}',
+        '${unreadCount} ${LocaleService.tr('mới', en: 'new')}',
                                             style: TextStyle(
                                               color: themeColor,
                                               fontSize: 11,
@@ -362,9 +278,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                if (_notifications.any((n) =>
-                    n['type'] == 'invitation' &&
-                    n['invitationStatus'] == 'pending'))
+                  if (_notifications.any((n) => n.isPendingInvitation))
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -382,9 +296,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                           ),
                           const SizedBox(height: 12),
                           ..._notifications
-                              .where((n) =>
-                                  n['type'] == 'invitation' &&
-                                  n['invitationStatus'] == 'pending')
+                              .where((n) => n.isPendingInvitation)
                               .map((invite) =>
                                   _buildInvitationCard(invite, isDark)),
                           const SizedBox(height: 20),
@@ -464,9 +376,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final notification = _notifications
-                              .where((n) =>
-                                  n['type'] != 'invitation' ||
-                                  n['invitationStatus'] != 'pending')
+                              .where((n) => !n.isPendingInvitation)
                               .toList()[index];
                           return FadeInSlide(
                             delayMs: 80 * index,
@@ -474,9 +384,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                           );
                         },
                         childCount: _notifications
-                            .where((n) =>
-                                n['type'] != 'invitation' ||
-                                n['invitationStatus'] != 'pending')
+                            .where((n) => !n.isPendingInvitation)
                             .length,
                       ),
                     ),
@@ -493,10 +401,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildNotificationCard(
-      Map<String, dynamic> notification, bool isDark) {
-    final isRead = notification['isRead'] == true;
-    final type = notification['type'] as String?;
-    final color = _colorForType(type);
+      NotificationModel notification, bool isDark) {
+    final isRead = notification.isRead;
+    // Dùng getter từ model thay vì switch thủ công
+    final color = notification.typeColor;
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
@@ -505,9 +413,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
         onTap: () {
-          if (!isRead) {
-            _markAsRead(notification['_id']);
-          }
+          if (!isRead) _markAsRead(notification.id);
         },
         child: GlassCard(
           borderRadius: 20,
@@ -524,7 +430,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon container
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -535,20 +440,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   ),
                 ),
                 child: Icon(
-                  _iconForType(type),
+                  notification.typeIcon,
                   color: color.withOpacity(isRead ? 0.5 : 1.0),
                   size: 22,
                 ),
               ),
               const SizedBox(width: 14),
-              // Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        // Type label
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -557,7 +460,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            _labelForType(type),
+                            notification.typeLabel,
                             style: TextStyle(
                               color: color,
                               fontSize: 9,
@@ -567,7 +470,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                           ),
                         ),
                         const Spacer(),
-                        // Unread dot indicator
                         if (!isRead)
                           Container(
                             width: 8,
@@ -587,17 +489,19 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      notification['title'] ??
-                          LocaleService.tr('Thông báo', en: 'Notification'),
+                      notification.title.isNotEmpty
+                          ? notification.title
+                          : LocaleService.tr('Thông báo', en: 'Notification'),
                       style: TextStyle(
                         color: isRead ? subTextColor : textColor,
                         fontSize: 14,
-                        fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                        fontWeight:
+                            isRead ? FontWeight.w500 : FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      notification['message'] ?? '',
+                      notification.message,
                       style: TextStyle(
                         color: isRead ? captionColor : subTextColor,
                         fontSize: 12,
@@ -608,7 +512,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _timeAgo(notification['createdAt']),
+                      _timeAgo(notification.createdAt),
                       style: TextStyle(
                         color: captionColor,
                         fontSize: 10,
@@ -626,19 +530,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   }
 
   Widget _buildInvitationCard(
-    Map<String, dynamic> invite,
+    NotificationModel invite,
     bool isDark,
   ) {
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
-    final projectName = invite['relatedId'] != null
-        ? invite['relatedId']['name']
-        : 'Unknown Project';
-    final senderName = invite['sender'] != null
-        ? (invite['sender']['name'] ?? invite['sender']['email'])
-        : 'Someone';
-    final projectId =
-        invite['relatedId'] != null ? invite['relatedId']['_id'] : '';
+    // Dùng getter từ model thay vì map['field'] thủ công
+    final projectName = invite.invitationProjectName;
+    final senderName = invite.senderName;
+    final projectId = invite.invitationProjectId;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -698,7 +598,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     onPressed: projectId.isEmpty
                         ? null
                         : () => _respondToInvitation(
-                            projectId, invite['_id'], 'accept'),
+                            projectId, invite.id, 'accept'),
                     icon: Icons.check,
                     label: LocaleService.tr('Chấp nhận', en: 'Accept'),
                     backgroundColor: Colors.green,
@@ -710,7 +610,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     onPressed: projectId.isEmpty
                         ? null
                         : () => _respondToInvitation(
-                            projectId, invite['_id'], 'reject'),
+                            projectId, invite.id, 'reject'),
                     icon: Icons.close,
                     label: LocaleService.tr('Từ chối', en: 'Reject'),
                     backgroundColor: Colors.redAccent,

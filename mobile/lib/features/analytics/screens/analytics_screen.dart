@@ -1,12 +1,12 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
-import '../services/theme_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/premium_widgets.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/theme_service.dart';
+import '../../../services/locale_service.dart';
+import '../../../core/widgets/premium_widgets.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
