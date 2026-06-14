@@ -368,7 +368,7 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
   }
 
   void _clearProjectFilters() {
-    setState(() {
+    _updateProjectState(() {
       _projectSearchController.clear();
       _projectSearchQuery = '';
       _projectTab = 'All';
@@ -394,15 +394,15 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
               typeOptions: _typeFilterOptions,
               sortOptions: _sortOptions,
               onRoleChanged: (value) {
-                setState(() => _roleFilter = value);
+                _updateProjectState(() => _roleFilter = value);
                 modalSetState(() {});
               },
               onTypeChanged: (value) {
-                setState(() => _typeFilter = value);
+                _updateProjectState(() => _typeFilter = value);
                 modalSetState(() {});
               },
               onSortChanged: (value) {
-                setState(() => _sortBy = value);
+                _updateProjectState(() => _sortBy = value);
                 modalSetState(() {});
               },
               onClear: () {
@@ -487,15 +487,6 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
     return [if (owner != null) owner, ...members];
   }
 
-  Set<String> _pendingInvitationIds(Map<String, dynamic> projectData) {
-    final pending =
-        projectData['pendingInvitationUserIds'] as List<dynamic>? ?? [];
-    final project = projectData['project'] as Map<String, dynamic>? ?? {};
-    final local =
-        _localPendingInviteIds[project['_id']?.toString() ?? ''] ?? {};
-    return {...pending.map((id) => id.toString()), ...local};
-  }
-
   void _markInvited(Map<String, dynamic> projectData, String userId) {
     final pending =
         projectData['pendingInvitationUserIds'] as List<dynamic>? ?? [];
@@ -520,19 +511,6 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
       }
     }
     return 'Member';
-  }
-
-  Color _roleColor(String role) {
-    if (role == 'Owner') return const Color(0xFFEAB308);
-    if (role == 'Manager') return const Color(0xFF8B5CF6);
-    return const Color(0xFF06B6D4);
-  }
-
-  Color _statusColor(String status) {
-    if (status == 'Completed') return const Color(0xFF10B981);
-    if (status == 'In Progress') return const Color(0xFF06B6D4);
-    if (status == 'Overdue') return const Color(0xFFF43F5E);
-    return const Color(0xFFEAB308);
   }
 
   void _resetTaskScheduleFields() {

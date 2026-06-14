@@ -3,16 +3,16 @@ library project_screen;
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../services/auth_service.dart';
-import '../services/theme_service.dart';
-import '../services/locale_service.dart';
-import '../widgets/premium_widgets.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/theme_service.dart';
+import '../../../services/locale_service.dart';
+import '../../../core/widgets/premium_widgets.dart';
 import '../widgets/chat_bottom_sheet.dart';
+import '../services/project_service.dart';
 
-part '../features/projects/project_screen_sections.dart';
-part '../features/projects/project_screen_helpers.dart';
-part '../features/projects/project_screen_components.dart';
+part '../project_screen_sections.dart';
+part '../project_screen_helpers.dart';
+part '../project_screen_components.dart';
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({super.key});
@@ -22,6 +22,7 @@ class ProjectScreen extends StatefulWidget {
 }
 
 class _ProjectScreenState extends State<ProjectScreen> {
+  final _projectService = const ProjectService();
   bool _isLoading = true;
   String? _projectLoadError;
   List<dynamic> _projects = [];
@@ -54,6 +55,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final Map<String, Set<String>> _localPendingInviteIds = {};
   bool _isSavingProjectTask = false;
 
+  void _updateProjectState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,35 +78,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   Future<void> _deleteProject(String projectId) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http.delete(
-        Uri.parse('https://prm-tan.vercel.app/api/projects/$projectId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã xóa dự án thành công!',
-                  en: 'Project deleted successfully!')),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        _loadProjects();
-      } else {
-        final data = jsonDecode(response.body);
-        throw Exception(data['error'] ??
-            LocaleService.tr('Xóa thất bại',
-                en: 'Deletion failed'));
+      // Gọi qua ProjectService
+      await _projectService.deleteProject(projectId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr('Đã xóa dự án thành công!',
+                en: 'Project deleted successfully!')),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
+      _loadProjects();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,11 +118,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: dialogBg.withOpacity(0.9),
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: BorderSide(
-                  color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+                  color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
             ),
             title: Row(
               children: [
@@ -140,8 +131,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    LocaleService.tr('XÓA DỰ ÁN?',
-                        en: 'DELETE PROJECT?'),
+                    LocaleService.tr('XÓA DỰ ÁN?', en: 'DELETE PROJECT?'),
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: textColor,
@@ -202,38 +192,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _projectLoadError = null;
     });
     try {
-      final token = await AuthService.getToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Missing login token');
-      }
-
-      final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/projects'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-
-        if (mounted) {
-          setState(() {
-            _projects = _normalizeProjectResponse(decoded);
-            _isLoading = false;
-            _projectLoadError = null;
-          });
-        }
-      } else {
-        var errorMessage = 'Could not load projects';
-        try {
-          final data = jsonDecode(response.body);
-          if (data is Map<String, dynamic> && data['error'] != null) {
-            errorMessage = data['error'].toString();
-          }
-        } catch (_) {}
-        throw Exception('HTTP ${response.statusCode}: $errorMessage');
+      // Gọi qua ProjectService — không http trực tiếp trong widget
+      final projects = await _projectService.getProjects();
+      if (mounted) {
+        setState(() {
+          _projects = _normalizeProjectResponse(projects);
+          _isLoading = false;
+          _projectLoadError = null;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -249,71 +215,43 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Future<void> _loadUsers() async {
     try {
       setState(() => _isLoadingUsers = true);
-
-      final token = await AuthService.getToken();
-
-      final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/users'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (mounted) {
-          setState(() {
-            _allUsers = data;
-            _isLoadingUsers = false;
-          });
-        }
-      } else {
-        setState(() => _isLoadingUsers = false);
+      // Gọi qua ProjectService
+      final users = await _projectService.getUsers();
+      if (mounted) {
+        setState(() {
+          _allUsers = users;
+          _isLoadingUsers = false;
+        });
       }
     } catch (e) {
-      setState(() => _isLoadingUsers = false);
+      if (mounted) setState(() => _isLoadingUsers = false);
     }
   }
 
   Future<void> _createProject() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse('https://prm-tan.vercel.app/api/projects'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'name': name,
-              'description': _descController.text.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 201) {
-        _nameController.clear();
-        _descController.clear();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã khởi tạo dự án nhóm thành công!',
-                  en: 'Project created successfully!')),
-              backgroundColor: const Color(0xFF06B6D4),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        _loadProjects();
+      // Gọi qua ProjectService
+      await _projectService.createProject(
+        name: name,
+        description: _descController.text.trim(),
+      );
+      _nameController.clear();
+      _descController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr(
+                'Đã khởi tạo dự án nhóm thành công!',
+                en: 'Project created successfully!')),
+            backgroundColor: const Color(0xFF06B6D4),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
+      _loadProjects();
     } catch (_) {}
   }
 
@@ -322,36 +260,19 @@ class _ProjectScreenState extends State<ProjectScreen> {
     Map<String, dynamic> payload,
   ) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .put(
-            Uri.parse('https://prm-tan.vercel.app/api/projects/$projectId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        await _loadProjects();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Project updated successfully.'),
-              backgroundColor: Color(0xFF06B6D4),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
+      // Gọi qua ProjectService
+      await _projectService.updateProject(
+          projectId: projectId, payload: payload);
+      await _loadProjects();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Project updated successfully.'),
+            backgroundColor: Color(0xFF06B6D4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-
-      final data = response.body.isNotEmpty
-          ? jsonDecode(response.body) as Map<String, dynamic>
-          : <String, dynamic>{};
-      throw Exception(data['error'] ?? 'Update failed');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -370,62 +291,48 @@ class _ProjectScreenState extends State<ProjectScreen> {
     if (email.isEmpty) return null;
     final fallbackUserId = _userIdByEmail(email);
 
-    try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse(
-                'https://prm-tan.vercel.app/api/projects/$projectId/members'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'email': email}),
-          )
-          .timeout(const Duration(seconds: 15));
+    // Gọi qua ProjectService
+    final result = await _projectService.addMember(
+        projectId: projectId, email: email);
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        _memberEmailController.clear();
-        _loadProjects();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã gửi lời mời tham gia dự án!',
-                  en: 'Project invitation sent!')),
-              backgroundColor: Colors.indigo,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return _extractUserId(data['invitedUserId']) ??
-            _extractUserId(data['notification']?['user']) ??
-            fallbackUserId;
-      } else {
-        final errorText = (data['error'] ?? '').toString().toLowerCase();
-        if (fallbackUserId != null &&
-            (errorText.contains('pending') ||
-                errorText.contains('ch') ||
-                errorText.contains('mời') ||
-                errorText.contains('moi'))) {
-          _memberEmailController.clear();
-          return fallbackUserId;
-        }
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(data['error'] ??
-                  LocaleService.tr(
-                      'Có lỗi xảy ra.',
-                      en: 'An error occurred.')),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+    if (result['success'] == true) {
+      _memberEmailController.clear();
+      _loadProjects();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr('Đã gửi lời mời tham gia dự án!',
+                en: 'Project invitation sent!')),
+            backgroundColor: Colors.indigo,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    } catch (_) {}
+      final data = result['data'] as Map<String, dynamic>;
+      return _extractUserId(data['invitedUserId']) ??
+          _extractUserId(data['notification']?['user']) ??
+          fallbackUserId;
+    } else {
+      final errorText = (result['error'] ?? '').toString().toLowerCase();
+      if (fallbackUserId != null &&
+          (errorText.contains('pending') ||
+              errorText.contains('ch') ||
+              errorText.contains('mời') ||
+              errorText.contains('moi'))) {
+        _memberEmailController.clear();
+        return fallbackUserId;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error'] ??
+                LocaleService.tr('Có lỗi xảy ra.', en: 'An error occurred.')),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
     return null;
   }
 
@@ -441,18 +348,16 @@ class _ProjectScreenState extends State<ProjectScreen> {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: AlertDialog(
-            backgroundColor: dialogBg.withOpacity(0.9),
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
               side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.08)),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.08)),
             ),
             title: Text(
-              LocaleService.tr(
-                  'TẠO DỰ ÁN MỚI',
-                  en: 'CREATE NEW PROJECT'),
+              LocaleService.tr('TẠO DỰ ÁN MỚI', en: 'CREATE NEW PROJECT'),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -464,22 +369,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
               children: [
                 PremiumInputField(
                   controller: _nameController,
-                  label: LocaleService.tr(
-                      'Tên dự án *',
-                      en: 'Project name *'),
-                  hintText: LocaleService.tr(
-                      'Nhập tên dự án...',
+                  label: LocaleService.tr('Tên dự án *', en: 'Project name *'),
+                  hintText: LocaleService.tr('Nhập tên dự án...',
                       en: 'Enter project name...'),
                   prefixIcon: Icons.folder_rounded,
                 ),
                 const SizedBox(height: 14),
                 PremiumInputField(
                   controller: _descController,
-                  label: LocaleService.tr(
-                      'Mô tả dự án',
+                  label: LocaleService.tr('Mô tả dự án',
                       en: 'Project description'),
-                  hintText: LocaleService.tr(
-                      'Nhập mô tả dự án...',
+                  hintText: LocaleService.tr('Nhập mô tả dự án...',
                       en: 'Enter project description...'),
                   prefixIcon: Icons.description_outlined,
                 ),
@@ -511,27 +411,16 @@ class _ProjectScreenState extends State<ProjectScreen> {
     );
   }
 
-
   Future<void> _loadProjectTasks(String projectId,
       [StateSetter? sheetSetState]) async {
     if (!mounted) return;
     setState(() => _isLoadingProjectTasks = true);
     sheetSetState?.call(() {});
-
     try {
-      final token = await AuthService.getToken();
-      final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/projects/$projectId/tasks'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        _projectTasks = jsonDecode(response.body);
-        _projectTasksLoaded = true;
-      }
+      // Gọi qua ProjectService
+      final tasks = await _projectService.getProjectTasks(projectId);
+      _projectTasks = tasks;
+      _projectTasksLoaded = true;
     } catch (_) {
     } finally {
       if (mounted) {
@@ -541,8 +430,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
-  Future<void> _createProjectTask(
-      String projectId, StateSetter sheetSetState, [StateSetter? dialogSetState]) async {
+  Future<void> _createProjectTask(String projectId, StateSetter sheetSetState,
+      [StateSetter? dialogSetState]) async {
     if (_isSavingProjectTask) return;
     final title = _taskTitleController.text.trim();
     if (title.isEmpty || _selectedAssigneeId == null || _taskDueDate == null) {
@@ -575,33 +464,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
         setState(() => _isSavingProjectTask = true);
         dialogSetState?.call(() {});
       }
-      final token = await AuthService.getToken();
-      final headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-      final body = jsonEncode({
-        'title': title,
-        'description': _taskDescController.text.trim(),
-        'priority': _taskPriority,
-        'assignedTo': _selectedAssigneeId,
-        'project': projectId,
-        ..._taskSchedulePayload(),
-      });
-
-      final response = await http
-          .post(
-            Uri.parse(
-                'https://prm-tan.vercel.app/api/projects/$projectId/tasks'),
-            headers: headers,
-            body: body,
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 201) {
-        final createdTask = response.body.isNotEmpty
-            ? jsonDecode(response.body) as Map<String, dynamic>
-            : <String, dynamic>{};
+      // Gọi qua ProjectService
+      final result = await _projectService.createProjectTask(
+        projectId: projectId,
+        payload: {
+          'title': title,
+          'description': _taskDescController.text.trim(),
+          'priority': _taskPriority,
+          'assignedTo': _selectedAssigneeId,
+          'project': projectId,
+          ..._taskSchedulePayload(),
+        },
+      );
+      if (result['success'] == true) {
+        final createdTask = result['data'] as Map<String, dynamic>;
         final createdAssigneeId =
             _itemId(createdTask['assignedTo'] ?? createdTask['user']);
         if (createdAssigneeId.isNotEmpty &&
@@ -617,8 +493,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã phân task thành công!',
+              content: Text(LocaleService.tr('Đã phân task thành công!',
                   en: 'Task assigned successfully!')),
               backgroundColor: const Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
@@ -626,10 +501,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
           );
         }
       } else if (mounted) {
-        final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['error'] ?? 'Cannot create task'),
+            content: Text(result['error'] ?? 'Cannot create task'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -653,23 +527,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
       }
     }
   }
+
   Future<void> _updateProjectTaskStatus(String projectId, String taskId,
       String status, StateSetter sheetSetState) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .put(
-            Uri.parse(
-                'https://prm-tan.vercel.app/api/projects/$projectId/tasks/$taskId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'status': status}),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
+      // Gọi qua ProjectService
+      final result = await _projectService.updateProjectTask(
+        projectId: projectId,
+        taskId: taskId,
+        payload: {'status': status},
+      );
+      if (result['success'] == true) {
         await _loadProjectTasks(projectId, sheetSetState);
         await _loadProjects();
       }
@@ -682,69 +550,48 @@ class _ProjectScreenState extends State<ProjectScreen> {
     Map<String, dynamic> payload,
     StateSetter sheetSetState,
   ) async {
-    try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .put(
-            Uri.parse(
-                'https://prm-tan.vercel.app/api/projects/$projectId/tasks/$taskId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        if (mounted) Navigator.pop(context);
-        await _loadProjectTasks(projectId, sheetSetState);
-        await _loadProjects();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(LocaleService.tr(
-                  'Đã cập nhật task thành công!',
-                  en: 'Task updated successfully!')),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return null;
-      } else if (mounted) {
-        final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-        if (response.statusCode == 404 || response.statusCode == 405) {
-          return LocaleService.tr(
-              'Backend chưa cập nhật API sửa task dự án. Cần deploy backend mới.',
-              en: 'Project task edit API is not deployed yet. Please deploy the updated backend.');
-        }
-        return (data['error'] ?? 'Cannot update task').toString();
+    // Gọi qua ProjectService
+    final result = await _projectService.updateProjectTask(
+      projectId: projectId,
+      taskId: taskId,
+      payload: payload,
+    );
+    if (result['success'] == true) {
+      if (mounted) Navigator.pop(context);
+      await _loadProjectTasks(projectId, sheetSetState);
+      await _loadProjects();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr('Đã cập nhật task thành công!',
+                en: 'Task updated successfully!')),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-      return 'Cannot update task';
-    } catch (e) {
-      return '${LocaleService.tr('Lỗi khi cập nhật task:', en: 'Error updating task:')} $e';
+      return null;
     }
+    final statusCode = result['statusCode'] as int?;
+    if (statusCode == 404 || statusCode == 405) {
+      return LocaleService.tr(
+          'Backend chưa cập nhật API sửa task dự án. Cần deploy backend mới.',
+          en: 'Project task edit API is not deployed yet. Please deploy the updated backend.');
+    }
+    return (result['error'] ?? 'Cannot update task').toString();
   }
 
   Future<bool> _updateMemberRole(String projectId, String userId, String role,
       Map<String, dynamic> projectData, StateSetter sheetSetState) async {
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .put(
-            Uri.parse(
-                'https://prm-tan.vercel.app/api/projects/$projectId/members/$userId/role'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'role': role}),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      // Gọi qua ProjectService
+      final result = await _projectService.updateMemberRole(
+        projectId: projectId,
+        userId: userId,
+        role: role,
+      );
+      if (result['success'] == true) {
+        final data = result['data'] as Map<String, dynamic>;
         projectData['project'] = data['project'];
         projectData['currentUserRole'] = data['currentUserRole'];
         await _loadProjects();
@@ -760,11 +607,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
         }
         return true;
       } else if (mounted) {
-        final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text((data['error'] ?? 'Cannot update member role').toString()),
+            content: Text(
+                (result['error'] ?? 'Cannot update member role').toString()),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -894,7 +740,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                     Icon(
                                       Icons.cloud_off_rounded,
                                       size: 54,
-                                      color: Colors.redAccent.withOpacity(0.75),
+                                      color: Colors.redAccent
+                                          .withValues(alpha: 0.75),
                                     ),
                                     const SizedBox(height: 12),
                                     Padding(
@@ -931,7 +778,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                         Icon(
                                           Icons.dns_outlined,
                                           size: 54,
-                                          color: captionColor.withOpacity(0.4),
+                                          color: captionColor.withValues(
+                                              alpha: 0.4),
                                         ),
                                         const SizedBox(height: 12),
                                         Text(
@@ -956,8 +804,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                             Icon(
                                               Icons.filter_alt_off_rounded,
                                               size: 54,
-                                              color:
-                                                  captionColor.withOpacity(0.4),
+                                              color: captionColor.withValues(
+                                                  alpha: 0.4),
                                             ),
                                             const SizedBox(height: 12),
                                             Text(

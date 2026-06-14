@@ -7,15 +7,15 @@ import 'package:flutter/services.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/locale_service.dart';
-import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
-import 'screens/task_screen.dart';
-import 'screens/timer_screen.dart';
-import 'screens/project_screen.dart';
-import 'screens/calendar_screen.dart';
-import 'screens/notifications_screen.dart';
-import 'screens/analytics_screen.dart';
-import 'screens/profile_screen.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/tasks/screens/task_screen.dart';
+import 'features/timer/screens/timer_screen.dart';
+import 'features/projects/screens/project_screen.dart';
+import 'features/calendar/screens/calendar_screen.dart';
+import 'features/notifications/screens/notifications_screen.dart';
+import 'features/analytics/screens/analytics_screen.dart';
+import 'features/profile/screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
                 colorScheme: ColorScheme.fromSeed(
                   seedColor: const Color(0xFF0969DA), // GitHub Blue
                   brightness: Brightness.light,
-                  background: const Color(0xFFFFFFFF),
+                  surface: const Color(0xFFFFFFFF),
                 ),
                 scaffoldBackgroundColor: const Color(0xFFFFFFFF),
                 cardColor: const Color(0xFFF6F8FA),
@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
                 colorScheme: ColorScheme.fromSeed(
                   seedColor: const Color(0xFF58A6FF), // GitHub Dark Blue
                   brightness: Brightness.dark,
-                  background: const Color(0xFF0D1117),
+                  surface: const Color(0xFF0D1117),
                 ),
                 scaffoldBackgroundColor: const Color(0xFF0D1117),
                 cardColor: const Color(0xFF161B22),
@@ -83,7 +83,8 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> with WidgetsBindingObserver {
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 3; // Default to Timer tab (center of 7)
 
@@ -118,7 +119,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _eventCheckTimer?.cancel();
       _eventCheckTimer = null;
     } else if (state == AppLifecycleState.resumed) {
@@ -142,7 +144,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
-        Uri.parse('https://prm-tan.vercel.app/api/calendar/events'),
+        Uri.parse('${AuthService.apiBaseUrl}/calendar/events'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -184,8 +186,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                   en: 'It is time for your event.');
           final type =
               source == 'task' ? 'task' : (event['type'] ?? 'reminder');
-          final notificationTitle =
-              source == 'task' ? 'Task Reminder' : title;
+          final notificationTitle = source == 'task' ? 'Task Reminder' : title;
           final notificationMessage =
               source == 'task' ? _taskReminderMessage(event) : message;
 
@@ -243,7 +244,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
     try {
       await http
           .post(
-            Uri.parse('https://prm-tan.vercel.app/api/notifications'),
+            Uri.parse('${AuthService.apiBaseUrl}/notifications'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -284,20 +285,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: dialogBg.withOpacity(0.9),
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.08)),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.08)),
             ),
             title: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withOpacity(0.12),
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.notifications_active_rounded,
@@ -412,8 +413,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
               ),
             ),
           ),
-          bottomNavigationBar:
-              _buildGlassmorphicNavBar(activeColor, isDark),
+          bottomNavigationBar: _buildGlassmorphicNavBar(activeColor, isDark),
         );
       },
     );
@@ -429,7 +429,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
               padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
-                  Icon(Icons.bolt, color: ThemeService.getPrimaryColor(isDark), size: 32),
+                  Icon(Icons.bolt,
+                      color: ThemeService.getPrimaryColor(isDark), size: 32),
                   const SizedBox(width: 12),
                   Text(
                     'FlowMate',
@@ -442,7 +443,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                 ],
               ),
             ),
-            Divider(color: Colors.grey.withOpacity(0.2)),
+            Divider(color: Colors.grey.withValues(alpha: 0.2)),
             ListTile(
               leading: Icon(Icons.calendar_month_rounded,
                   color: ThemeService.getTextColor(isDark)),
@@ -498,7 +499,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: InkWell(
-                     borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () async {
                       await LocaleService.toggleLanguage();
                       setState(() {});
@@ -509,12 +510,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         color: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.04),
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04),
                         border: Border.all(
                           color: isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.08),
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.08),
                         ),
                       ),
                       child: Row(
@@ -552,7 +553,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: ThemeService.getPrimaryColor(isDark).withOpacity(0.15),
+                              color: ThemeService.getPrimaryColor(isDark)
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -573,7 +575,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
               },
             ),
             const Spacer(),
-            Divider(color: Colors.grey.withOpacity(0.2)),
+            Divider(color: Colors.grey.withValues(alpha: 0.2)),
             ListTile(
               leading:
                   const Icon(Icons.logout_rounded, color: Colors.redAccent),
@@ -593,12 +595,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
   // Premium Custom Glassmorphic Navigation Bar
   Widget _buildGlassmorphicNavBar(Color activeColor, bool isDark) {
     final navBg = isDark
-        ? const Color(0xFF0A0F24).withOpacity(0.85)
-        : const Color(0xFFFFFFFF).withOpacity(0.85);
+        ? const Color(0xFF0A0F24).withValues(alpha: 0.85)
+        : const Color(0xFFFFFFFF).withValues(alpha: 0.85);
 
     final borderColor = isDark
-        ? Colors.white.withOpacity(0.06)
-        : Colors.black.withOpacity(0.06);
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.06);
 
     return Container(
       decoration: BoxDecoration(
@@ -619,7 +621,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
               ),
               boxShadow: [
                 BoxShadow(
-                  color: activeColor.withOpacity(isDark ? 0.03 : 0.06),
+                  color: activeColor.withValues(alpha: isDark ? 0.03 : 0.06),
                   blurRadius: 20,
                   offset: const Offset(0, -4),
                 )
@@ -736,12 +738,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
                   horizontal: 10, vertical: isSelected ? 6 : 4),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? activeColor.withOpacity(0.1)
+                    ? activeColor.withValues(alpha: 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
-                      ? activeColor.withOpacity(0.2)
+                      ? activeColor.withValues(alpha: 0.2)
                       : Colors.transparent,
                   width: 1,
                 ),
@@ -768,5 +770,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
       ),
     );
   }
-
 }
