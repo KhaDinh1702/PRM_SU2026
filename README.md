@@ -25,3 +25,11 @@ Dự án này đã được thiết lập bởi Antigravity.
 ## Các thư viện đã cài đặt
 - **Backend:** `express`, `mongoose`, `dotenv`, `cors`.
 - **Frontend:** `http`.
+
+---
+
+## Tài liệu Hệ thống (Obsidian Vault Notes)
+Dự án được tài liệu hóa chi tiết dưới dạng note Obsidian:
+- Đặc tả yêu cầu & Phân hệ tính năng: `[[system_specification]]`
+- Tài liệu tổng hợp toàn diện (Kiến trúc, API & Luồng tích hợp): `[[FlowMate_Master_Specification]]`
+

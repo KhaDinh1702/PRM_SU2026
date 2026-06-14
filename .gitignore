@@ -62,3 +62,7 @@ pnpm-debug.log*
 *.bak
 *.tmp
 *.temp
+
+# Obsidian Notes
+obsidian/
+.obsidian/

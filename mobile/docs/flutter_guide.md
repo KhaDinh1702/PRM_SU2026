@@ -1,4 +1,4 @@
-# 🚀 Flutter Development Guide (Android Focus)
+# Flutter Development Guide (Android Focus)
 
 Chào ông chủ, đây là tài liệu hướng dẫn nhanh để ông làm chủ dự án Flutter này.
 
@@ -54,7 +54,7 @@ dependencies:
 
 ### Lưu ý quan trọng cho Android Emulator:
 Khi gọi API từ Emulator tới Backend đang chạy trên máy tính (localhost), hãy dùng URL:
-👉 `http://10.0.2.2:<port>/api/...` (thay vì `localhost`).
+- `http://10.0.2.2:<port>/api/...` (thay vì `localhost`).
 
 ## 5. Các lệnh Terminal hữu ích
 - `flutter pub get`: Tải và cập nhật các thư viện mới.
