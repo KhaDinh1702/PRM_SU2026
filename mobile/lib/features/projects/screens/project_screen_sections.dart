@@ -1241,7 +1241,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                     Expanded(
                       child: Text(
                         project['name'] ??
-                            LocaleService.tr('Dá»± Ã¡n khÃ´ng tÃªn',
+                            LocaleService.tr('Dự án không tên',
                                 en: 'Untitled project'),
                         style: TextStyle(
                             fontSize: 20,
@@ -1271,7 +1271,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                               builder: (context) => ChatBottomSheet(
                                 projectId: project['_id'],
                                 projectName: project['name'] ??
-                                    LocaleService.tr('Dá»± Ã¡n khÃ´ng tÃªn',
+                                    LocaleService.tr('Dự án không tên',
                                         en: 'Untitled project'),
                               ),
                             );
@@ -1288,7 +1288,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                 Text(
                   project['description']?.toString().isNotEmpty == true
                       ? project['description']
-                      : LocaleService.tr('KhÃ´ng cÃ³ mÃ´ táº£ chi tiáº¿t.',
+                      : LocaleService.tr('Không có mô tả chi tiết',
                           en: 'No detailed description.'),
                   style: TextStyle(fontSize: 14, color: subTextColor),
                 ),
@@ -1296,7 +1296,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
 
                 // Members Title & Add Member
                 Text(
-                    LocaleService.tr('THÃ€NH VIÃŠN Dá»° ÃN',
+                    LocaleService.tr('THÀNH VIÊN DỰ ÁN',
                         en: 'PROJECT MEMBERS'),
                     style: TextStyle(
                         fontSize: 11,
@@ -1309,11 +1309,10 @@ extension _ProjectScreenSections on _ProjectScreenState {
                     Expanded(
                       child: PremiumInputField(
                         controller: _memberEmailController,
-                        label: LocaleService.tr('Má»i thÃ nh viÃªn',
+                        label: LocaleService.tr('Mời thành viên',
                             en: 'Invite member'),
                         hintText: LocaleService.tr(
-                            'Nháº­p email thÃ nh viÃªn...',
-                            en: 'Enter member email...'),
+                            'Nhập email thành viên...', en: 'Enter email...'),
                         prefixIcon: Icons.mail_outline_rounded,
                       ),
                     ),
@@ -1398,7 +1397,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                               ),
                                               child: Text(
                                                   LocaleService.tr(
-                                                      'CHá»¦ Dá»° ÃN',
+                                                      'CHỦ SỞ HỮU',
                                                       en: 'OWNER'),
                                                   style: const TextStyle(
                                                       color: Color(0xFFEAB308),
@@ -1468,7 +1467,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                 // Suggested users list
                 Text(
                   LocaleService.tr(
-                    'Gá»¢I Ã THÃ€NH VIÃŠN',
+                    'GỢI Ý THÀNH VIÊN',
                     en: 'SUGGESTED MEMBERS',
                   ),
                   style: TextStyle(
@@ -1491,7 +1490,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                           ? Center(
                               child: Text(
                                 LocaleService.tr(
-                                  'KhÃ´ng cÃ³ ngÆ°á»i dÃ¹ng nÃ o',
+                                  'Không tìm thấy người dùng',
                                   en: 'No users found',
                                 ),
                                 style: TextStyle(color: captionColor),
@@ -1575,7 +1574,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                           alreadyMember
                                               ? Text(
                                                   LocaleService.tr(
-                                                    'ÄÃ£ tham gia',
+                                                    'Đã tham gia',
                                                     en: 'Joined',
                                                   ),
                                                   style: const TextStyle(
@@ -1596,7 +1595,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                                       const Color(0xFF06B6D4),
                                                   child: Text(
                                                     LocaleService.tr(
-                                                      'ThÃªm',
+                                                      'Thêm',
                                                       en: 'Add',
                                                     ),
                                                     style: const TextStyle(
