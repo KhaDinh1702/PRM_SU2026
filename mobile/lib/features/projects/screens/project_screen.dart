@@ -9,10 +9,17 @@ import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../widgets/chat_bottom_sheet.dart';
 import '../services/project_service.dart';
+import '../widgets/project_card.dart';
+import '../widgets/project_list_widgets.dart';
+import '../widgets/project_detail_widgets.dart';
+import '../widgets/project_overview_tab.dart';
+import '../widgets/project_tasks_tab.dart';
+import '../widgets/project_members_tab.dart';
+import '../widgets/project_chat_tab.dart';
+import '../widgets/project_shared.dart';
 
-part '../project_screen_sections.dart';
-part '../project_screen_helpers.dart';
-part '../project_screen_components.dart';
+part 'project_screen_sections.dart';
+part 'project_screen_helpers.dart';
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({super.key});
