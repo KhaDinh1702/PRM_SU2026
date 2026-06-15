@@ -1,12 +1,13 @@
 import 'dart:ui';
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/constants/app_colors.dart';
+import 'core/constants/app_durations.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/locale_service.dart';
+import 'services/event_check_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/tasks/screens/task_screen.dart';
@@ -45,23 +46,23 @@ class MyApp extends StatelessWidget {
                 useMaterial3: true,
                 brightness: Brightness.light,
                 colorScheme: ColorScheme.fromSeed(
-                  seedColor: const Color(0xFF0969DA), // GitHub Blue
+                  seedColor: AppColors.primary,
                   brightness: Brightness.light,
-                  surface: const Color(0xFFFFFFFF),
+                  surface: AppColors.backgroundLight,
                 ),
-                scaffoldBackgroundColor: const Color(0xFFFFFFFF),
-                cardColor: const Color(0xFFF6F8FA),
+                scaffoldBackgroundColor: AppColors.backgroundLight,
+                cardColor: AppColors.cardLight,
               ),
               darkTheme: ThemeData(
                 useMaterial3: true,
                 brightness: Brightness.dark,
                 colorScheme: ColorScheme.fromSeed(
-                  seedColor: const Color(0xFF58A6FF), // GitHub Dark Blue
+                  seedColor: AppColors.primaryDark,
                   brightness: Brightness.dark,
-                  surface: const Color(0xFF0D1117),
+                  surface: AppColors.backgroundDark,
                 ),
-                scaffoldBackgroundColor: const Color(0xFF0D1117),
-                cardColor: const Color(0xFF161B22),
+                scaffoldBackgroundColor: AppColors.backgroundDark,
+                cardColor: AppColors.cardDark,
               ),
               initialRoute: isLoggedIn ? '/home' : '/login',
               routes: {
@@ -86,11 +87,11 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _currentIndex = 3; // Default to Timer tab (center of 7)
+  int _currentIndex = 3; // Default to Projects tab
 
   late final List<Widget> _screens;
   Timer? _eventCheckTimer;
-  final Set<String> _notifiedEventIds = {};
+  final _eventService = EventCheckService();
 
   @override
   void initState() {
@@ -132,150 +133,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   void _startEventCheckTimer() {
     _eventCheckTimer?.cancel();
     _eventCheckTimer =
-        Timer.periodic(const Duration(seconds: 60), (timer) async {
+        Timer.periodic(AppDurations.eventCheckInterval, (timer) async {
       await _checkEventsOnce();
     });
   }
 
   Future<void> _checkEventsOnce() async {
-    final isLoggedIn = await AuthService.isLoggedIn();
-    if (!isLoggedIn) return;
+    final notifications = await _eventService.checkEvents();
+    for (final notif in notifications) {
+      // Lưu notification lên backend (fire-and-forget)
+      await _eventService.saveNotificationToBackend(notif);
+      NotificationsScreen.refreshTrigger.value++;
 
-    try {
-      final token = await AuthService.getToken();
-      final response = await http.get(
-        Uri.parse('${AuthService.apiBaseUrl}/calendar/events'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> events = jsonDecode(response.body);
-        final now = DateTime.now();
-
-        for (final event in events) {
-          final eventId = event['id'];
-          final source = event['source'] ?? 'event';
-          // Chỉ thông báo các sự kiện từ calendar (source là 'event'), bỏ qua task deadline
-
-          final startStr = event['start'];
-          if (startStr == null || eventId == null) continue;
-
-          final notificationId = source == 'task'
-              ? 'task:$eventId:${event['reminderType'] ?? 'reminder'}'
-              : eventId.toString();
-          final eventTime = source == 'task'
-              ? DateTime.tryParse(
-                      (event['reminderAt'] ?? event['start']).toString())
-                  ?.toLocal()
-              : DateTime.parse(startStr).toLocal();
-          if (eventTime == null) continue;
-
-          if (source == 'task') {
-            if (event['notificationEnabled'] != true ||
-                event['status'] == 'Completed') {
-              continue;
-            }
-          }
-          final title =
-              event['title'] ?? LocaleService.tr('Sự kiện', en: 'Event');
-          final message = event['description'] ??
-              LocaleService.tr('Đã đến thời gian diễn ra sự kiện.',
-                  en: 'It is time for your event.');
-          final type =
-              source == 'task' ? 'task' : (event['type'] ?? 'reminder');
-          final notificationTitle = source == 'task' ? 'Task Reminder' : title;
-          final notificationMessage =
-              source == 'task' ? _taskReminderMessage(event) : message;
-
-          // Nếu thời gian hiện tại đã vượt qua hoặc bằng thời gian sự kiện
-          // và sự kiện chưa được thông báo trong phiên làm việc này
-          if (now.isAfter(eventTime) &&
-              !_notifiedEventIds.contains(notificationId)) {
-            // Đảm bảo không thông báo các sự kiện quá cũ (quá 2 giờ trước) khi ứng dụng vừa khởi động
-            if (now.difference(eventTime).inHours < 2) {
-              _notifiedEventIds.add(notificationId);
-              _triggerEventNotification(notificationId, notificationTitle,
-                  notificationMessage, type, token!);
-            } else {
-              // Đánh dấu đã qua nhưng không thông báo vì quá cũ
-              _notifiedEventIds.add(notificationId);
-            }
-          }
-        }
-      }
-    } catch (_) {
-      // Lỗi kết nối âm thầm bỏ qua để tránh ảnh hưởng trải nghiệm người dùng
+      // Hiển thị popup trực quan
+      if (!mounted) return;
+      SystemSound.play(SystemSoundType.alert);
+      HapticFeedback.heavyImpact();
+      Future.delayed(
+        AppDurations.hapticDelay,
+        () => HapticFeedback.heavyImpact(),
+      );
+      _showEventNotificationDialog(notif.title, notif.message);
     }
   }
 
-  String _taskReminderMessage(Map<String, dynamic> task) {
-    final rawTitle = (task['title'] ?? 'Task').toString();
-    final title = rawTitle.replaceFirst('[TASK DEADLINE] ', '');
-    final reminderType = (task['reminderType'] ?? '').toString();
-    if (reminderType == 'at_time') {
-      return '$title is due now.';
-    }
-    if (reminderType == '15_min_before') {
-      return '$title is due in 15 minutes.';
-    }
-    if (reminderType == '30_min_before') {
-      return '$title is due in 30 minutes.';
-    }
-    if (reminderType == '1_hour_before') {
-      return '$title is due in 1 hour.';
-    }
-    if (reminderType == '1_day_before') {
-      return '$title is due tomorrow.';
-    }
-    return '$title is due soon.';
-  }
-
-  Future<void> _triggerEventNotification(
-    String eventId,
-    String title,
-    String message,
-    String type,
-    String token,
-  ) async {
-    // 1. Gửi thông báo lên backend để lưu vào cơ sở dữ liệu
-    try {
-      await http
-          .post(
-            Uri.parse('${AuthService.apiBaseUrl}/notifications'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'title':
-                  '${LocaleService.tr('Sự kiện diễn ra:', en: 'Event starting:')} $title',
-              'message': message.isNotEmpty
-                  ? message
-                  : LocaleService.tr('Đã đến thời gian diễn ra sự kiện.',
-                      en: 'It is time for your event.'),
-              'type': type == 'meeting' ? 'meeting' : 'task',
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-      NotificationsScreen
-          .refreshTrigger.value++; // <--- trigger refresh globally
-    } catch (_) {}
-
-    // 2. Hiển thị popup thông báo trực quan trên màn hình và phát âm thanh
+  void _showEventNotificationDialog(String title, String message) {
     if (!mounted) return;
-
-    // Play sound and vibrate
-    SystemSound.play(SystemSoundType.alert);
-    HapticFeedback.heavyImpact();
-    Future.delayed(
-        const Duration(milliseconds: 300), () => HapticFeedback.heavyImpact());
-
     showDialog(
       context: context,
-      barrierDismissible: false, // Bắt buộc người dùng nhấn xác nhận
+      barrierDismissible: false,
       builder: (context) {
         final isDark = ThemeService.isDarkMode.value;
         final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
@@ -298,11 +184,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                    color: AppColors.notifAccent.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.notifications_active_rounded,
-                      color: Color(0xFFF59E0B), size: 24),
+                  child: Icon(Icons.notifications_active_rounded,
+                      color: AppColors.notifAccent, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -346,11 +232,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             ),
             actions: [
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
+                  backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -371,6 +255,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   Future<void> _handleLogout() async {
+    _eventService.reset();
     await AuthService.logout();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -489,7 +374,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               ),
               onTap: () => ThemeService.toggleTheme(),
             ),
-
             // Language toggle
             ValueListenableBuilder<String>(
               valueListenable: LocaleService.languageCode,
@@ -532,7 +416,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                                 Text(
                                   LocaleService.tr('Ngôn ngữ', en: 'Language'),
                                   style: TextStyle(
-                                    color: ThemeService.getCaptionColor(isDark),
+                                    color:
+                                        ThemeService.getCaptionColor(isDark),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
@@ -592,7 +477,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-  // Premium Custom Glassmorphic Navigation Bar
   Widget _buildGlassmorphicNavBar(Color activeColor, bool isDark) {
     final navBg = isDark
         ? const Color(0xFF0A0F24).withValues(alpha: 0.85)
@@ -614,10 +498,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             decoration: BoxDecoration(
               color: navBg,
               border: Border(
-                top: BorderSide(
-                  color: borderColor,
-                  width: 1,
-                ),
+                top: BorderSide(color: borderColor, width: 1),
               ),
               boxShadow: [
                 BoxShadow(
@@ -667,7 +548,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                       LocaleService.tr('Hồ sơ', en: 'Profile'),
                       activeColor,
                       isDark),
-                  // Nút mở Menu (Drawer)
                   _buildMenuButton(isDark),
                 ],
               ),
@@ -683,19 +563,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () {
-          _scaffoldKey.currentState?.openDrawer(); // Mở Drawer
-        },
+        onTap: () => _scaffoldKey.currentState?.openDrawer(),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              child: Icon(
-                Icons.menu_rounded,
-                color: themeColor,
-                size: 18,
-              ),
+              child: Icon(Icons.menu_rounded, color: themeColor, size: 18),
             ),
             const SizedBox(height: 2),
             Text(
@@ -723,16 +597,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onTap: () => setState(() => _currentIndex = index),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 350),
+              duration: AppDurations.animationSlow,
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(
                   horizontal: 10, vertical: isSelected ? 6 : 4),
