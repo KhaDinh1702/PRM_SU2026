@@ -50,6 +50,7 @@ class ProjectService {
   Future<void> createProject({
     required String name,
     required String description,
+    required String type,
   }) async {
     final token = await AuthService.getToken();
     final response = await http
@@ -62,6 +63,7 @@ class ProjectService {
           body: jsonEncode({
             'name': name,
             'description': description,
+            'type': type,
           }),
         )
         .timeout(const Duration(seconds: 15));

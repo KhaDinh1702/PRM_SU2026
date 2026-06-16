@@ -40,6 +40,11 @@ const projectSchema = new mongoose.Schema({
         enum: ['Active', 'Completed', 'On Hold'],
         default: 'Active'
     },
+    type: {
+        type: String,
+        enum: ['Personal', 'Team', 'Study', 'Work'],
+        default: 'Personal'
+    },
     allowMembersToCreateTasks: {
         type: Boolean,
         default: false

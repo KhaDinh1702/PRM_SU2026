@@ -307,13 +307,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     } catch (_) {}
   }
 
-  Future<void> _createProject() async {
+  Future<void> _createProject(String type) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     try {
       await context.read<ProjectProvider>().createProject(
         name: name,
         description: _descController.text.trim(),
+        type: type,
       );
       _nameController.clear();
       _descController.clear();
@@ -412,6 +413,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showCreateProjectDialog() {
+    String selectedType = 'Personal';
+
     showDialog(
       context: context,
       builder: (context) {
@@ -420,67 +423,91 @@ class _ProjectScreenState extends State<ProjectScreen> {
         final textColor = ThemeService.getTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
 
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: AlertDialog(
-            backgroundColor: dialogBg.withValues(alpha: 0.9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-              side: BorderSide(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.08)),
-            ),
-            title: Text(
-              LocaleService.tr('TẠO DỰ ÁN MỚI', en: 'CREATE NEW PROJECT'),
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: textColor,
-                  letterSpacing: 1.5),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                PremiumInputField(
-                  controller: _nameController,
-                  label: LocaleService.tr('Tên dự án *', en: 'Project name *'),
-                  hintText: LocaleService.tr('Nhập tên dự án...',
-                      en: 'Enter project name...'),
-                  prefixIcon: Icons.folder_rounded,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: AlertDialog(
+                backgroundColor: dialogBg.withValues(alpha: 0.9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  side: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.08)),
                 ),
-                const SizedBox(height: 14),
-                PremiumInputField(
-                  controller: _descController,
-                  label: LocaleService.tr('Mô tả dự án',
-                      en: 'Project description'),
-                  hintText: LocaleService.tr('Nhập mô tả dự án...',
-                      en: 'Enter project description...'),
-                  prefixIcon: Icons.description_outlined,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
-                    style: TextStyle(
-                        color: captionColor, fontWeight: FontWeight.bold)),
-              ),
-              PremiumButton(
-                onPressed: () {
-                  _createProject();
-                  Navigator.pop(context);
-                },
-                backgroundColor: const Color(0xFF06B6D4),
-                child: Text(LocaleService.tr('T�o', en: 'Create'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                title: Text(
+                  LocaleService.tr('TẠO DỰ ÁN MỚI', en: 'CREATE NEW PROJECT'),
+                  style: TextStyle(
                       fontWeight: FontWeight.bold,
-                    )),
+                      fontSize: 16,
+                      color: textColor,
+                      letterSpacing: 1.5),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PremiumInputField(
+                      controller: _nameController,
+                      label: LocaleService.tr('Tên dự án *', en: 'Project name *'),
+                      hintText: LocaleService.tr('Nhập tên dự án...',
+                          en: 'Enter project name...'),
+                      prefixIcon: Icons.folder_rounded,
+                    ),
+                    const SizedBox(height: 14),
+                    PremiumInputField(
+                      controller: _descController,
+                      label: LocaleService.tr('Mô tả dự án',
+                          en: 'Project description'),
+                      hintText: LocaleService.tr('Nhập mô tả dự án...',
+                          en: 'Enter project description...'),
+                      prefixIcon: Icons.description_outlined,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildRoundedDropdown<String>(
+                      value: selectedType,
+                      label: LocaleService.tr('Loại dự án', en: 'Project type'),
+                      items: ['Personal', 'Team', 'Study', 'Work'].map((type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() {
+                            selectedType = val;
+                          });
+                        }
+                      },
+                      dialogBg: dialogBg,
+                      textColor: textColor,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
+                        style: TextStyle(
+                            color: captionColor, fontWeight: FontWeight.bold)),
+                  ),
+                  PremiumButton(
+                    onPressed: () {
+                      _createProject(selectedType);
+                      Navigator.pop(context);
+                    },
+                    backgroundColor: const Color(0xFF06B6D4),
+                    child: Text(LocaleService.tr('Tạo', en: 'Create'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        )),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

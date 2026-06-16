@@ -6,7 +6,8 @@ import '../../../features/dashboard/models/dashboard_summary.dart';
 import '../../../features/dashboard/services/dashboard_service.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final ValueChanged<int>? onTabSelect;
+  const DashboardScreen({super.key, this.onTabSelect});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -151,6 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.playlist_add_check_rounded,
                                 themeColor,
                                 isDark,
+                                onTap: () => widget.onTabSelect?.call(1),
                               ),
                             ),
                             FadeInSlide(
@@ -162,6 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.task_alt_rounded,
                                 const Color(0xFF10B981),
                                 isDark,
+                                onTap: () => widget.onTabSelect?.call(1),
                               ),
                             ),
                             FadeInSlide(
@@ -174,6 +177,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.dns_outlined,
                                 const Color(0xFF06B6D4),
                                 isDark,
+                                onTap: () => widget.onTabSelect?.call(3),
                               ),
                             ),
                             FadeInSlide(
@@ -186,6 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Icons.bolt,
                                 accentColor,
                                 isDark,
+                                onTap: () => widget.onTabSelect?.call(2),
                               ),
                             ),
                           ],
@@ -242,69 +247,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSummaryCard(String title, String count, String unit,
-      IconData icon, Color color, bool isDark) {
+      IconData icon, Color color, bool isDark, {VoidCallback? onTap}) {
     final textColor = ThemeService.getTextColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
 
-    return GlassCard(
-      borderRadius: 24,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, color: color, size: 24),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color,
-                ),
-              )
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                textBaseline: TextBaseline.alphabetic,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                children: [
-                  Text(
-                    count,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: GlassCard(
+        borderRadius: 24,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, color: color, size: 24),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: captionColor,
+                )
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  children: [
+                    Text(
+                      count,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: subTextColor,
-                  fontWeight: FontWeight.w500,
+                    const SizedBox(width: 4),
+                    Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: captionColor,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subTextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
