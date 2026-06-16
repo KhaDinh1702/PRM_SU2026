@@ -409,6 +409,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
     _resetTaskScheduleFields();
     _taskDueDate = DateTime.now();
     _taskDueTime = const TimeOfDay(hour: 18, minute: 0);
+    String? createError;
 
     showDialog(
       context: context,
@@ -470,6 +471,20 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                         captionColor: captionColor,
                         dialogBg: dialogBg,
                       ),
+                      if (createError != null) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            createError!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -482,8 +497,18 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                   PremiumButton(
                     onPressed: _isSavingProjectTask
                         ? null
-                        : () => _createProjectTask(
-                            project['_id'], sheetSetState, setDialogState),
+                        : () async {
+                            setDialogState(() {
+                              createError = null;
+                            });
+                            final error = await _createProjectTask(
+                                project['_id'], sheetSetState, setDialogState);
+                            if (error != null && mounted) {
+                              setDialogState(() {
+                                createError = error;
+                              });
+                            }
+                          },
                     backgroundColor: const Color(0xFF06B6D4),
                     child: _isSavingProjectTask
                         ? const SizedBox(
@@ -718,6 +743,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
     _nameController.text = (project['name'] ?? '').toString();
     _descController.text = (project['description'] ?? '').toString();
     String status = (project['status'] ?? 'Active').toString();
+    bool allowMembers = project['allowMembersToCreateTasks'] == true;
     bool isSaving = false;
 
     showDialog(
@@ -785,13 +811,30 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                           }
                         },
                       ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        title: Text(
+                          LocaleService.tr('Thành viên tạo task', en: 'Members create tasks'),
+                          style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          LocaleService.tr('Cho phép thành viên tạo task mới', en: 'Allow members to create tasks'),
+                          style: TextStyle(color: captionColor, fontSize: 11),
+                        ),
+                        value: allowMembers,
+                        activeColor: const Color(0xFF06B6D4),
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (value) {
+                          setDialogState(() => allowMembers = value);
+                        },
+                      ),
                     ],
                   ),
                 ),
                 actions: [
                   TextButton(
                     onPressed:
-                        isSaving ? null : () => Navigator.pop(context),
+                      isSaving ? null : () => Navigator.pop(context),
                     child: Text('Cancel',
                         style: TextStyle(color: captionColor)),
                   ),
@@ -806,12 +849,14 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                               'name': name,
                               'description': _descController.text.trim(),
                               'status': status,
+                              'allowMembersToCreateTasks': allowMembers,
                             };
                             await _updateProject(project['_id'], payload);
                             project
                               ..['name'] = payload['name']
                               ..['description'] = payload['description']
-                              ..['status'] = payload['status'];
+                              ..['status'] = payload['status']
+                              ..['allowMembersToCreateTasks'] = payload['allowMembersToCreateTasks'];
                             sheetSetState(() {});
                             if (context.mounted) Navigator.pop(context);
                           },

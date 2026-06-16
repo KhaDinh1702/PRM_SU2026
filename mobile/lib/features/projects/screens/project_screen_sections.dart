@@ -35,11 +35,18 @@ extension _ProjectScreenSections on _ProjectScreenState {
       cta = 'Review overdue tasks';
       action = () => DefaultTabController.of(context).animateTo(1);
     } else if (total == 0) {
+      final allowMembers = project['allowMembersToCreateTasks'] == true;
+      final canManage = _canManage(role);
+      final canAddTask = canManage || allowMembers;
+
       title = 'Get started';
-      text =
-          'No tasks have been created yet. Create the first task to start tracking progress.';
-      cta = 'Add first task';
-      action = () => _showCreateProjectTaskDialog(project, sheetSetState);
+      text = canAddTask
+          ? 'No tasks have been created yet. Create the first task to start tracking progress.'
+          : 'No tasks have been created yet. Ask a manager to assign the first task.';
+      cta = canAddTask ? 'Add first task' : '';
+      action = canAddTask
+          ? () => _showCreateProjectTaskDialog(project, sheetSetState)
+          : () {};
     } else {
       final nextTask = _projectTasks.isNotEmpty
           ? _projectTasks.firstWhere(
@@ -112,12 +119,16 @@ extension _ProjectScreenSections on _ProjectScreenState {
     Color captionColor,
     StateSetter sheetSetState,
   ) {
+    final allowMembers = project['allowMembersToCreateTasks'] == true;
+    final canAddTask = canManage || allowMembers;
+
     return TasksTab(
       tasks: _projectTasks,
       selectedFilter: _taskFilter,
       isLoading: _isLoadingProjectTasks,
       tasksLoaded: _projectTasksLoaded,
       canManage: canManage,
+      canAddTask: canAddTask,
       onFilterChanged: (filter) {
         _updateProjectState(() => _taskFilter = filter);
         sheetSetState(() {});
@@ -303,9 +314,12 @@ extension _ProjectScreenSections on _ProjectScreenState {
                               totalTasks: _projectTotalTasks(projectData),
                               statusColor: statusColor,
                               canShowMenu: isOwner,
+                              canLeave: !isOwner,
                               onEdit: () => _showEditProjectDialog(
                                   projectData, sheetSetState),
                               onDelete: () => _showDeleteConfirmationDialog(
+                                  project['_id'], project['name'] ?? ''),
+                              onLeave: () => _showLeaveConfirmationDialog(
                                   project['_id'], project['name'] ?? ''),
                             ),
                             const SizedBox(height: 12),

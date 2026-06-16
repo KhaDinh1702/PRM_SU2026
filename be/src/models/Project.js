@@ -39,6 +39,10 @@ const projectSchema = new mongoose.Schema({
         type: String,
         enum: ['Active', 'Completed', 'On Hold'],
         default: 'Active'
+    },
+    allowMembersToCreateTasks: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

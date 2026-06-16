@@ -182,6 +182,102 @@ class _ProjectScreenState extends State<ProjectScreen> {
     );
   }
 
+  Future<void> _leaveProject(String projectId) async {
+    try {
+      await context.read<ProjectProvider>().leaveProject(projectId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleService.tr('Đã rời dự án thành công!',
+                en: 'Left project successfully!')),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${LocaleService.tr('Lỗi khi rời dự án:', en: 'Error leaving project:')} $e'),
+            backgroundColor: Colors.amber[900],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showLeaveConfirmationDialog(String projectId, String projectName) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+        final subTextColor = ThemeService.getSubTextColor(isDark);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AlertDialog(
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                  color: Colors.orangeAccent.withValues(alpha: 0.5), width: 1.5),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.exit_to_app_rounded,
+                    color: Colors.orangeAccent, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    LocaleService.tr('RỜI DỰ ÁN?', en: 'LEAVE PROJECT?'),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                        letterSpacing: 1.2),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              '${LocaleService.tr('Bạn có chắc chắn muốn rời dự án', en: 'Are you sure you want to leave project')} "$projectName"?\n${LocaleService.tr('Hành động này không thể hoàn tác!', en: 'This action cannot be undone!')}',
+              style: TextStyle(color: subTextColor, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  LocaleService.tr('Hủy', en: 'Cancel'),
+                  style: TextStyle(
+                      color: ThemeService.getCaptionColor(isDark),
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              PremiumButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Close project details bottom sheet
+                  _leaveProject(projectId);
+                },
+                backgroundColor: Colors.orangeAccent,
+                child: Text(
+                  LocaleService.tr('Rời', en: 'Leave'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -409,33 +505,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
-  Future<void> _createProjectTask(String projectId, StateSetter sheetSetState,
+  Future<String?> _createProjectTask(String projectId, StateSetter sheetSetState,
       [StateSetter? dialogSetState]) async {
-    if (_isSavingProjectTask) return;
+    if (_isSavingProjectTask) return null;
     final title = _taskTitleController.text.trim();
     if (title.isEmpty || _selectedAssigneeId == null || _taskDueDate == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Task title, assignee, and due date are required.'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
+      return 'Task title, assignee, and due date are required.';
     }
     if (_combinedTaskDueDateTime().isBefore(DateTime.now())) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Due date and time cannot be in the past.'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
+      return 'Due date and time cannot be in the past.';
     }
 
     try {
@@ -479,26 +557,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
             ),
           );
         }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['error'] ?? 'Cannot create task'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        return null;
+      } else {
+        return result['error'] ?? 'Cannot create task';
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '${LocaleService.tr('Lỗi khi phân task:', en: 'Error assigning task:')} $e'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      return 'Error: $e';
     } finally {
       if (mounted) {
         setState(() => _isSavingProjectTask = false);

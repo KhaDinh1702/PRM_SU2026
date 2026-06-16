@@ -184,7 +184,7 @@ exports.getProjectById = async (req, res) => {
 exports.updateProject = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { name, description, deadline, status } = req.body;
+        const { name, description, deadline, status, allowMembersToCreateTasks } = req.body;
 
         const project = await Project.findOne({ _id: projectId, owner: req.user.id });
         if (!project) {
@@ -195,6 +195,7 @@ exports.updateProject = async (req, res) => {
         if (description !== undefined) project.description = description;
         if (deadline !== undefined) project.deadline = deadline;
         if (status !== undefined) project.status = status;
+        if (allowMembersToCreateTasks !== undefined) project.allowMembersToCreateTasks = allowMembersToCreateTasks;
 
         await project.save();
         res.status(200).json(project);
@@ -437,8 +438,14 @@ exports.createProjectTask = async (req, res) => {
         }
 
         const isManagerOrOwner = canManageProject(project, req.user.id);
+        const allowMembers = project.allowMembersToCreateTasks ?? false;
+
+        // Nếu không phải Manager/Owner và dự án không cho phép Member tạo task
+        if (!isManagerOrOwner && !allowMembers) {
+            return res.status(403).json({ error: 'Members are not allowed to create tasks in this project' });
+        }
         
-        // Nếu không phải Manager/Owner, Member thường chỉ được gán task cho bản thân
+        // Nếu không phải Manager/Owner, Member chỉ được gán task cho bản thân
         if (!isManagerOrOwner) {
             if (assignedTo && assignedTo.toString() !== req.user.id.toString()) {
                 return res.status(403).json({ error: 'Members can only assign tasks to themselves' });
@@ -625,6 +632,47 @@ exports.updateMemberRole = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in projectController.updateMemberRole:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// POST /api/projects/:projectId/leave
+exports.leaveProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const userId = req.user.id;
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ error: 'Dự án không tồn tại' });
+        }
+
+        if (project.owner.toString() === userId.toString()) {
+            return res.status(400).json({ error: 'Chủ sở hữu không thể rời dự án. Bạn cần xóa dự án hoặc chuyển nhượng.' });
+        }
+
+        const isMember = (project.members || []).some(m => m.toString() === userId.toString());
+        if (!isMember) {
+            return res.status(400).json({ error: 'Bạn không phải là thành viên của dự án này' });
+        }
+
+        // Loại bỏ khỏi members
+        project.members = project.members.filter(m => m.toString() !== userId.toString());
+        
+        // Loại bỏ khỏi memberRoles
+        project.memberRoles = (project.memberRoles || []).filter(item => item.user.toString() !== userId.toString());
+
+        await project.save();
+
+        // Cập nhật các task được gán cho thành viên này về null
+        await Task.updateMany(
+            { project: projectId, assignedTo: userId },
+            { assignedTo: null }
+        );
+
+        res.status(200).json({ message: 'Rời dự án thành công' });
+    } catch (error) {
+        console.error('Lỗi trong projectController.leaveProject:', error);
         res.status(500).json({ error: error.message });
     }
 };

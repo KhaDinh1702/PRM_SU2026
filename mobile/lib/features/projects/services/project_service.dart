@@ -235,6 +235,25 @@ class ProjectService {
     };
   }
 
+  /// Rời project (dành cho member)
+  Future<void> leaveProject(String projectId) async {
+    final token = await AuthService.getToken();
+    final response = await http
+        .post(
+          Uri.parse('${AuthService.apiBaseUrl}/projects/$projectId/leave'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final data = _tryDecode(response.body);
+      throw Exception(data?['error'] ?? 'Không thể rời dự án');
+    }
+  }
+
   // --- Private helper ---
   Map<String, dynamic>? _tryDecode(String body) {
     try {
