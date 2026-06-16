@@ -283,8 +283,9 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
       if (_typeFilter != 'All' && _projectType(projectData) != _typeFilter) {
         return false;
       }
-      if (_projectTab == 'Attention')
+      if (_projectTab == 'Attention') {
         return _projectNeedsAttention(projectData);
+      }
       if (_projectTab == 'Active') {
         return _projectStateLabel(projectData) == 'Active';
       }
@@ -599,6 +600,7 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
     }
   }
 
+  // ignore: unused_element
   String _taskDueLabel(Map<String, dynamic> task) {
     final due = _parseTaskDate(task['dueDate'] ?? task['deadline']);
     if (due == null) return 'No due date';
@@ -606,6 +608,7 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
     return '${_dateLabel(due)} · ${_timeLabel(time)}';
   }
 
+  // ignore: unused_element
   bool _taskIsOverdue(Map<String, dynamic> task) {
     final status = (task['status'] ?? '').toString();
     if (status == 'Completed') return false;
@@ -638,11 +641,12 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
 
   bool _canManage(String? role) => role == 'Owner' || role == 'Manager';
 
+  // ignore: unused_element
   Widget _buildBadge(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
