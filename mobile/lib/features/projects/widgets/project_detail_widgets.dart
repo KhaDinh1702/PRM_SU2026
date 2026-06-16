@@ -13,8 +13,10 @@ class ProjectDetailHeader extends StatelessWidget {
   final int totalTasks;
   final Color statusColor;
   final bool canShowMenu;
+  final bool canLeave;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onLeave;
 
   const ProjectDetailHeader({
     super.key,
@@ -28,8 +30,10 @@ class ProjectDetailHeader extends StatelessWidget {
     required this.totalTasks,
     required this.statusColor,
     required this.canShowMenu,
+    required this.canLeave,
     required this.onEdit,
     required this.onDelete,
+    required this.onLeave,
   });
 
   @override
@@ -101,10 +105,13 @@ class ProjectDetailHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (canShowMenu)
+            if (canShowMenu || canLeave)
               ProjectActionMenu(
+                canShowMenu: canShowMenu,
+                canLeave: canLeave,
                 onEdit: onEdit,
                 onDelete: onDelete,
+                onLeave: onLeave,
               ),
           ],
         ),
@@ -134,15 +141,21 @@ class ProjectDetailHeader extends StatelessWidget {
   }
 }
 
-/// Popup menu edit/delete trên header project.
+/// Popup menu edit/delete/leave trên header project.
 class ProjectActionMenu extends StatelessWidget {
+  final bool canShowMenu;
+  final bool canLeave;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onLeave;
 
   const ProjectActionMenu({
     super.key,
+    required this.canShowMenu,
+    required this.canLeave,
     required this.onEdit,
     required this.onDelete,
+    required this.onLeave,
   });
 
   @override
@@ -152,15 +165,24 @@ class ProjectActionMenu extends StatelessWidget {
       onSelected: (value) {
         if (value == 'edit') onEdit();
         if (value == 'delete') onDelete();
+        if (value == 'leave') onLeave();
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'edit', child: Text('Edit project')),
-        PopupMenuDivider(),
-        PopupMenuItem(
-          value: 'delete',
-          child:
-              Text('Delete project', style: TextStyle(color: Colors.redAccent)),
-        ),
+      itemBuilder: (context) => [
+        if (canShowMenu) ...[
+          const PopupMenuItem(value: 'edit', child: Text('Edit project')),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Text('Delete project', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+        if (canShowMenu && canLeave)
+          const PopupMenuDivider(),
+        if (canLeave)
+          const PopupMenuItem(
+            value: 'leave',
+            child: Text('Leave project', style: TextStyle(color: Colors.orangeAccent)),
+          ),
       ],
     );
   }

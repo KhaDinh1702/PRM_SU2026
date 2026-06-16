@@ -115,4 +115,17 @@ class ProjectProvider extends ChangeNotifier {
     return _service.updateMemberRole(
         projectId: projectId, userId: userId, role: role);
   }
+
+  // --- Rời project ---
+  Future<void> leaveProject(String projectId) async {
+    await _service.leaveProject(projectId);
+    _projects.removeWhere((p) {
+      final proj = p['project'];
+      if (proj is Map) {
+        return (proj['_id'] ?? proj['id']) == projectId;
+      }
+      return false;
+    });
+    notifyListeners();
+  }
 }

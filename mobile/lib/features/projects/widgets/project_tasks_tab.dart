@@ -104,6 +104,7 @@ class TasksTab extends StatelessWidget {
   final bool isLoading;
   final bool tasksLoaded;
   final bool canManage;
+  final bool canAddTask;
   final ValueChanged<String> onFilterChanged;
   final VoidCallback onAddTask;
   final VoidCallback onLoadTasks;
@@ -119,6 +120,7 @@ class TasksTab extends StatelessWidget {
     required this.isLoading,
     required this.tasksLoaded,
     required this.canManage,
+    required this.canAddTask,
     required this.onFilterChanged,
     required this.onAddTask,
     required this.onLoadTasks,
@@ -172,7 +174,7 @@ class TasksTab extends StatelessWidget {
                   ),
                 ),
               ),
-              if (canManage) ...[
+              if (canAddTask) ...[
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: onAddTask,
@@ -192,8 +194,8 @@ class TasksTab extends StatelessWidget {
                       title: 'No tasks yet',
                       text:
                           'Create tasks to break this project into manageable work.',
-                      cta: canManage ? 'Add task' : null,
-                      onPressed: canManage ? onAddTask : null,
+                      cta: canAddTask ? 'Add task' : null,
+                      onPressed: canAddTask ? onAddTask : null,
                     )
                   : filteredTasks.isEmpty
                       ? const ProjectEmptyState(

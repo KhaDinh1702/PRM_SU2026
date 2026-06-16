@@ -11,6 +11,7 @@ router.post('/:projectId/invitations/:notificationId/respond', auth, projectCont
 router.get('/:projectId/tasks', auth, projectController.getProjectTasks);
 router.post('/:projectId/tasks', auth, projectController.createProjectTask);
 router.put('/:projectId/tasks/:taskId', auth, projectController.updateProjectTask);
+router.post('/:projectId/leave', auth, projectController.leaveProject);
 router.get('/:projectId', auth, projectController.getProjectById);
 router.put('/:projectId', auth, projectController.updateProject);
 router.delete('/:projectId', auth, projectController.deleteProject);
