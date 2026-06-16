@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -650,15 +650,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   // --- Bar Chart ---
   Widget _buildBarChart(bool isDark, Color barColor, Color captionColor,
       Color textColor, String dataKey, String unit) {
-    if (_dailyStats.isEmpty) {
+    final allZero = _dailyStats.every((day) => (day[dataKey] ?? 0) == 0);
+    if (_dailyStats.isEmpty || allZero) {
       return GlassCard(
         borderRadius: 24,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
         child: Center(
-          child: Text(
-            LocaleService.tr('Chưa có dữ liệu cho khoảng thời gian này',
-                en: 'No data for this time period'),
-            style: TextStyle(color: captionColor, fontSize: 13),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.bar_chart_rounded,
+                size: 44,
+                color: captionColor.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                LocaleService.tr('Chưa có dữ liệu thống kê',
+                    en: 'No stats data available'),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                LocaleService.tr('Hãy bắt đầu hoạt động để ghi nhận dữ liệu',
+                    en: 'Start active tasks to see details here'),
+                style: TextStyle(
+                  color: captionColor,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
         ),
       );

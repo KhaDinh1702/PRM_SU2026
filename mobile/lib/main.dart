@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'core/constants/app_colors.dart';
 import 'core/constants/app_durations.dart';
 import 'services/auth_service.dart';
@@ -9,12 +10,16 @@ import 'services/theme_service.dart';
 import 'services/locale_service.dart';
 import 'services/event_check_service.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/providers/auth_provider.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/tasks/screens/task_screen.dart';
+import 'features/tasks/providers/task_provider.dart';
 import 'features/timer/screens/timer_screen.dart';
 import 'features/projects/screens/project_screen.dart';
+import 'features/projects/providers/project_provider.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/notifications/screens/notifications_screen.dart';
+import 'features/notifications/providers/notification_provider.dart';
 import 'features/analytics/screens/analytics_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 
@@ -23,7 +28,17 @@ void main() async {
   await ThemeService.init(); // Initialize global dark/light theme state
   await LocaleService.init(); // Initialize language preference
   final bool loggedIn = await AuthService.isLoggedIn();
-  runApp(MyApp(isLoggedIn: loggedIn));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ChangeNotifierProvider(create: (_) => TaskProvider()),
+      ],
+      child: MyApp(isLoggedIn: loggedIn),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -143,7 +158,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     for (final notif in notifications) {
       // Lưu notification lên backend (fire-and-forget)
       await _eventService.saveNotificationToBackend(notif);
-      NotificationsScreen.refreshTrigger.value++;
+
+      // Cập nhật NotificationProvider thay vì gọi static refreshTrigger
+      if (mounted) {
+        context
+            .read<NotificationProvider>()
+            .triggerRefresh();
+      }
 
       // Hiển thị popup trực quan
       if (!mounted) return;

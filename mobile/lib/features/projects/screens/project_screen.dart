@@ -2,12 +2,14 @@ library project_screen;
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../widgets/chat_bottom_sheet.dart';
 import '../services/project_service.dart';
+import '../providers/project_provider.dart';
 import '../widgets/project_card.dart';
 import '../widgets/project_list_widgets.dart';
 import '../widgets/project_detail_widgets.dart';
@@ -34,7 +36,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
   String? _projectLoadError;
   List<dynamic> _projects = [];
   List<dynamic> _allUsers = [];
-  bool _isLoadingUsers = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _memberEmailController = TextEditingController();
@@ -70,7 +71,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProjects();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProjects();
+    });
     _initCurrentUser();
   }
 
@@ -85,8 +88,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   Future<void> _deleteProject(String projectId) async {
     try {
-      // Gọi qua ProjectService
-      await _projectService.deleteProject(projectId);
+      await context.read<ProjectProvider>().deleteProject(projectId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -98,7 +100,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         );
       }
-      _loadProjects();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -193,54 +194,28 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   Future<void> _loadProjects() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _projectLoadError = null;
-    });
-    try {
-      // Gọi qua ProjectService — không http trực tiếp trong widget
-      final projects = await _projectService.getProjects();
-      if (mounted) {
-        setState(() {
-          _projects = _normalizeProjectResponse(projects);
-          _isLoading = false;
-          _projectLoadError = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _projects = [];
-          _projectLoadError = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
+    if (mounted) {
+      await context.read<ProjectProvider>().loadProjects();
     }
   }
 
   Future<void> _loadUsers() async {
     try {
-      setState(() => _isLoadingUsers = true);
       // Gọi qua ProjectService
       final users = await _projectService.getUsers();
       if (mounted) {
         setState(() {
           _allUsers = users;
-          _isLoadingUsers = false;
         });
       }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingUsers = false);
-    }
+    } catch (_) {}
   }
 
   Future<void> _createProject() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
     try {
-      // Gọi qua ProjectService
-      await _projectService.createProject(
+      await context.read<ProjectProvider>().createProject(
         name: name,
         description: _descController.text.trim(),
       );
@@ -258,7 +233,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         );
       }
-      _loadProjects();
     } catch (_) {}
   }
 
@@ -267,10 +241,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
     Map<String, dynamic> payload,
   ) async {
     try {
-      // Gọi qua ProjectService
-      await _projectService.updateProject(
+      await context.read<ProjectProvider>().updateProject(
           projectId: projectId, payload: payload);
-      await _loadProjects();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

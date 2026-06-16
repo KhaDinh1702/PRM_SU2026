@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
@@ -320,14 +320,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: 24,
       padding: const EdgeInsets.all(22),
       child: !hasMeeting
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: Text(
-                  LocaleService.tr('Không có cuộc họp nào sắp diễn ra!',
-                      en: 'No upcoming meetings!'),
-                  style: TextStyle(color: captionColor, fontSize: 14),
-                ),
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.event_available_rounded,
+                      color: Color(0xFF10B981),
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          LocaleService.tr('Lịch trình trống', en: 'Schedule Clear'),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          LocaleService.tr('Không có cuộc họp nào sắp diễn ra.',
+                              en: 'No upcoming meetings scheduled.'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: subTextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             )
           : Row(
