@@ -7,6 +7,7 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isDisposed = false;
 
   // --- Getters ---
   Map<String, dynamic>? get currentUser => _currentUser;
@@ -106,5 +107,18 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
   }
 }
