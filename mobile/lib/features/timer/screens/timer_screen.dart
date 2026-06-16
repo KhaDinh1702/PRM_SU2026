@@ -1,12 +1,20 @@
-﻿import 'dart:async';
-import 'dart:math' as math;
+import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../features/timer/services/timer_service.dart';
+import '../models/forest_tree.dart';
+import '../widgets/forest_dialog_content.dart';
+import '../widgets/timer_header.dart';
+import '../widgets/preset_tab_bar.dart';
+import '../widgets/timer_display.dart';
+import '../widgets/time_adjuster.dart';
+import '../widgets/timer_action_buttons.dart';
 
 class TimerScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -30,6 +38,7 @@ class _TimerScreenState extends State<TimerScreen>
   String _currentMode = 'Focus';
   int _customMinutes = 25;
   String _userEmail = '';
+  List<ForestTree> _forestTrees = [];
 
   // Completion animation
   late AnimationController _completionController;
@@ -72,7 +81,35 @@ class _TimerScreenState extends State<TimerScreen>
       setState(() {
         _userEmail = userInfo['email'] ?? '';
       });
+      _loadForest();
     }
+  }
+
+  Future<void> _loadForest() async {
+    if (_userEmail.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? raw = prefs.getString('forest_trees_$_userEmail');
+      if (raw != null) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          setState(() {
+            _forestTrees = decoded
+                .map((item) => ForestTree.fromJson(Map<String, dynamic>.from(item as Map)))
+                .toList();
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveForest() async {
+    if (_userEmail.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String encoded = jsonEncode(_forestTrees.map((t) => t.toJson()).toList());
+      await prefs.setString('forest_trees_$_userEmail', encoded);
+    } catch (_) {}
   }
 
   @override
@@ -141,6 +178,14 @@ class _TimerScreenState extends State<TimerScreen>
   }
 
   void _resetTimer() {
+    if (_isRunning && (_currentMode == 'Focus' || _currentMode == 'Custom')) {
+      _showAbandonWarningDialog();
+      return;
+    }
+    _performReset();
+  }
+
+  void _performReset() {
     _countdownController.stop();
     _completionController.stop();
     _completionController.reset();
@@ -160,12 +205,164 @@ class _TimerScreenState extends State<TimerScreen>
     });
   }
 
+  void _showAbandonWarningDialog() {
+    final bool willWither = _totalSeconds >= 600;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+        final subTextColor = ThemeService.getSubTextColor(isDark);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AlertDialog(
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.08)),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+                const SizedBox(width: 10),
+                Text(
+                  willWither
+                      ? LocaleService.tr('Bạn muốn bỏ cuộc sao?', en: 'Are you sure to give up?')
+                      : LocaleService.tr('Hủy phiên tập trung?', en: 'Cancel focus session?'),
+                  style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+            content: Text(
+              willWither
+                  ? LocaleService.tr(
+                      'Nếu dừng lại ở đây, mầm cây đang trồng của bạn sẽ bị héo úa và chết!',
+                      en: 'If you stop now, your growing tree will wither and die!',
+                    )
+                  : LocaleService.tr(
+                      'Bạn có muốn dừng phiên tập trung này không? (Phiên dưới 10 phút không tính vào Khu rừng).',
+                      en: 'Do you want to stop this focus session? (Sessions under 10 minutes do not affect the Forest).',
+                    ),
+              style: TextStyle(color: subTextColor, fontSize: 15),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  LocaleService.tr('Tiếp tục tập trung', en: 'Keep Focusing'),
+                  style: const TextStyle(color: Color(0xFF8B5CF6), fontWeight: FontWeight.bold),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (willWither) {
+                    _recordFailedTree();
+                  }
+                  _performReset();
+                },
+                child: Text(
+                  LocaleService.tr('Chấp nhận', en: 'Confirm'),
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _recordFailedTree() {
+    if (_totalSeconds < 600) return;
+    setState(() {
+      _forestTrees.add(ForestTree(
+        timestamp: DateTime.now(),
+        mode: _currentMode,
+        durationSeconds: _totalSeconds,
+        isSuccess: false,
+      ));
+    });
+    _saveForest();
+  }
+
+  void _showForestDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final textColor = ThemeService.getTextColor(isDark);
+        final captionColor = ThemeService.getCaptionColor(isDark);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: AlertDialog(
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.08)),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.forest_rounded, color: Color(0xFF10B981), size: 26),
+                const SizedBox(width: 10),
+                Text(
+                  LocaleService.tr('KHU RỪNG NĂNG SUẤT', en: 'PRODUCTIVITY FOREST'),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: textColor,
+                      letterSpacing: 1.2),
+                ),
+              ],
+            ),
+            content: ForestDialogContent(trees: _forestTrees),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  LocaleService.tr('Đóng', en: 'Close'),
+                  style: TextStyle(
+                      color: captionColor, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _timerFinished() {
     _countdownController.stop();
     setState(() {
       _isRunning = false;
       _secondsRemaining = 0;
     });
+
+    final bool isFocusMode = _currentMode == 'Focus' || _currentMode == 'Custom';
+    final bool qualifiesForForest = _totalSeconds >= 600;
+
+    // Record successful tree if mode is Focus or Custom and is at least 10 minutes
+    if (isFocusMode && qualifiesForForest) {
+      _forestTrees.add(ForestTree(
+        timestamp: DateTime.now(),
+        mode: _currentMode,
+        durationSeconds: _totalSeconds,
+        isSuccess: true,
+      ));
+      _saveForest();
+    }
 
     // Start pulsing visual effect to alert the user
     _completionController.repeat(reverse: true);
@@ -183,10 +380,30 @@ class _TimerScreenState extends State<TimerScreen>
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
 
+        String contentText;
+        if (isFocusMode) {
+          if (qualifiesForForest) {
+            contentText = LocaleService.tr(
+              'Tuyệt vời ông chủ! Bạn đã hoàn thành tập trung cao độ. Một cây xanh mới đã được trồng vào Khu rừng! Hãy nghỉ ngơi một chút nhé!',
+              en: 'Awesome! You completed deep focus. A new tree has been planted in the Forest! Take a break!',
+            );
+          } else {
+            contentText = LocaleService.tr(
+              'Hoàn thành tập trung! Bạn đã hoàn thành phiên tập trung ngắn. Lưu ý: cần tập trung tối thiểu 10 phút để được trồng cây vào Khu rừng nhé!',
+              en: 'Focus completed! You completed a short focus session. Note: at least 10 minutes of focus is required to plant a tree in the Forest!',
+            );
+          }
+        } else {
+          contentText = LocaleService.tr(
+            'Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?',
+            en: 'Break time is over! Ready for a new session?',
+          );
+        }
+
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: dialogBg.withOpacity(0.9),
+            backgroundColor: dialogBg.withValues(alpha: 0.9),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: const BorderSide(color: Color(0xFFF43F5E), width: 1.5),
@@ -207,13 +424,7 @@ class _TimerScreenState extends State<TimerScreen>
               ],
             ),
             content: Text(
-              _currentMode == 'Focus'
-                  ? LocaleService.tr(
-                      'Tuyệt vời ông chủ! Bạn đã hoàn thành tập trung cao độ. Hãy nghỉ ngơi một chút!',
-                      en: 'Awesome! You completed deep focus. Take a break!')
-                  : LocaleService.tr(
-                      'Thời gian nghỉ ngơi đã hết! Ông chủ đã sẵn sàng bắt đầu phiên làm việc mới chưa?',
-                      en: 'Break time is over! Ready for a new session?'),
+              contentText,
               textAlign: TextAlign.center,
               style: TextStyle(color: subTextColor, fontSize: 16),
             ),
@@ -387,13 +598,6 @@ class _TimerScreenState extends State<TimerScreen>
       listenable: Listenable.merge(
           [ThemeService.isDarkMode, LocaleService.languageCode]),
       builder: (context, child) {
-        final isDark = ThemeService.isDarkMode.value;
-        final textColor = ThemeService.getTextColor(isDark);
-        final subTextColor = ThemeService.getSubTextColor(isDark);
-        final captionColor = ThemeService.getCaptionColor(isDark);
-        final cardBgColor = ThemeService.getCardColor(isDark);
-        final borderColor = ThemeService.getBorderColor(isDark);
-
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: SingleChildScrollView(
@@ -403,347 +607,50 @@ class _TimerScreenState extends State<TimerScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Premium Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _userEmail.isNotEmpty
-                                  ? '${LocaleService.tr('CHÀO ÔNG CHỦ: ', en: 'HELLO BOSS: ')}${_userEmail.split('@')[0].toUpperCase()}'
-                                  : 'PREMIUM',
-                              style: TextStyle(
-                                color: captionColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'Space Timer',
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: themeColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: themeColor.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.bolt, color: themeColor, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _currentMode.toUpperCase(),
-                                  style: TextStyle(
-                                    color: themeColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  TimerHeader(
+                    userEmail: _userEmail,
+                    currentMode: _currentMode,
+                    themeColor: themeColor,
+                    onForestPressed: _showForestDialog,
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Preset Selector Tab Bar
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: cardBgColor,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildPresetTab(
-                              'Focus',
-                              '25M',
-                              _currentMode == 'Focus',
-                              () => _setPreset('Focus', 25),
-                              isDark),
-                        ),
-                        Expanded(
-                          child: _buildPresetTab(
-                              'Short Break',
-                              '5M',
-                              _currentMode == 'Short Break',
-                              () => _setPreset('Short Break', 5),
-                              isDark),
-                        ),
-                        Expanded(
-                          child: _buildPresetTab(
-                              'Long Break',
-                              '15M',
-                              _currentMode == 'Long Break',
-                              () => _setPreset('Long Break', 15),
-                              isDark),
-                        ),
-                      ],
-                    ),
+                  PresetTabBar(
+                    currentMode: _currentMode,
+                    onPresetSelected: (mode, minutes) => _setPreset(mode, minutes),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Timer Display Circle
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Center(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Inner Glow Accent
-                          Container(
-                            width: 190,
-                            height: 190,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: themeColor.withOpacity(0.08),
-                                  blurRadius: 40,
-                                  spreadRadius: 15,
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(
-                            width: 220,
-                            height: 220,
-                            child: AnimatedBuilder(
-                              animation: _countdownController,
-                              builder: (context, child) {
-                                return CustomPaint(
-                                  painter: TimerPainter(
-                                    progress: _getProgress(),
-                                    baseColor: isDark
-                                        ? Colors.white.withOpacity(0.05)
-                                        : Colors.black.withOpacity(0.05),
-                                    progressColor: themeColor,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
-                          // Inside text content
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: _isRunning ? null : _showTimeInputDialog,
-                                child: Text(
-                                  timeStr,
-                                  style: TextStyle(
-                                    fontSize: 44,
-                                    fontWeight: FontWeight.w800,
-                                    color: textColor,
-                                    letterSpacing: 1.5,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _isRunning
-                                    ? LocaleService.tr('TIẾN TRÌNH',
-                                        en: 'IN PROGRESS')
-                                    : LocaleService.tr('TẠM DỪNG',
-                                        en: 'PAUSED'),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: themeColor.withOpacity(0.9),
-                                  letterSpacing: 3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  TimerDisplay(
+                    pulseAnimation: _pulseAnimation,
+                    countdownController: _countdownController,
+                    themeColor: themeColor,
+                    treeEmoji: _getTreeEmoji(_getProgress()),
+                    timeStr: timeStr,
+                    isRunning: _isRunning,
+                    onTimeTap: _showTimeInputDialog,
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Custom Time Adjustment Controls
-                  AnimatedOpacity(
-                    opacity: _isRunning ? 0.3 : 1.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: IgnorePointer(
-                      ignoring: _isRunning,
-                      child: Column(
-                        children: [
-                          Text(
-                            LocaleService.tr('ĐIỀU CHỈNH THỜI GIAN',
-                                en: 'ADJUST TIME'),
-                            style: TextStyle(
-                              color: captionColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildAdjustButton(Icons.remove,
-                                  () => _adjustTime(-1), themeColor, isDark),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  textBaseline: TextBaseline.alphabetic,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.baseline,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: _showTimeInputDialog,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white.withOpacity(0.05)
-                                              : Colors.black.withOpacity(0.03),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: isDark
-                                                  ? Colors.white
-                                                      .withOpacity(0.1)
-                                                  : Colors.black
-                                                      .withOpacity(0.05)),
-                                        ),
-                                        child: Text(
-                                          '${_totalSeconds ~/ 60}',
-                                          style: TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                            color: textColor,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'phút',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: subTextColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              _buildAdjustButton(Icons.add,
-                                  () => _adjustTime(1), themeColor, isDark),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  TimeAdjuster(
+                    isRunning: _isRunning,
+                    totalSeconds: _totalSeconds,
+                    themeColor: themeColor,
+                    onAdjust: _adjustTime,
+                    onTimeTap: _showTimeInputDialog,
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Main Control Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Reset Button
-                      _buildSecondaryButton(
-                        Icons.replay,
-                        _resetTimer,
-                        isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.black.withOpacity(0.05),
-                        isDark,
-                      ),
-
-                      const SizedBox(width: 24),
-
-                      // Play / Pause Button with Premium Gradient Glow
-                      GestureDetector(
-                        onTap: _isRunning ? _pauseTimer : _startTimer,
-                        child: Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: _isRunning
-                                  ? [
-                                      const Color(0xFFF43F5E),
-                                      const Color(0xFFBE123C)
-                                    ]
-                                  : [themeColor, themeColor.withOpacity(0.7)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: (_isRunning
-                                        ? const Color(0xFFF43F5E)
-                                        : themeColor)
-                                    .withOpacity(0.4),
-                                blurRadius: 16,
-                                spreadRadius: 1,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isRunning
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 34,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 24),
-
-                      // Preset restore
-                      _buildSecondaryButton(
-                        Icons.settings_backup_restore,
-                        () => _setPreset('Focus', 25),
-                        isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.black.withOpacity(0.05),
-                        isDark,
-                      ),
-                    ],
+                  TimerActionButtons(
+                    isRunning: _isRunning,
+                    themeColor: themeColor,
+                    onPlayPause: _isRunning ? _pauseTimer : _startTimer,
+                    onReset: _resetTimer,
+                    onRestore: () => _setPreset('Focus', 25),
                   ),
                 ],
               ),
@@ -754,185 +661,25 @@ class _TimerScreenState extends State<TimerScreen>
     );
   }
 
-  // Custom Preset Tab builder
-  Widget _buildPresetTab(String title, String subtitle, bool isSelected,
-      VoidCallback onTap, bool isDark) {
-    Color activeColor;
-    if (title == 'Focus') {
-      activeColor = const Color(0xFF8B5CF6);
-    } else if (title == 'Short Break') {
-      activeColor = const Color(0xFF10B981);
-    } else {
-      activeColor = const Color(0xFF06B6D4);
+  String _getTreeEmoji(double progress) {
+    if (_currentMode != 'Focus' && _currentMode != 'Custom') {
+      return '☕';
     }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color:
-              isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
-          border: Border.all(
-            color:
-                isSelected ? activeColor.withOpacity(0.3) : Colors.transparent,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected
-                    ? (isDark ? Colors.white : const Color(0xFF0F172A))
-                    : (isDark ? Colors.white54 : Colors.black54),
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: isSelected
-                    ? activeColor
-                    : (isDark ? Colors.white30 : Colors.black38),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Custom Adjust Control Button
-  Widget _buildAdjustButton(
-      IconData icon, VoidCallback onPressed, Color themeColor, bool isDark) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDark
-              ? Colors.white.withOpacity(0.03)
-              : Colors.black.withOpacity(0.03),
-          border: Border.all(
-              color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.black.withOpacity(0.06)),
-        ),
-        child: Icon(
-          icon,
-          color: isDark ? Colors.white70 : Colors.black87,
-          size: 18,
-        ),
-      ),
-    );
-  }
-
-  // Secondary Control Button
-  Widget _buildSecondaryButton(
-      IconData icon, VoidCallback onTap, Color bgColor, bool isDark) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: bgColor,
-          border: Border.all(
-              color: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.black.withOpacity(0.04)),
-        ),
-        child: Icon(
-          icon,
-          color: isDark ? Colors.white70 : Colors.black87,
-          size: 20,
-        ),
-      ),
-    );
-  }
-}
-
-class TimerPainter extends CustomPainter {
-  final double progress;
-  final Color baseColor;
-  final Color progressColor;
-
-  TimerPainter({
-    required this.progress,
-    required this.baseColor,
-    required this.progressColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2;
-    const strokeWidth = 12.0;
-
-    // Draw background track
-    final paintBase = Paint()
-      ..color = baseColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth - 2;
-    canvas.drawCircle(center, radius - strokeWidth / 2, paintBase);
-
-    // Draw glowing progress arc
-    if (progress > 0) {
-      final paintProgress = Paint()
-        ..shader = SweepGradient(
-          colors: [
-            progressColor.withOpacity(0.6),
-            progressColor,
-            progressColor.withOpacity(0.9),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-          transform: const GradientRotation(-math.pi / 2),
-        ).createShader(Rect.fromCircle(center: center, radius: radius))
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = strokeWidth;
-
-      // Subtle shadow/glow effect
-      final paintGlow = Paint()
-        ..color = progressColor.withOpacity(0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = strokeWidth + 4
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-
-      final sweepAngle = 2 * math.pi * progress;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        paintGlow,
-      );
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        paintProgress,
-      );
+    if (!_isRunning && _secondsRemaining == _totalSeconds) {
+      return '🌰';
     }
-  }
-
-  @override
-  bool shouldRepaint(covariant TimerPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.baseColor != baseColor ||
-        oldDelegate.progressColor != progressColor;
+    if (progress > 0.8) {
+      return '🌱';
+    }
+    if (progress > 0.5) {
+      return '🌿';
+    }
+    if (progress > 0.2) {
+      return '🌲';
+    }
+    if (progress > 0.0) {
+      return '🌳';
+    }
+    return '🌸';
   }
 }

@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'dart:async' as async_timer;
 import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
@@ -238,8 +238,8 @@ class _LoginScreenState extends State<LoginScreen>
         
         // GitHub Theme Colors
         final themeColor = ThemeService.getPrimaryColor(isDark); // GitHub Blue accent
-        final buttonColor = ThemeService.getButtonColor(isDark); // GitHub Green submit
-        final buttonHoverColor = ThemeService.getButtonHoverColor(isDark); // GitHub Green hover/gradient
+        final buttonColor = themeColor; // Main Brand Blue
+        final buttonHoverColor = isDark ? const Color(0xFF1F6FEB) : const Color(0xFF0C63E4); // Main Brand Blue hover
 
         final cardColor = isDark 
             ? const Color(0xFF161B22).withOpacity(0.9) 
@@ -309,7 +309,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              'SPACE TIMER',
+                              'FLOWMATE',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w900,
@@ -324,8 +324,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       'ĐĂNG NHẬP ĐỂ ĐỒNG BỘ TIẾN TRÌNH',
                                       en: 'LOGIN TO SYNC PROGRESS')
                                   : LocaleService.tr(
-                                      'ĐĂNG KÝ THÀNH VIÊN VŨ TRỤ',
-                                      en: 'REGISTER SPACE MEMBER'),
+                                      'ĐĂNG KÝ TÀI KHOẢN MỚI',
+                                      en: 'REGISTER NEW ACCOUNT'),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
