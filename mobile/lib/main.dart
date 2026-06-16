@@ -102,7 +102,7 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _currentIndex = 3; // Default to Projects tab
+  int _currentIndex = 0; // Default to Home tab
 
   late final List<Widget> _screens;
   Timer? _eventCheckTimer;
@@ -113,7 +113,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _screens = [
-      const DashboardScreen(), // 0: Home
+      DashboardScreen(onTabSelect: (index) {
+        if (mounted) {
+          setState(() => _currentIndex = index);
+        }
+      }), // 0: Home
       const TaskScreen(), // 1: Tasks
       TimerScreen(onLogout: _handleLogout), // 2: Timer
       const ProjectScreen(), // 3: Projects

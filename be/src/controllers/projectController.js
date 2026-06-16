@@ -111,7 +111,7 @@ exports.getProjects = async (req, res) => {
 // POST /api/projects
 exports.createProject = async (req, res) => {
     try {
-        const { name, description, deadline } = req.body;
+        const { name, description, deadline, type } = req.body;
         if (!name) {
             return res.status(400).json({ error: 'Tên dự án là bắt buộc' });
         }
@@ -122,7 +122,8 @@ exports.createProject = async (req, res) => {
             owner: req.user.id,
             members: [],
             deadline,
-            status: 'Active'
+            status: 'Active',
+            type: type || 'Personal'
         });
 
         await project.save();
@@ -184,7 +185,7 @@ exports.getProjectById = async (req, res) => {
 exports.updateProject = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { name, description, deadline, status, allowMembersToCreateTasks } = req.body;
+        const { name, description, deadline, status, allowMembersToCreateTasks, type } = req.body;
 
         const project = await Project.findOne({ _id: projectId, owner: req.user.id });
         if (!project) {
@@ -196,6 +197,7 @@ exports.updateProject = async (req, res) => {
         if (deadline !== undefined) project.deadline = deadline;
         if (status !== undefined) project.status = status;
         if (allowMembersToCreateTasks !== undefined) project.allowMembersToCreateTasks = allowMembersToCreateTasks;
+        if (type !== undefined) project.type = type;
 
         await project.save();
         res.status(200).json(project);

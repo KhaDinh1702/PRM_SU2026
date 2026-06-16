@@ -71,8 +71,9 @@ class ProjectProvider extends ChangeNotifier {
   Future<void> createProject({
     required String name,
     required String description,
+    required String type,
   }) async {
-    await _service.createProject(name: name, description: description);
+    await _service.createProject(name: name, description: description, type: type);
     await loadProjects(silent: true);
   }
 
