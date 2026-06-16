@@ -65,6 +65,39 @@ class TaskModel {
     );
   }
 
+  /// Tạo bản sao với một vài field được thay đổi
+  TaskModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    TaskStatus? status,
+    TaskPriority? priority,
+    TaskSource? source,
+    DateTime? deadline,
+    DateTime? dueDate,
+    String? dueTime,
+    bool? notificationEnabled,
+    String? reminderType,
+    Map<String, dynamic>? project,
+    Map<String, dynamic>? assignedTo,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      source: source ?? this.source,
+      deadline: deadline ?? this.deadline,
+      dueDate: dueDate ?? this.dueDate,
+      dueTime: dueTime ?? this.dueTime,
+      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
+      reminderType: reminderType ?? this.reminderType,
+      project: project ?? this.project,
+      assignedTo: assignedTo ?? this.assignedTo,
+    );
+  }
+
   /// Trả về DateTime kết hợp deadline + dueTime (nếu có)
   DateTime? get effectiveDueDateTime {
     final base = deadline ?? dueDate;

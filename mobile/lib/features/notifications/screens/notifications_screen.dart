@@ -1,12 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
-import '../../../features/notifications/models/notification_model.dart';
-import '../../../features/notifications/services/notification_service.dart';
+import '../models/notification_model.dart';
+import '../providers/notification_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  static final ValueNotifier<int> refreshTrigger = ValueNotifier(0);
   const NotificationsScreen({super.key});
 
   @override
@@ -15,9 +15,6 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
-  final _notificationService = const NotificationService();
-  bool _isLoading = true;
-  List<NotificationModel> _notifications = [];
   late AnimationController _pulseController;
 
   @override
@@ -27,81 +24,53 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
-    NotificationsScreen.refreshTrigger.addListener(_onGlobalRefresh);
-    _loadNotifications();
-  }
-
-  void _onGlobalRefresh() {
-    if (mounted) {
-      _loadNotifications();
-    }
+    
+    // Load notifications on init using provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<NotificationProvider>().loadNotifications();
+      }
+    });
   }
 
   @override
   void dispose() {
-    NotificationsScreen.refreshTrigger.removeListener(_onGlobalRefresh);
     _pulseController.dispose();
     super.dispose();
   }
 
   Future<void> _loadNotifications() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    try {
-      // Gọi qua NotificationService — không http trực tiếp trong widget
-      final notifications = await _notificationService.getNotifications();
-      if (mounted) {
-        setState(() {
-          _notifications = notifications;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      await context.read<NotificationProvider>().loadNotifications();
     }
   }
 
   Future<void> _markAsRead(String notificationId) async {
-    // Gọi service, cập nhật local state ngay không cần reload
-    await _notificationService.markAsRead(notificationId);
     if (mounted) {
-      setState(() {
-        final idx = _notifications.indexWhere((n) => n.id == notificationId);
-        if (idx != -1) {
-          _notifications[idx] = _notifications[idx].copyWithRead();
-        }
-      });
+      await context.read<NotificationProvider>().markAsRead(notificationId);
     }
   }
 
-  Future<void> _markAllAsRead() async {
-    // Mark all unread (except invitations) as read
-    final unread = _notifications
+  Future<void> _markAllAsRead(List<NotificationModel> notifications) async {
+    final provider = context.read<NotificationProvider>();
+    final unread = notifications
         .where((n) => !n.isRead && n.type != NotificationType.invitation)
         .toList();
     for (final n in unread) {
-      await _markAsRead(n.id);
+      await provider.markAsRead(n.id);
     }
   }
 
   Future<void> _respondToInvitation(
       String projectId, String notificationId, String action) async {
     try {
-      // Gọi qua NotificationService — không http trực tiếp trong widget
-      final updatedNotification =
-          await _notificationService.respondToInvitation(
+      final provider = context.read<NotificationProvider>();
+      final result = await provider.respondToInvitation(
         projectId: projectId,
         notificationId: notificationId,
         action: action,
       );
-      if (mounted) {
-        setState(() {
-          final idx =
-              _notifications.indexWhere((n) => n.id == notificationId);
-          if (idx != -1) {
-            _notifications[idx] = updatedNotification;
-          }
-        });
+      if (mounted && result != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(action == 'accept'
@@ -158,243 +127,248 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         final textColor = ThemeService.getTextColor(isDark);
         final captionColor = ThemeService.getCaptionColor(isDark);
 
-        final unreadCount =
-            _notifications.where((n) => !n.isRead).length;
+        return Consumer<NotificationProvider>(
+          builder: (context, provider, child) {
+            final notifications = provider.notifications;
+            final isLoading = provider.isLoading;
+            final unreadCount = provider.unreadCount;
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: RefreshIndicator(
-            onRefresh: _loadNotifications,
-            color: themeColor,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics()),
-              slivers: [
-                // --- Header ---
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                    child: FadeInSlide(
-                      delayMs: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: RefreshIndicator(
+                onRefresh: _loadNotifications,
+                color: themeColor,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                    // --- Header ---
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                        child: FadeInSlide(
+                          delayMs: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                              LocaleService.tr('THÔNG BÁO',
-                                    en: 'NOTIFICATIONS'),
-                                style: TextStyle(
-                                  color: captionColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Notifications',
+                                    LocaleService.tr('THÔNG BÁO',
+                                        en: 'NOTIFICATIONS'),
                                     style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w900,
+                                      color: captionColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
                                     ),
                                   ),
-                                  if (unreadCount > 0) ...[
-                                    const SizedBox(width: 10),
-                                    AnimatedBuilder(
-                                      animation: _pulseController,
-                                      builder: (context, child) {
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: themeColor.withOpacity(0.12 +
-                                                _pulseController.value * 0.08),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color:
-                                                  themeColor.withOpacity(0.3),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Text(
-        '${unreadCount} ${LocaleService.tr('mới', en: 'new')}',
-                                            style: TextStyle(
-                                              color: themeColor,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Notifications',
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      if (unreadCount > 0) ...[
+                                        const SizedBox(width: 10),
+                                        AnimatedBuilder(
+                                          animation: _pulseController,
+                                          builder: (context, child) {
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: themeColor.withOpacity(0.12 +
+                                                    _pulseController.value * 0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color:
+                                                      themeColor.withOpacity(0.3),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                '${unreadCount} ${LocaleService.tr('mới', en: 'new')}',
+                                                style: TextStyle(
+                                                  color: themeColor,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
-                          if (unreadCount > 0)
-                            GestureDetector(
-                              onTap: _markAllAsRead,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: themeColor.withOpacity(0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.done_all_rounded,
-                                        color: themeColor, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      LocaleService.tr('Đọc tất cả',
-                                          en: 'Mark all as read'),
-                                      style: TextStyle(
-                                        color: themeColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                              if (unreadCount > 0)
+                                GestureDetector(
+                                  onTap: () => _markAllAsRead(notifications),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: themeColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: themeColor.withOpacity(0.2),
                                       ),
                                     ),
-                                  ],
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.done_all_rounded,
+                                            color: themeColor, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          LocaleService.tr('Đọc tất cả',
+                                              en: 'Mark all as read'),
+                                          style: TextStyle(
+                                            color: themeColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                  if (_notifications.any((n) => n.isPendingInvitation))
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            LocaleService.tr('Lời mời dự án',
-                                en: 'Project Invitations'),
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          ..._notifications
-                              .where((n) => n.isPendingInvitation)
-                              .map((invite) =>
-                                  _buildInvitationCard(invite, isDark)),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // --- Content ---
-                if (_isLoading)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        children: List.generate(
-                            5,
-                            (i) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: ShimmerLoading(
-                                      width: double.infinity,
-                                      height: 100,
-                                      borderRadius: 20),
-                                )),
-                      ),
-                    ),
-                  )
-                else if (_notifications.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: FadeInSlide(
-                        delayMs: 100,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: themeColor.withOpacity(0.08),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.notifications_off_rounded,
-                                color: themeColor.withOpacity(0.5),
-                                size: 48,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              LocaleService.tr('You are all caught up!',
-                                  en: 'You are all caught up!'),
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              LocaleService.tr(
-                                  'Không có thông báo nào. Hãy quay lại sau!',
-                                  en: 'No notifications. Check back later!'),
-                              style: TextStyle(
-                                color: captionColor,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final notification = _notifications
-                              .where((n) => !n.isPendingInvitation)
-                              .toList()[index];
-                          return FadeInSlide(
-                            delayMs: 80 * index,
-                            child: _buildNotificationCard(notification, isDark),
-                          );
-                        },
-                        childCount: _notifications
-                            .where((n) => !n.isPendingInvitation)
-                            .length,
-                      ),
-                    ),
-                  ),
 
-                // Bottom padding for navbar
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
-            ),
-          ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                    if (notifications.any((n) => n.isPendingInvitation))
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                LocaleService.tr('Lời mời dự án',
+                                    en: 'Project Invitations'),
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ...notifications
+                                  .where((n) => n.isPendingInvitation)
+                                  .map((invite) =>
+                                      _buildInvitationCard(invite, isDark)),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // --- Content ---
+                    if (isLoading)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            children: List.generate(
+                                5,
+                                (i) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: ShimmerLoading(
+                                          width: double.infinity,
+                                          height: 100,
+                                          borderRadius: 20),
+                                    )),
+                          ),
+                        ),
+                      )
+                    else if (notifications.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: FadeInSlide(
+                            delayMs: 100,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withOpacity(0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.notifications_off_rounded,
+                                    color: themeColor.withOpacity(0.5),
+                                    size: 48,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  LocaleService.tr('You are all caught up!',
+                                      en: 'You are all caught up!'),
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  LocaleService.tr(
+                                      'Không có thông báo nào. Hãy quay lại sau!',
+                                      en: 'No notifications. Check back later!'),
+                                  style: TextStyle(
+                                    color: captionColor,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final notification = notifications
+                                  .where((n) => !n.isPendingInvitation)
+                                  .toList()[index];
+                              return FadeInSlide(
+                                delayMs: 80 * index,
+                                child: _buildNotificationCard(notification, isDark),
+                              );
+                            },
+                            childCount: notifications
+                                .where((n) => !n.isPendingInvitation)
+                                .length,
+                          ),
+                        ),
+                      ),
+
+                    // Bottom padding for navbar
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

@@ -4,19 +4,25 @@ extension _ProjectScreenBuild on _ProjectScreenState {
   Widget _buildProjectScreen(BuildContext context) {
     const themeColor = Color(0xFF06B6D4);
 
-    return ListenableBuilder(
-      listenable: Listenable.merge(
-          [ThemeService.isDarkMode, LocaleService.languageCode]),
-      builder: (context, child) {
-        final isDark = ThemeService.isDarkMode.value;
-        final textColor = ThemeService.getTextColor(isDark);
-        final captionColor = ThemeService.getCaptionColor(isDark);
-        final visibleProjectModels =
-            _visibleProjects.map(_projectCardModel).toList();
-        final attentionProjectModels =
-            _attentionProjects.map(_projectCardModel).toList();
+    return Consumer<ProjectProvider>(
+      builder: (context, provider, child) {
+        _projects = provider.projects;
+        _isLoading = provider.isLoading;
+        _projectLoadError = provider.errorMessage;
 
-        return Scaffold(
+        return ListenableBuilder(
+          listenable: Listenable.merge(
+              [ThemeService.isDarkMode, LocaleService.languageCode]),
+          builder: (context, child) {
+            final isDark = ThemeService.isDarkMode.value;
+            final textColor = ThemeService.getTextColor(isDark);
+            final captionColor = ThemeService.getCaptionColor(isDark);
+            final visibleProjectModels =
+                _visibleProjects.map(_projectCardModel).toList();
+            final attentionProjectModels =
+                _attentionProjects.map(_projectCardModel).toList();
+
+            return Scaffold(
           backgroundColor: Colors.transparent,
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -102,6 +108,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
               ],
             ),
           ),
+        );
+          },
         );
       },
     );

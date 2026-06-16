@@ -1,14 +1,14 @@
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
-import '../../../services/auth_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../models/task_model.dart';
+import '../providers/task_provider.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_empty_state.dart';
 import '../widgets/task_filter_sheet.dart';
@@ -48,7 +48,9 @@ class _TaskScreenState extends State<TaskScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTasks();
+    });
   }
 
   @override
@@ -61,42 +63,54 @@ class _TaskScreenState extends State<TaskScreen> {
 
   // --- API Methods ---
 
+  Map<String, dynamic> _taskModelToMap(TaskModel task) {
+    final statusString = task.status == TaskStatus.completed
+        ? 'Completed'
+        : task.status == TaskStatus.inProgress
+            ? 'In Progress'
+            : 'Pending';
+
+    final priorityString = task.priority == TaskPriority.urgent
+        ? 'Urgent'
+        : task.priority == TaskPriority.high
+            ? 'High'
+            : task.priority == TaskPriority.medium
+                ? 'Medium'
+                : 'Low';
+
+    final sourceString = task.source == TaskSource.project
+        ? 'project'
+        : task.source == TaskSource.schedule
+            ? 'schedule'
+            : 'personal';
+
+    return {
+      '_id': task.id,
+      'title': task.title,
+      'description': task.description,
+      'status': statusString,
+      'priority': priorityString,
+      'sourceType': sourceString,
+      'deadline': task.deadline?.toIso8601String(),
+      'dueDate': task.dueDate?.toIso8601String(),
+      'dueTime': task.dueTime,
+      'notificationEnabled': task.notificationEnabled,
+      'reminderType': task.reminderType,
+      'project': task.project,
+      'assignedTo': task.assignedTo,
+    };
+  }
+
   Future<void> _loadTasks() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final token = await AuthService.getToken();
-      final query = <String, String>{
-        'tab': _selectedTab,
-        'sort': _sortBy,
-        if (_sourceFilter != 'All') 'source': _sourceFilter.toLowerCase(),
-        if (_statusFilter != 'All') 'status': _statusFilter,
-        if (_priorityFilter != 'All') 'priority': _priorityFilter,
-        if (_searchController.text.trim().isNotEmpty)
-          'search': _searchController.text.trim(),
-      };
-
-      final uri = Uri.parse('${AuthService.apiBaseUrl}/tasks')
-          .replace(queryParameters: query);
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode != 200) throw Exception(response.body);
-
-      if (mounted) {
-        setState(() {
-          _tasks = jsonDecode(response.body) as List<dynamic>;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      await context.read<TaskProvider>().applyFilters(
+        tab: _selectedTab,
+        sortBy: _sortBy,
+        sourceFilter: _sourceFilter,
+        statusFilter: _statusFilter,
+        priorityFilter: _priorityFilter,
+        searchQuery: _searchController.text.trim(),
+      );
     }
   }
 
@@ -105,32 +119,17 @@ class _TaskScreenState extends State<TaskScreen> {
     if (title.isEmpty) return;
 
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse('${AuthService.apiBaseUrl}/tasks'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'title': title,
-              'description': _descController.text.trim(),
-              'priority': _taskPriority,
-              'status': 'Pending',
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 201) {
-        _titleController.clear();
-        _descController.clear();
-        _taskPriority = 'Medium';
-        if (mounted) {
-          Navigator.pop(context);
-          _showSnack('Task added successfully', _accent);
-        }
-        _loadTasks();
+      await context.read<TaskProvider>().createTask(
+        title: title,
+        description: _descController.text.trim(),
+        priority: _taskPriority,
+      );
+      _titleController.clear();
+      _descController.clear();
+      _taskPriority = 'Medium';
+      if (mounted) {
+        Navigator.pop(context);
+        _showSnack('Task added successfully', _accent);
       }
     } catch (_) {
       if (mounted) _showSnack('Could not create task', Colors.redAccent);
@@ -142,30 +141,17 @@ class _TaskScreenState extends State<TaskScreen> {
     if (taskId == null || taskId.isEmpty) return;
 
     final currentStatus = task['status']?.toString() ?? 'Pending';
-    final newStatus = currentStatus == 'Completed' ? 'Pending' : 'Completed';
+    final newStatus = currentStatus == 'Completed' ? TaskStatus.pending : TaskStatus.completed;
 
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .put(
-            Uri.parse('${AuthService.apiBaseUrl}/tasks/$taskId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'status': newStatus}),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        _showSnack(
-          newStatus == 'Completed' ? 'Task completed' : 'Task reopened',
-          newStatus == 'Completed' ? AppColors.success : Colors.amber,
-        );
-        _loadTasks();
-      } else {
-        _showSnack('You can only update allowed task fields', Colors.redAccent);
-      }
+      await context.read<TaskProvider>().updateTaskStatus(
+        taskId: taskId,
+        newStatus: newStatus,
+      );
+      _showSnack(
+        newStatus == TaskStatus.completed ? 'Task completed' : 'Task reopened',
+        newStatus == TaskStatus.completed ? AppColors.success : Colors.amber,
+      );
     } catch (_) {
       if (mounted) _showSnack('Could not update task', Colors.redAccent);
     }
@@ -176,21 +162,8 @@ class _TaskScreenState extends State<TaskScreen> {
     if (taskId == null || taskId.isEmpty) return;
 
     try {
-      final token = await AuthService.getToken();
-      final response = await http.delete(
-        Uri.parse('${AuthService.apiBaseUrl}/tasks/$taskId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        _showSnack('Task deleted successfully', Colors.redAccent);
-        _loadTasks();
-      } else {
-        _showSnack('You cannot delete this task', Colors.redAccent);
-      }
+      await context.read<TaskProvider>().deleteTask(taskId);
+      _showSnack('Task deleted successfully', Colors.redAccent);
     } catch (_) {
       if (mounted) _showSnack('Could not delete task', Colors.redAccent);
     }
@@ -521,17 +494,22 @@ class _TaskScreenState extends State<TaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge(
-          [ThemeService.isDarkMode, LocaleService.languageCode]),
-      builder: (context, child) {
-        final isDark = ThemeService.isDarkMode.value;
-        final textColor = ThemeService.getTextColor(isDark);
-        final subTextColor = ThemeService.getSubTextColor(isDark);
-        final captionColor = ThemeService.getCaptionColor(isDark);
-        final cardColor = ThemeService.getCardColor(isDark);
-        final borderColor = ThemeService.getBorderColor(isDark);
-        final groupedTasks = _groupTasks();
+    return Consumer<TaskProvider>(
+      builder: (context, provider, child) {
+        _tasks = provider.tasks.map(_taskModelToMap).toList();
+        _isLoading = provider.isLoading;
+
+        return ListenableBuilder(
+          listenable: Listenable.merge(
+              [ThemeService.isDarkMode, LocaleService.languageCode]),
+          builder: (context, child) {
+            final isDark = ThemeService.isDarkMode.value;
+            final textColor = ThemeService.getTextColor(isDark);
+            final subTextColor = ThemeService.getSubTextColor(isDark);
+            final captionColor = ThemeService.getCaptionColor(isDark);
+            final cardColor = ThemeService.getCardColor(isDark);
+            final borderColor = ThemeService.getBorderColor(isDark);
+            final groupedTasks = _groupTasks();
 
         final projectCount = _tasks
             .where((task) =>
@@ -743,6 +721,8 @@ class _TaskScreenState extends State<TaskScreen> {
               ],
             ),
           ),
+        );
+          },
         );
       },
     );

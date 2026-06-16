@@ -1,30 +1,6 @@
 part of project_screen;
 
 extension _ProjectScreenHelpers on _ProjectScreenState {
-  List<dynamic> _normalizeProjectResponse(dynamic decoded) {
-    final rawProjects = decoded is List
-        ? decoded
-        : (decoded is Map<String, dynamic> && decoded['projects'] is List
-            ? decoded['projects'] as List
-            : const []);
-
-    return rawProjects.map((p) {
-      if (p is Map<String, dynamic> && p.containsKey('project')) {
-        return p;
-      }
-
-      return {
-        'project': p,
-        'currentUserRole': null,
-        'pendingInvitationUserIds': [],
-        'stats': {
-          'totalTasks': 0,
-          'completedTasks': 0,
-          'progressPercentage': 0,
-        },
-      };
-    }).toList();
-  }
 
   String _projectRole(dynamic projectData) {
     if (projectData is! Map<String, dynamic>) return 'Member';
