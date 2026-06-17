@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/theme_service.dart';
+import '../models/project_model.dart';
 import 'project_card.dart';
 
 /// Thanh tìm kiếm project với nút filter.
@@ -232,8 +233,8 @@ class ProjectTabs extends StatelessWidget {
 
 /// Section cuộn ngang hiển thị các project cần chú ý.
 class NeedsAttentionSection extends StatelessWidget {
-  final List<ProjectCardModel> projects;
-  final ValueChanged<ProjectCardModel> onProjectTap;
+  final List<ProjectModel> projects;
+  final ValueChanged<ProjectModel> onProjectTap;
 
   const NeedsAttentionSection({
     super.key,

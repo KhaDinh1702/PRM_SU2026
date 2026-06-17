@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../models/project_model.dart';
 import '../services/project_service.dart';
 
 enum ProjectLoadStatus { initial, loading, loaded, error }
@@ -11,12 +12,12 @@ class ProjectProvider extends ChangeNotifier {
   ProjectProvider({ProjectService? service})
       : _service = service ?? const ProjectService();
 
-  List<dynamic> _projects = [];
+  List<ProjectModel> _projects = [];
   ProjectLoadStatus _status = ProjectLoadStatus.initial;
   String? _errorMessage;
 
   // --- Getters ---
-  List<dynamic> get projects => _projects;
+  List<ProjectModel> get projects => _projects;
   ProjectLoadStatus get status => _status;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _status == ProjectLoadStatus.loading;
@@ -42,28 +43,18 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<dynamic> _normalize(dynamic decoded) {
+  List<ProjectModel> _normalize(dynamic decoded) {
     final rawProjects = decoded is List
         ? decoded
-        : (decoded is Map<String, dynamic> && decoded['projects'] is List
+        : (decoded is Map && decoded['projects'] is List
             ? decoded['projects'] as List
             : const []);
 
     return rawProjects.map((p) {
-      if (p is Map<String, dynamic> && p.containsKey('project')) {
-        return p;
+      if (p is Map) {
+        return ProjectModel.fromJson(Map<String, dynamic>.from(p));
       }
-
-      return {
-        'project': p,
-        'currentUserRole': null,
-        'pendingInvitationUserIds': [],
-        'stats': {
-          'totalTasks': 0,
-          'completedTasks': 0,
-          'progressPercentage': 0,
-        },
-      };
+      return ProjectModel.fromJson(const {});
     }).toList();
   }
 
@@ -89,13 +80,7 @@ class ProjectProvider extends ChangeNotifier {
   // --- Xóa project ---
   Future<void> deleteProject(String projectId) async {
     await _service.deleteProject(projectId);
-    _projects.removeWhere((p) {
-      final proj = p['project'];
-      if (proj is Map) {
-        return (proj['_id'] ?? proj['id']) == projectId;
-      }
-      return false;
-    });
+    _projects.removeWhere((p) => p.project.id == projectId);
     notifyListeners();
   }
 
@@ -120,13 +105,7 @@ class ProjectProvider extends ChangeNotifier {
   // --- Rời project ---
   Future<void> leaveProject(String projectId) async {
     await _service.leaveProject(projectId);
-    _projects.removeWhere((p) {
-      final proj = p['project'];
-      if (proj is Map) {
-        return (proj['_id'] ?? proj['id']) == projectId;
-      }
-      return false;
-    });
+    _projects.removeWhere((p) => p.project.id == projectId);
     notifyListeners();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
+import '../models/task_model.dart';
 
 /// Badge màu hiển thị nhãn nhỏ gọn (status, priority, source, reminder).
 class TaskBadge extends StatelessWidget {
@@ -35,18 +36,10 @@ class TaskBadge extends StatelessWidget {
 
 /// Card hiển thị thông tin task trong danh sách Unified Inbox.
 class TaskInboxCard extends StatelessWidget {
-  final Map<String, dynamic> task;
+  final TaskModel task;
   final Color textColor;
   final Color subTextColor;
   final Color captionColor;
-  final String source;
-  final Color sourceColor;
-  final String projectName;
-  final String assigneeName;
-  final String dueText;
-  final String reminderLabel;
-  final Color priorityColor;
-  final Color statusColor;
   final VoidCallback onToggle;
   final VoidCallback? onDelete;
 
@@ -56,28 +49,37 @@ class TaskInboxCard extends StatelessWidget {
     required this.textColor,
     required this.subTextColor,
     required this.captionColor,
-    required this.source,
-    required this.sourceColor,
-    required this.projectName,
-    required this.assigneeName,
-    required this.dueText,
-    required this.reminderLabel,
-    required this.priorityColor,
-    required this.statusColor,
     required this.onToggle,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final title = task['title']?.toString() ?? 'Untitled task';
-    final description = task['description']?.toString() ?? '';
-    final status = task['status']?.toString() ?? 'Pending';
-    final priority = task['priority']?.toString() ?? 'Medium';
-    final completed = status == 'Completed';
+    final title = task.title.isEmpty ? 'Untitled task' : task.title;
+    final description = task.description;
+    final status = task.statusLabel;
+    final priority = task.priorityLabel;
+    final completed = task.status == TaskStatus.completed;
+
+    final dueTextStr = task.dueText;
+    final projectNameStr = task.projectName;
+    final sourceLabelStr = task.sourceLabel;
+    final sourceColorStr = task.sourceColor;
+    final assigneeNameStr = task.assigneeName;
+    final reminderLabelStr = task.reminderLabel;
+    final priorityColorStr = task.priorityColor;
+
+    final statusColor = task.isOverdue
+        ? AppColors.error
+        : (task.status == TaskStatus.completed
+            ? AppColors.success
+            : (task.status == TaskStatus.inProgress
+                ? AppColors.taskAccent
+                : const Color(0xFF94A3B8)));
+
     final metaParts = [
-      dueText,
-      if (projectName.isNotEmpty) projectName else source,
+      dueTextStr,
+      if (projectNameStr.isNotEmpty) projectNameStr else sourceLabelStr,
     ];
 
     return Padding(
@@ -123,7 +125,7 @@ class TaskInboxCard extends StatelessWidget {
                             ),
                           ),
                           child: completed
-                              ? Icon(
+                              ? const Icon(
                                   Icons.check_rounded,
                                   color: AppColors.success,
                                   size: 16,
@@ -154,7 +156,10 @@ class TaskInboxCard extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                TaskBadge(label: source, color: sourceColor),
+                                TaskBadge(
+                                  label: sourceLabelStr,
+                                  color: sourceColorStr,
+                                ),
                               ],
                             ),
                             const SizedBox(height: 5),
@@ -184,16 +189,18 @@ class TaskInboxCard extends StatelessWidget {
                               children: [
                                 TaskBadge(label: status, color: statusColor),
                                 TaskBadge(
-                                    label: priority, color: priorityColor),
-                                if (assigneeName.isNotEmpty &&
-                                    source == 'Project')
+                                  label: priority,
+                                  color: priorityColorStr,
+                                ),
+                                if (assigneeNameStr.isNotEmpty &&
+                                    sourceLabelStr == 'Project')
                                   TaskBadge(
-                                    label: 'Assigned to $assigneeName',
+                                    label: 'Assigned to $assigneeNameStr',
                                     color: captionColor,
                                   ),
-                                if (reminderLabel.isNotEmpty)
+                                if (reminderLabelStr.isNotEmpty)
                                   TaskBadge(
-                                    label: reminderLabel,
+                                    label: reminderLabelStr,
                                     color: AppColors.timerFocus,
                                   ),
                               ],
@@ -222,3 +229,4 @@ class TaskInboxCard extends StatelessWidget {
     );
   }
 }
+

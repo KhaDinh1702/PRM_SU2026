@@ -86,12 +86,15 @@ class TaskProvider extends ChangeNotifier {
     } else {
       if (tab != null) _currentTab = tab;
       if (sortBy != null) _sortBy = sortBy;
-      if (sourceFilter != null)
+      if (sourceFilter != null) {
         _sourceFilter = sourceFilter == 'All' ? null : sourceFilter;
-      if (statusFilter != null)
+      }
+      if (statusFilter != null) {
         _statusFilter = statusFilter == 'All' ? null : statusFilter;
-      if (priorityFilter != null)
+      }
+      if (priorityFilter != null) {
         _priorityFilter = priorityFilter == 'All' ? null : priorityFilter;
+      }
       if (searchQuery != null) _searchQuery = searchQuery;
     }
     await loadTasks();
@@ -102,9 +105,13 @@ class TaskProvider extends ChangeNotifier {
     required String title,
     String description = '',
     String priority = 'Medium',
+    DateTime? dueDate,
   }) async {
     await _service.createTask(
-        title: title, description: description, priority: priority);
+        title: title,
+        description: description,
+        priority: priority,
+        dueDate: dueDate);
     await loadTasks(silent: true);
   }
 

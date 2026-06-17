@@ -57,6 +57,7 @@ class TaskService {
     required String title,
     String description = '',
     String priority = 'Medium',
+    DateTime? dueDate,
   }) async {
     final token = await AuthService.getToken();
     final response = await http
@@ -71,6 +72,7 @@ class TaskService {
             'description': description,
             'priority': priority,
             'status': 'Pending',
+            if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
           }),
         )
         .timeout(const Duration(seconds: 15));

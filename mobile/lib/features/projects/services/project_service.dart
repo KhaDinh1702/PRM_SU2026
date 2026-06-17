@@ -261,7 +261,7 @@ class ProjectService {
     try {
       if (body.isEmpty) return null;
       final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
       return null;
     } catch (_) {
       return null;

@@ -22,8 +22,8 @@ class DashboardSummary {
       projects: _parseInt(json['projects']),
       totalFocusTimeTodayMinutes:
           _parseInt(json['totalFocusTimeTodayMinutes']),
-      nextMeeting: json['nextMeeting'] is Map<String, dynamic>
-          ? json['nextMeeting'] as Map<String, dynamic>
+      nextMeeting: json['nextMeeting'] is Map
+          ? Map<String, dynamic>.from(json['nextMeeting'] as Map)
           : null,
     );
   }

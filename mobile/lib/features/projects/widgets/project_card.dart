@@ -1,46 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../services/theme_service.dart';
-
-/// Model chứa dữ liệu đã được xử lý cho một ProjectCard.
-class ProjectCardModel {
-  final dynamic raw;
-  final String name;
-  final String status;
-  final String subtitle;
-  final String nextAction;
-  final int progress;
-  final int completedTasks;
-  final int totalTasks;
-  final int memberCount;
-  final String role;
-  final String type;
-  final String dueText;
-  final String attentionReason;
-  final Color accentColor;
-  final bool needsAttention;
-
-  const ProjectCardModel({
-    required this.raw,
-    required this.name,
-    required this.status,
-    required this.subtitle,
-    required this.nextAction,
-    required this.progress,
-    required this.completedTasks,
-    required this.totalTasks,
-    required this.memberCount,
-    required this.role,
-    required this.type,
-    required this.dueText,
-    required this.attentionReason,
-    required this.accentColor,
-    required this.needsAttention,
-  });
-}
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
+import '../models/project_model.dart';
 
 /// Card hiển thị thông tin tóm tắt của một project.
 class ProjectCard extends StatelessWidget {
-  final ProjectCardModel project;
+  final ProjectModel project;
   final bool compact;
   final VoidCallback onTap;
 
@@ -58,21 +24,21 @@ class ProjectCard extends StatelessWidget {
     final subTextColor = ThemeService.getSubTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
     final bgColor = isDark
-        ? const Color(0xFF101827).withOpacity(0.86)
-        : Colors.white.withOpacity(0.92);
+        ? AppColors.cardDark.withValues(alpha: 0.86)
+        : AppColors.backgroundLight.withValues(alpha: 0.92);
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AppSizes.radiusM),
       child: Container(
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: project.accentColor.withOpacity(0.28)),
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+          border: Border.all(color: project.accentColor.withValues(alpha: 0.28)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
-              blurRadius: 18,
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+              blurRadius: AppSizes.radiusM + 2.0,
               offset: const Offset(0, 10),
             )
           ],
@@ -84,14 +50,19 @@ class ProjectCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: project.accentColor,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  bottomLeft: Radius.circular(18),
+                  topLeft: Radius.circular(AppSizes.radiusM),
+                  bottomLeft: Radius.circular(AppSizes.radiusM),
                 ),
               ),
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(14, compact ? 12 : 15, 14, 14),
+                padding: EdgeInsets.fromLTRB(
+                  AppSizes.paddingM - 2.0,
+                  compact ? AppSizes.paddingS + 4.0 : AppSizes.paddingM - 1.0,
+                  AppSizes.paddingM - 2.0,
+                  AppSizes.paddingM - 2.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -105,19 +76,19 @@ class ProjectCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: textColor,
-                              fontSize: compact ? 15 : 16,
+                              fontSize: compact ? AppSizes.fontM + 1.0 : AppSizes.fontL,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSizes.paddingS),
                         ProjectStatusPill(
-                          label: project.status,
+                          label: project.stateLabel,
                           color: project.accentColor,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: AppSizes.paddingS - 1.0),
                     Text(
                       project.subtitle,
                       maxLines: 1,
@@ -126,55 +97,55 @@ class ProjectCard extends StatelessWidget {
                         color: project.needsAttention
                             ? project.accentColor
                             : subTextColor,
-                        fontSize: 12,
+                        fontSize: AppSizes.fontS + 1.0,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: AppSizes.paddingS - 3.0),
                     Text(
                       'Next: ${project.nextAction}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: captionColor,
-                        fontSize: 11,
+                        fontSize: AppSizes.fontS,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSizes.paddingM - 4.0),
                     Row(
                       children: [
                         Expanded(
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusS),
                             child: LinearProgressIndicator(
                               value: project.progress / 100,
                               minHeight: 7,
                               backgroundColor: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.black.withOpacity(0.06),
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.06),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 project.accentColor,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSizes.paddingS + 2.0),
                         Text(
                           '${project.progress}%',
                           style: TextStyle(
                             color: textColor,
-                            fontSize: 12,
+                            fontSize: AppSizes.fontS + 1.0,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ],
                     ),
                     if (!compact) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSizes.paddingM - 4.0),
                       Wrap(
-                        spacing: 12,
-                        runSpacing: 8,
+                        spacing: AppSizes.paddingM - 4.0,
+                        runSpacing: AppSizes.paddingS,
                         children: [
                           _MetaItem(
                             icon: Icons.check_circle_outline_rounded,
@@ -226,16 +197,19 @@ class ProjectStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.paddingS,
+        vertical: AppSizes.paddingXS,
+      ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppSizes.radiusS + 2.0),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: AppSizes.fontXS + 1.0,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -260,13 +234,13 @@ class _MetaItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 5),
+        Icon(icon, size: AppSizes.fontM, color: color),
+        const SizedBox(width: AppSizes.paddingS - 3.0),
         Text(
           label,
           style: TextStyle(
             color: color,
-            fontSize: 11,
+            fontSize: AppSizes.fontS,
             fontWeight: FontWeight.w700,
           ),
         ),

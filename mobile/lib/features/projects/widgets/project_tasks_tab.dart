@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../../services/theme_service.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
 import 'project_shared.dart';
 import 'project_card.dart';
 
 // --- Utility functions (top-level, dùng bởi TasksTab) ---
 
 Color taskStatusColor(String status) {
-  if (status == 'Completed') return const Color(0xFF10B981);
-  if (status == 'In Progress') return const Color(0xFF06B6D4);
+  if (status == 'Completed') return AppColors.success;
+  if (status == 'In Progress') return AppColors.taskAccent;
   return Colors.blueGrey;
 }
 
 Color taskPriorityColor(String priority) {
-  if (priority == 'Urgent') return const Color(0xFFDC2626);
-  if (priority == 'High') return const Color(0xFFF43F5E);
-  if (priority == 'Medium') return const Color(0xFFF59E0B);
-  return const Color(0xFF10B981);
+  if (priority == 'Urgent') return AppColors.priorityUrgent;
+  if (priority == 'High') return AppColors.priorityHigh;
+  if (priority == 'Medium') return AppColors.priorityMedium;
+  return AppColors.priorityLow;
 }
 
 DateTime? _taskDate(dynamic value) {
@@ -146,12 +148,17 @@ class TasksTab extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppSizes.paddingM + 4.0,
+            AppSizes.paddingM,
+            AppSizes.paddingM + 4.0,
+            0,
+          ),
           child: Row(
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 36,
+                  height: AppSizes.chipHeight - 4.0,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (context, index) {
@@ -161,25 +168,25 @@ class TasksTab extends StatelessWidget {
                       return ChoiceChip(
                         selected: selected,
                         label: Text(filter),
-                        selectedColor: const Color(0xFF06B6D4),
+                        selectedColor: AppColors.taskAccent,
                         labelStyle: TextStyle(
                             color: selected ? Colors.white : captionColor,
-                            fontSize: 11,
+                            fontSize: AppSizes.fontS,
                             fontWeight: FontWeight.w800),
                         onSelected: (_) => onFilterChanged(filter),
                       );
                     },
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, __) => const SizedBox(width: AppSizes.paddingS),
                     itemCount: 4,
                   ),
                 ),
               ),
               if (canAddTask) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSizes.paddingS),
                 IconButton(
                   onPressed: onAddTask,
                   icon: const Icon(Icons.add_task_rounded),
-                  color: const Color(0xFF06B6D4),
+                  color: AppColors.taskAccent,
                 ),
               ],
             ],
@@ -207,7 +214,7 @@ class TasksTab extends StatelessWidget {
                         )
                       : ListView.builder(
                           physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(AppSizes.paddingM + 4.0),
                           itemCount: filteredTasks.length,
                           itemBuilder: (context, index) {
                             final task = filteredTasks[index];
@@ -218,14 +225,14 @@ class TasksTab extends StatelessWidget {
                             final assignee = task['assignedTo'] ?? task['user'];
                             final overdue = taskIsVisuallyOverdue(task);
                             final color = overdue
-                                ? const Color(0xFFF43F5E)
+                                ? AppColors.error
                                 : taskStatusColor(status);
                             final reminderLabel = taskReminderLabel(task);
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.only(bottom: AppSizes.paddingS + 4.0),
                               child: ProjectDetailCard(
-                                padding: const EdgeInsets.all(14),
-                                borderColor: color.withOpacity(0.24),
+                                padding: const EdgeInsets.all(AppSizes.paddingM - 2.0),
+                                borderColor: color.withValues(alpha: 0.24),
                                 child: Row(
                                   children: [
                                     Icon(
@@ -235,7 +242,7 @@ class TasksTab extends StatelessWidget {
                                               .radio_button_unchecked_rounded,
                                       color: color,
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: AppSizes.paddingS + 4.0),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -246,20 +253,20 @@ class TasksTab extends StatelessWidget {
                                             style: TextStyle(
                                               color: textColor,
                                               fontWeight: FontWeight.w900,
-                                              fontSize: 14,
+                                              fontSize: AppSizes.fontM,
                                             ),
                                           ),
-                                          const SizedBox(height: 5),
+                                          const SizedBox(height: AppSizes.paddingS - 3.0),
                                           Text(
                                             '${taskDueText(task)} · ${assigneeName(assignee)}',
                                             style: TextStyle(
                                                 color: captionColor,
-                                                fontSize: 11),
+                                                fontSize: AppSizes.fontS),
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: AppSizes.paddingS),
                                           Wrap(
-                                            spacing: 7,
-                                            runSpacing: 6,
+                                            spacing: AppSizes.paddingS - 1.0,
+                                            runSpacing: AppSizes.paddingS - 2.0,
                                             children: [
                                               ProjectStatusPill(
                                                 label: overdue
@@ -275,8 +282,7 @@ class TasksTab extends StatelessWidget {
                                               if (reminderLabel.isNotEmpty)
                                                 ProjectStatusPill(
                                                   label: reminderLabel,
-                                                  color:
-                                                      const Color(0xFF8B5CF6),
+                                                  color: AppColors.dashboardAccent,
                                                 ),
                                             ],
                                           ),
