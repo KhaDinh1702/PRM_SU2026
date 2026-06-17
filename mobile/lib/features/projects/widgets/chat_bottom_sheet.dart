@@ -6,14 +6,20 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../../services/auth_service.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 
-// ⚙️ Cấu hình URL backend:
-// - Khi chạy local trên Android Emulator: 'http://10.0.2.2:5000'
-// - Khi chạy local trên thiết bị thật: 'http://<IP_MÁY_TÍNH>:5000' (ví dụ: 'http://192.168.1.5:5000')
-// - Khi deploy production: 'https://prm-tan.vercel.app' (chỉ HTTP, KHÔNG có Socket.IO)
-const String _kBackendBaseUrl = 'https://prm-tan.vercel.app';
+// ⚙️ Cấu hình URL backend động:
+// Tự động phân tích từ AuthService.apiBaseUrl để hỗ trợ cả local và production.
+String get _backendBaseUrl {
+  final apiBase = AuthService.apiBaseUrl;
+  if (apiBase.endsWith('/api')) {
+    return apiBase.substring(0, apiBase.length - 4);
+  }
+  return apiBase;
+}
 
 class ChatBottomSheet extends StatefulWidget {
   final String projectId;
@@ -85,7 +91,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       final token = await AuthService.getToken();
       final response = await http.get(
         Uri.parse(
-            '$_kBackendBaseUrl/api/projects/${widget.projectId}/messages?limit=50'),
+            '$_backendBaseUrl/api/projects/${widget.projectId}/messages?limit=50'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -158,10 +164,16 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   }
 
   void _connectSocket() {
+    final url = _backendBaseUrl;
+    if (url.contains('vercel.app')) {
+      print('⚠️ Vercel deployment detected. Socket.IO connection disabled (falling back to HTTP polling).');
+      return;
+    }
+
     // Kết nối socket tới local backend
     // Dùng OptionBuilder (đúng cú pháp cho socket_io_client v3.x)
     socket = IO.io(
-      _kBackendBaseUrl,
+      url,
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
@@ -200,7 +212,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       final response = await http
           .post(
             Uri.parse(
-                '$_kBackendBaseUrl/api/projects/${widget.projectId}/messages'),
+                '$_backendBaseUrl/api/projects/${widget.projectId}/messages'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -276,17 +288,17 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
         final borderColor = ThemeService.getBorderColor(isDark);
-        const themeColor = Color(0xFF06B6D4);
+        final themeColor = AppColors.projectAccent;
 
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             height: MediaQuery.of(context).size.height * 0.85,
             decoration: BoxDecoration(
-              color: dialogBg.withOpacity(0.95),
+              color: dialogBg.withValues(alpha: 0.95),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(36),
-                topRight: Radius.circular(36),
+                topLeft: Radius.circular(AppSizes.radiusXL + 6.0),
+                topRight: Radius.circular(AppSizes.radiusXL + 6.0),
               ),
               border: Border.all(color: borderColor),
             ),
@@ -295,7 +307,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                 // Header
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: AppSizes.paddingL, vertical: AppSizes.paddingM),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: borderColor)),
                   ),
@@ -305,11 +317,11 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                         child: Container(
                           width: 48,
                           height: 5,
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: const EdgeInsets.only(bottom: AppSizes.paddingM),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white.withOpacity(0.15)
-                                : Colors.black.withOpacity(0.15),
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : Colors.black.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
@@ -320,24 +332,24 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(AppSizes.paddingS + 2.0),
                                 decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: themeColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(AppSizes.radiusS + 4.0),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                     Icons.chat_bubble_outline_rounded,
                                     color: themeColor,
-                                    size: 24),
+                                    size: AppSizes.iconL),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: AppSizes.paddingM),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     widget.projectName,
                                     style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: AppSizes.fontXL - 2.0,
                                         fontWeight: FontWeight.bold,
                                         color: textColor),
                                   ),
@@ -345,7 +357,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                     LocaleService.tr('Nhắn tin nhóm',
                                         en: 'Team Chat'),
                                     style: TextStyle(
-                                        fontSize: 13, color: subTextColor),
+                                        fontSize: AppSizes.fontM - 1.0, color: subTextColor),
                                   ),
                                 ],
                               ),
@@ -357,8 +369,8 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                 Icon(Icons.close_rounded, color: subTextColor),
                             style: IconButton.styleFrom(
                               backgroundColor: isDark
-                                  ? Colors.white.withOpacity(0.05)
-                                  : Colors.black.withOpacity(0.05),
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
                             ),
                           ),
                         ],
@@ -370,7 +382,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                 // Messages List
                 Expanded(
                   child: isLoading
-                      ? const Center(
+                      ? Center(
                           child: CircularProgressIndicator(color: themeColor))
                       : messages.isEmpty
                           ? Center(
@@ -379,28 +391,28 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                 children: [
                                   Icon(Icons.forum_outlined,
                                       size: 64,
-                                      color: subTextColor.withOpacity(0.5)),
-                                  const SizedBox(height: 16),
+                                      color: subTextColor.withValues(alpha: 0.5)),
+                                  const SizedBox(height: AppSizes.paddingM),
                                   Text(
                                     LocaleService.tr('Chưa có tin nhắn nào',
                                         en: 'No messages yet'),
                                     style: TextStyle(
-                                        color: subTextColor, fontSize: 16),
+                                        color: subTextColor, fontSize: AppSizes.fontL),
                                   ),
                                   Text(
                                     LocaleService.tr(
                                         'Hãy bắt đầu cuộc trò chuyện!',
                                         en: 'Start the conversation!'),
                                     style: TextStyle(
-                                        color: subTextColor.withOpacity(0.7),
-                                        fontSize: 14),
+                                        color: subTextColor.withValues(alpha: 0.7),
+                                        fontSize: AppSizes.fontM),
                                   ),
                                 ],
                               ),
                             )
                           : ListView.builder(
                               controller: _scrollController,
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(AppSizes.paddingM + 4.0),
                               itemCount: messages.length,
                               itemBuilder: (context, index) {
                                 final msg = messages[index];
@@ -417,7 +429,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                 }
 
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  padding: const EdgeInsets.only(bottom: AppSizes.paddingM),
                                   child: Row(
                                     mainAxisAlignment: isMe
                                         ? MainAxisAlignment.end
@@ -426,9 +438,9 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                     children: [
                                       if (!isMe) ...[
                                         CircleAvatar(
-                                          radius: 16,
+                                          radius: AppSizes.avatarS / 2,
                                           backgroundColor:
-                                              themeColor.withOpacity(0.2),
+                                              themeColor.withValues(alpha: 0.2),
                                           backgroundImage: sender['profile']
                                                       ?['avatarUrl'] !=
                                                   null
@@ -442,15 +454,15 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                                   (sender['name'] ??
                                                           sender['email'])[0]
                                                       .toUpperCase(),
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                       color: themeColor,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      fontSize: 14),
+                                                      fontSize: AppSizes.fontM),
                                                 )
                                               : null,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: AppSizes.paddingS),
                                       ],
                                       Flexible(
                                         child: Column(
@@ -476,7 +488,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                                           : sender['email']
                                                               .split('@')[0]),
                                                   style: TextStyle(
-                                                      fontSize: 12,
+                                                      fontSize: AppSizes.fontS + 1.0,
                                                       color: subTextColor,
                                                       fontWeight:
                                                           FontWeight.w600),
@@ -485,25 +497,23 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 12),
+                                                      horizontal: AppSizes.paddingM,
+                                                      vertical: AppSizes.paddingM - 4.0),
                                               decoration: BoxDecoration(
                                                 color: isMe
                                                     ? themeColor
                                                     : (isDark
-                                                        ? const Color(
-                                                            0xFF1E293B)
-                                                        : const Color(
-                                                            0xFFF1F5F9)),
+                                                        ? AppColors.cardDark
+                                                        : AppColors.cardLight),
                                                 borderRadius: BorderRadius.only(
                                                   topLeft:
-                                                      const Radius.circular(20),
+                                                      const Radius.circular(AppSizes.radiusM + 4.0),
                                                   topRight:
-                                                      const Radius.circular(20),
+                                                      const Radius.circular(AppSizes.radiusM + 4.0),
                                                   bottomLeft: Radius.circular(
-                                                      isMe ? 20 : 4),
+                                                      isMe ? AppSizes.radiusM + 4.0 : AppSizes.paddingXS),
                                                   bottomRight: Radius.circular(
-                                                      isMe ? 4 : 20),
+                                                      isMe ? AppSizes.paddingXS : AppSizes.radiusM + 4.0),
                                                 ),
                                               ),
                                               child: Text(
@@ -512,7 +522,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                                   color: isMe
                                                       ? Colors.white
                                                       : textColor,
-                                                  fontSize: 15,
+                                                  fontSize: AppSizes.fontM + 1.0,
                                                   height: 1.3,
                                                 ),
                                               ),
@@ -525,7 +535,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                                 style: TextStyle(
                                                     fontSize: 10,
                                                     color: subTextColor
-                                                        .withOpacity(0.7)),
+                                                        .withValues(alpha: 0.7)),
                                               ),
                                             ),
                                           ],
@@ -533,7 +543,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                       ),
                                       if (isMe)
                                         const SizedBox(
-                                            width: 24), // Offset for symmetry
+                                            width: AppSizes.paddingL), // Offset for symmetry
                                     ],
                                   ),
                                 );
@@ -543,8 +553,11 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
 
                 // Input Area
                 Container(
-                  padding: EdgeInsets.fromLTRB(20, 16, 20,
-                      MediaQuery.of(context).viewInsets.bottom + 20),
+                  padding: EdgeInsets.fromLTRB(
+                      AppSizes.paddingM + 4.0,
+                      AppSizes.paddingM,
+                      AppSizes.paddingM + 4.0,
+                      MediaQuery.of(context).viewInsets.bottom + AppSizes.paddingM + 4.0),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF0F172A) : Colors.white,
                     border: Border(top: BorderSide(color: borderColor)),
@@ -555,13 +568,13 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                         child: Container(
                           decoration: BoxDecoration(
                             color: isDark
-                                ? const Color(0xFF1E293B)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(24),
+                                ? AppColors.cardDark
+                                : AppColors.cardLight,
+                            borderRadius: BorderRadius.circular(AppSizes.radiusL),
                             border: Border.all(
                                 color: isDark
-                                    ? Colors.white.withOpacity(0.05)
-                                    : Colors.black.withOpacity(0.05)),
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.05)),
                           ),
                           child: TextField(
                             controller: _messageController,
@@ -574,34 +587,34 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                               hintStyle: TextStyle(color: subTextColor),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 14),
+                                  horizontal: AppSizes.paddingM + 4.0, vertical: AppSizes.paddingM - 2.0),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSizes.paddingS + 4.0),
                       GestureDetector(
                         onTap: isSending ? null : _sendMessage,
                         child: Container(
-                          padding: const EdgeInsets.all(14),
+                          padding: const EdgeInsets.all(AppSizes.paddingM - 2.0),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: isSending
                                   ? [Colors.grey, Colors.grey]
-                                  : const [
-                                      Color(0xFF06B6D4),
-                                      Color(0xFF3B82F6)
+                                  : [
+                                      AppColors.projectAccent,
+                                      AppColors.primary
                                     ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusM + 4.0),
                             boxShadow: isSending
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: const Color(0xFF06B6D4)
-                                          .withOpacity(0.3),
+                                      color: AppColors.projectAccent
+                                          .withValues(alpha: 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     )
@@ -616,8 +629,8 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.send_rounded,
-                                  color: Colors.white, size: 20),
+                              : Icon(Icons.send_rounded,
+                                  color: Colors.white, size: AppSizes.iconM),
                         ),
                       ),
                     ],

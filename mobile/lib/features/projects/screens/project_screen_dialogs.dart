@@ -398,7 +398,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
   // ──────────────────────────────────────────────
 
   void _showCreateProjectTaskDialog(
-      Map<String, dynamic> project, StateSetter sheetSetState) {
+      ProjectDetails project, StateSetter sheetSetState) {
     final participants = _projectParticipants(project);
     _selectedAssigneeId = participants.isNotEmpty
         ? _itemId(participants.first)
@@ -502,7 +502,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                               createError = null;
                             });
                             final error = await _createProjectTask(
-                                project['_id'], sheetSetState, setDialogState);
+                                project.id, sheetSetState, setDialogState);
                             if (error != null && mounted) {
                               setDialogState(() {
                                 createError = error;
@@ -537,7 +537,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
   // Edit Task Dialog
   // ──────────────────────────────────────────────
 
-  void _showEditProjectTaskDialog(Map<String, dynamic> project,
+  void _showEditProjectTaskDialog(ProjectDetails project,
       Map<String, dynamic> task, StateSetter sheetSetState) {
     final participants = _projectParticipants(project);
     final currentAssigneeId = _itemId(task['assignedTo'] ?? task['user']);
@@ -687,7 +687,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                               editError = null;
                             });
                             final error = await _updateProjectTask(
-                              project['_id'],
+                              project.id,
                               task['_id'],
                               {
                                 'title': title,
@@ -736,14 +736,14 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
   // ──────────────────────────────────────────────
 
   void _showEditProjectDialog(
-    Map<String, dynamic> projectData,
+    ProjectModel projectData,
     StateSetter sheetSetState,
   ) {
-    final project = projectData['project'] as Map<String, dynamic>;
-    _nameController.text = (project['name'] ?? '').toString();
-    _descController.text = (project['description'] ?? '').toString();
-    String status = (project['status'] ?? 'Active').toString();
-    bool allowMembers = project['allowMembersToCreateTasks'] == true;
+    final project = projectData.project;
+    _nameController.text = project.name;
+    _descController.text = project.description;
+    String status = project.status;
+    bool allowMembers = project.allowMembersToCreateTasks;
     bool isSaving = false;
 
     showDialog(
@@ -851,12 +851,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                               'status': status,
                               'allowMembersToCreateTasks': allowMembers,
                             };
-                            await _updateProject(project['_id'], payload);
-                            project
-                              ..['name'] = payload['name']
-                              ..['description'] = payload['description']
-                              ..['status'] = payload['status']
-                              ..['allowMembersToCreateTasks'] = payload['allowMembersToCreateTasks'];
+                            await _updateProject(project.id, payload);
                             sheetSetState(() {});
                             if (context.mounted) Navigator.pop(context);
                           },

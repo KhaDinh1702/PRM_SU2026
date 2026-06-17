@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'dart:async' as async_timer;
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
@@ -156,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen>
                         en: 'Welcome back, boss!'),
                 Colors.indigo);
             // Quay lại trang chính (TimerHomePage) và làm mới trạng thái đăng nhập
-            Navigator.pushReplacementNamed(context, '/home');
+            Navigator.pushReplacementNamed(context, AppRoutes.home);
           } else {
             _showSnackBar(
                 result['message'] ??
@@ -191,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
                     LocaleService.tr('Tạo tài khoản thành công!',
                         en: 'Account created successfully!'),
                 Colors.teal);
-            Navigator.pushReplacementNamed(context, '/home');
+            Navigator.pushReplacementNamed(context, AppRoutes.home);
           } else {
             _showSnackBar(
                 result['message'] ??

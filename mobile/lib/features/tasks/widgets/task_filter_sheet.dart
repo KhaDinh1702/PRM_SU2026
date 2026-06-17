@@ -80,14 +80,14 @@ class TaskFilterGroup extends StatelessWidget {
 
 /// Bottom sheet filter cho task screen.
 /// Dùng showTaskFilterSheet() thay vì tạo instance trực tiếp.
-Future<_TaskFilterResult?> showTaskFilterSheet(
+Future<TaskFilterResult?> showTaskFilterSheet(
   BuildContext context, {
   required String sourceFilter,
   required String statusFilter,
   required String priorityFilter,
   required String sortBy,
 }) {
-  return showModalBottomSheet<_TaskFilterResult>(
+  return showModalBottomSheet<TaskFilterResult>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
@@ -101,13 +101,13 @@ Future<_TaskFilterResult?> showTaskFilterSheet(
 }
 
 /// Kết quả filter trả về sau khi user Apply.
-class _TaskFilterResult {
+class TaskFilterResult {
   final String source;
   final String status;
   final String priority;
   final String sort;
 
-  const _TaskFilterResult({
+  const TaskFilterResult({
     required this.source,
     required this.status,
     required this.priority,
@@ -227,7 +227,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                 child: TextButton(
                   onPressed: () => Navigator.pop(
                     context,
-                    _TaskFilterResult(
+                    const TaskFilterResult(
                       source: 'All',
                       status: 'All',
                       priority: 'All',
@@ -248,7 +248,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                 child: PremiumButton(
                   onPressed: () => Navigator.pop(
                     context,
-                    _TaskFilterResult(
+                    TaskFilterResult(
                       source: _source,
                       status: _status,
                       priority: _priority,

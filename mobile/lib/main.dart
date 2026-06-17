@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_colors.dart';
+import 'core/constants/app_routes.dart';
 import 'core/constants/app_durations.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
@@ -79,10 +80,10 @@ class MyApp extends StatelessWidget {
                 scaffoldBackgroundColor: AppColors.backgroundDark,
                 cardColor: AppColors.cardDark,
               ),
-              initialRoute: isLoggedIn ? '/home' : '/login',
+              initialRoute: isLoggedIn ? AppRoutes.home : AppRoutes.login,
               routes: {
-                '/login': (context) => const LoginScreen(),
-                '/home': (context) => const MainNavigationScreen(),
+                AppRoutes.login: (context) => const LoginScreen(),
+                AppRoutes.home: (context) => const MainNavigationScreen(),
               },
             );
           },
@@ -292,7 +293,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 

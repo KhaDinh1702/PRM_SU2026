@@ -10,6 +10,7 @@ import '../../../core/widgets/premium_widgets.dart';
 import '../widgets/chat_bottom_sheet.dart';
 import '../services/project_service.dart';
 import '../providers/project_provider.dart';
+import '../models/project_model.dart';
 import '../widgets/project_card.dart';
 import '../widgets/project_list_widgets.dart';
 import '../widgets/project_detail_widgets.dart';
@@ -34,7 +35,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final _projectService = const ProjectService();
   bool _isLoading = true;
   String? _projectLoadError;
-  List<dynamic> _projects = [];
+  List<ProjectModel> _projects = [];
   List<dynamic> _allUsers = [];
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
@@ -652,7 +653,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   Future<bool> _updateMemberRole(String projectId, String userId, String role,
-      Map<String, dynamic> projectData, StateSetter sheetSetState) async {
+      ProjectModel projectData, StateSetter sheetSetState) async {
     try {
       // Gọi qua ProjectService
       final result = await _projectService.updateMemberRole(
@@ -661,9 +662,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
         role: role,
       );
       if (result['success'] == true) {
-        final data = result['data'] as Map<String, dynamic>;
-        projectData['project'] = data['project'];
-        projectData['currentUserRole'] = data['currentUserRole'];
         await _loadProjects();
         sheetSetState(() {});
         if (mounted) {

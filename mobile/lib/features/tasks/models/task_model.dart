@@ -56,11 +56,11 @@ class TaskModel {
       dueTime: json['dueTime']?.toString(),
       notificationEnabled: json['notificationEnabled'] == true,
       reminderType: json['reminderType']?.toString(),
-      project: json['project'] is Map<String, dynamic>
-          ? json['project'] as Map<String, dynamic>
+      project: json['project'] is Map
+          ? Map<String, dynamic>.from(json['project'] as Map)
           : null,
-      assignedTo: json['assignedTo'] is Map<String, dynamic>
-          ? json['assignedTo'] as Map<String, dynamic>
+      assignedTo: json['assignedTo'] is Map
+          ? Map<String, dynamic>.from(json['assignedTo'] as Map)
           : null,
     );
   }
@@ -119,6 +119,72 @@ class TaskModel {
     return due != null &&
         due.isBefore(DateTime.now()) &&
         status != TaskStatus.completed;
+  }
+
+  /// Chuỗi hiển thị deadline dạng thân thiện
+  String get dueText {
+    final due = effectiveDueDateTime;
+    if (due == null) return 'No due date';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(due.year, due.month, due.day);
+    final days = dueDay.difference(today).inDays;
+    final time =
+        '${due.hour.toString().padLeft(2, '0')}:${due.minute.toString().padLeft(2, '0')}';
+
+    if (days == 0) return 'Due today · $time';
+    if (days == 1) return 'Tomorrow · $time';
+    if (days == -1) return 'Yesterday · $time';
+    if (days < -1) return '${days.abs()} days overdue';
+    return '${due.day}/${due.month}/${due.year} · $time';
+  }
+
+  /// Nhãn hiển thị chế độ nhắc nhở
+  String get reminderLabel {
+    if (!notificationEnabled) return '';
+    switch (reminderType) {
+      case 'at_time':
+        return 'Reminder: due time';
+      case '15_min_before':
+        return 'Reminder: 15 min before';
+      case '30_min_before':
+        return 'Reminder: 30 min before';
+      case '1_hour_before':
+        return 'Reminder: 1 hour before';
+      case '1_day_before':
+        return 'Reminder: 1 day before';
+      case 'custom':
+        return 'Reminder: custom';
+      default:
+        return '';
+    }
+  }
+
+  /// Label hiển thị status
+  String get statusLabel {
+    switch (status) {
+      case TaskStatus.completed:
+        return 'Completed';
+      case TaskStatus.inProgress:
+        return 'In Progress';
+      case TaskStatus.pending:
+        return 'Pending';
+    }
+  }
+
+  /// Label hiển thị priority
+  String get priorityLabel {
+    switch (priority) {
+      case TaskPriority.urgent:
+        return 'Urgent';
+      case TaskPriority.high:
+        return 'High';
+      case TaskPriority.medium:
+        return 'Medium';
+      case TaskPriority.low:
+        return 'Low';
+    }
   }
 
   /// Tên hiển thị của project (nếu có)

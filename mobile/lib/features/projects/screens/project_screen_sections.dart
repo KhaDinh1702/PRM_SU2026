@@ -6,36 +6,36 @@ extension _ProjectScreenSections on _ProjectScreenState {
   // ──────────────────────────────────────────────
 
   Widget _buildProjectOverviewTab(
-    Map<String, dynamic> projectData,
-    Map<String, dynamic> project,
-    Map<String, dynamic> stats,
+    ProjectModel projectData,
+    ProjectDetails project,
+    ProjectStats stats,
     Color textColor,
     Color subTextColor,
     Color captionColor,
     bool isDark,
     StateSetter sheetSetState,
   ) {
-    final total = _projectTotalTasks(projectData);
-    final completed = _projectCompletedTasks(projectData);
-    final progress = _projectProgress(projectData);
-    final memberCount = _projectMemberCount(projectData);
-    final role = _projectRole(projectData);
-    final workStatus = _projectStateLabel(projectData);
-    final statusColor = _projectAccentColor(projectData);
-    final openTasks = _projectOpenTasks(projectData);
+    final total = projectData.totalTasks;
+    final completed = projectData.completedTasks;
+    final progress = projectData.progress;
+    final memberCount = projectData.memberCount;
+    final role = projectData.role;
+    final workStatus = projectData.stateLabel;
+    final statusColor = projectData.accentColor;
+    final openTasks = projectData.openTasks;
 
     String title;
     String text;
     String cta;
     VoidCallback action;
 
-    if (_isProjectOverdue(projectData)) {
+    if (projectData.isOverdue) {
       title = 'Needs attention';
       text = '$openTasks open tasks need review. Start with overdue work.';
       cta = 'Review overdue tasks';
       action = () => DefaultTabController.of(context).animateTo(1);
     } else if (total == 0) {
-      final allowMembers = project['allowMembersToCreateTasks'] == true;
+      final allowMembers = project.allowMembersToCreateTasks;
       final canManage = _canManage(role);
       final canAddTask = canManage || allowMembers;
 
@@ -63,7 +63,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
     }
 
     return OverviewTab(
-      description: _projectDescription(projectData),
+      description: projectData.description,
       actionTitle: title,
       actionText: text,
       actionLabel: cta,
@@ -112,14 +112,14 @@ extension _ProjectScreenSections on _ProjectScreenState {
   }
 
   Widget _buildProjectTasksTab(
-    Map<String, dynamic> project,
+    ProjectDetails project,
     bool canManage,
     Color textColor,
     Color subTextColor,
     Color captionColor,
     StateSetter sheetSetState,
   ) {
-    final allowMembers = project['allowMembersToCreateTasks'] == true;
+    final allowMembers = project.allowMembersToCreateTasks;
     final canAddTask = canManage || allowMembers;
 
     return TasksTab(
@@ -134,7 +134,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
         sheetSetState(() {});
       },
       onAddTask: () => _showCreateProjectTaskDialog(project, sheetSetState),
-      onLoadTasks: () => _loadProjectTasks(project['_id'], sheetSetState),
+      onLoadTasks: () => _loadProjectTasks(project.id, sheetSetState),
       assigneeName: (assignee) => _assigneeDisplayName(assignee, project),
       canUpdateTask: (task) {
         final assignee = task['assignedTo'] ?? task['user'];
@@ -143,7 +143,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
       onEditTask: (task) =>
           _showEditProjectTaskDialog(project, task, sheetSetState),
       onUpdateStatus: (task, status) => _updateProjectTaskStatus(
-        project['_id'],
+        project.id,
         task['_id'],
         status,
         sheetSetState,
@@ -152,36 +152,59 @@ extension _ProjectScreenSections on _ProjectScreenState {
   }
 
   Widget _buildProjectMembersTab(
-    Map<String, dynamic> projectData,
+    ProjectModel projectData,
     bool isOwner,
     bool canManage,
     Color textColor,
     Color captionColor,
     StateSetter sheetSetState,
   ) {
-    final project = projectData['project'] as Map<String, dynamic>;
+    final project = projectData.project;
     final participants = _projectParticipants(project);
     final owners = participants
-        .where((user) => _roleForUser(project, _itemId(user)) == 'Owner')
+        .where((user) => _roleForUser(project, user.id) == 'Owner')
         .toList();
     final managers = participants
-        .where((user) => _roleForUser(project, _itemId(user)) == 'Manager')
+        .where((user) => _roleForUser(project, user.id) == 'Manager')
         .toList();
     final regularMembers = participants
-        .where((user) => _roleForUser(project, _itemId(user)) == 'Member')
+        .where((user) => _roleForUser(project, user.id) == 'Member')
         .toList();
+
+    final invitedUserIds = {
+      ...projectData.pendingInvitationUserIds,
+      ...(_localPendingInviteIds[project.id] ?? const <String>{}),
+    };
+    final participantIds = participants.map((p) => p.id).toSet();
+    final invitedUserIdsFiltered = invitedUserIds.where((id) => !participantIds.contains(id)).toList();
+
+    final invitedMembers = invitedUserIdsFiltered.map((id) {
+      final matchedUser = _allUsers.firstWhere(
+        (u) => _itemId(u) == id,
+        orElse: () => null,
+      );
+      if (matchedUser != null) {
+        return matchedUser;
+      }
+      return {
+        '_id': id,
+        'name': '',
+        'email': 'Invited User ($id)',
+      };
+    }).toList();
 
     return MembersTab(
       owners: owners,
       managers: managers,
       members: regularMembers,
+      invited: invitedMembers,
       canInvite: canManage,
       canEditRoles: isOwner,
       onRoleChanged: (user, role) async {
         final userId = _itemId(user);
         if (userId.isEmpty) return;
         await _updateMemberRole(
-          project['_id'].toString(),
+          project.id,
           userId,
           role,
           projectData,
@@ -207,7 +230,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
               ),
               TextButton(
                 onPressed: () async {
-                  final invitedUserId = await _addMember(project['_id']);
+                  final invitedUserId = await _addMember(project.id);
                   if (invitedUserId != null) {
                     _markInvited(projectData, invitedUserId);
                   }
@@ -224,7 +247,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
   }
 
   Widget _buildProjectChatTab(
-    Map<String, dynamic> project,
+    ProjectDetails project,
     Color textColor,
     Color subTextColor,
   ) {
@@ -235,8 +258,8 @@ extension _ProjectScreenSections on _ProjectScreenState {
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
           builder: (context) => ChatBottomSheet(
-            projectId: project['_id'],
-            projectName: project['name'] ?? 'Project',
+            projectId: project.id,
+            projectName: project.name,
           ),
         );
       },
@@ -247,7 +270,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
   // Project details bottom sheet
   // ──────────────────────────────────────────────
 
-  void _showProjectDetails(Map<String, dynamic> projectData) {
+  void _showProjectDetails(ProjectModel initialProjectData) {
     _loadUsers();
     _projectTasks = [];
     _projectTasksLoaded = false;
@@ -260,12 +283,15 @@ extension _ProjectScreenSections on _ProjectScreenState {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, sheetSetState) {
-            final project = projectData['project'] as Map<String, dynamic>;
-            final stats =
-                projectData['stats'] as Map<String, dynamic>? ?? {};
-            final role = (projectData['currentUserRole'] ??
-                    _roleForUser(project, _currentUserId()))
-                .toString();
+            // Find projectData from provider to keep it updated dynamically
+            final projectData = context.watch<ProjectProvider>().projects.firstWhere(
+                  (p) => p.project.id == initialProjectData.project.id,
+                  orElse: () => initialProjectData,
+                );
+
+            final project = projectData.project;
+            final stats = projectData.stats;
+            final role = projectData.role;
             final canManage = _canManage(role);
             final isOwner = role == 'Owner';
             final isDark = ThemeService.isDarkMode.value;
@@ -275,10 +301,10 @@ extension _ProjectScreenSections on _ProjectScreenState {
             final captionColor = ThemeService.getCaptionColor(isDark);
             final borderColor = ThemeService.getBorderColor(isDark);
             const themeColor = Color(0xFF06B6D4);
-            final workStatus = _projectStateLabel(projectData);
-            final statusColor = _projectAccentColor(projectData);
-            final memberCount = _projectMemberCount(projectData);
-            final description = _projectDescription(projectData);
+            final workStatus = projectData.stateLabel;
+            final statusColor = projectData.accentColor;
+            final memberCount = projectData.memberCount;
+            final description = projectData.description;
 
             return DefaultTabController(
               length: 4,
@@ -303,24 +329,24 @@ extension _ProjectScreenSections on _ProjectScreenState {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             ProjectDetailHeader(
-                              name: project['name'] ?? 'Project',
+                              name: project.name,
                               description: description,
                               role: role,
                               workStatus: workStatus,
                               memberCount: memberCount,
-                              progress: _projectProgress(projectData),
+                              progress: projectData.progress,
                               completedTasks:
-                                  _projectCompletedTasks(projectData),
-                              totalTasks: _projectTotalTasks(projectData),
+                                  projectData.completedTasks,
+                              totalTasks: projectData.totalTasks,
                               statusColor: statusColor,
                               canShowMenu: isOwner,
                               canLeave: !isOwner,
                               onEdit: () => _showEditProjectDialog(
                                   projectData, sheetSetState),
                               onDelete: () => _showDeleteConfirmationDialog(
-                                  project['_id'], project['name'] ?? ''),
+                                  project.id, project.name),
                               onLeave: () => _showLeaveConfirmationDialog(
-                                  project['_id'], project['name'] ?? ''),
+                                  project.id, project.name),
                             ),
                             const SizedBox(height: 12),
                             TabBar(
@@ -339,7 +365,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                               onTap: (index) {
                                 if (index == 1 && _projectTasks.isEmpty) {
                                   _loadProjectTasks(
-                                      project['_id'], sheetSetState);
+                                      project.id, sheetSetState);
                                 }
                               },
                             ),

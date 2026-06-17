@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../services/theme_service.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
+import '../models/project_model.dart';
 import 'project_card.dart';
 import 'project_shared.dart';
 
@@ -8,6 +11,7 @@ class MembersTab extends StatelessWidget {
   final List<dynamic> owners;
   final List<dynamic> managers;
   final List<dynamic> members;
+  final List<dynamic> invited;
   final bool canInvite;
   final bool canEditRoles;
   final VoidCallback onInvite;
@@ -18,6 +22,7 @@ class MembersTab extends StatelessWidget {
     required this.owners,
     required this.managers,
     required this.members,
+    required this.invited,
     required this.canInvite,
     required this.canEditRoles,
     required this.onInvite,
@@ -28,7 +33,7 @@ class MembersTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSizes.paddingM + 4.0),
       children: [
         if (canInvite)
           Align(
@@ -58,6 +63,13 @@ class MembersTab extends StatelessWidget {
           users: members,
           role: 'Member',
           canEditRoles: canEditRoles,
+          onRoleChanged: onRoleChanged,
+        ),
+        _MemberGroup(
+          title: 'Invited',
+          users: invited,
+          role: 'Invited',
+          canEditRoles: false,
           onRoleChanged: onRoleChanged,
         ),
       ],
@@ -91,43 +103,57 @@ class _MemberGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          padding: const EdgeInsets.only(top: AppSizes.paddingS, bottom: AppSizes.paddingS),
           child: Text(title,
               style: TextStyle(
                   color: captionColor,
-                  fontSize: 11,
+                  fontSize: AppSizes.fontS,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2)),
         ),
         ...users.map((user) {
-          final name = user is Map<String, dynamic>
-              ? ((user['name'] ?? '').toString().isNotEmpty
-                  ? user['name'].toString()
-                  : (user['email'] ?? 'Member').toString().split('@').first)
-              : 'Member';
-          final email = user is Map<String, dynamic>
-              ? (user['email'] ?? '').toString()
-              : '';
+          String name = 'Member';
+          String email = '';
+
+          if (user is ProjectMember) {
+            final cleanName = user.name.trim();
+            final hasRealName = cleanName.isNotEmpty && cleanName.toLowerCase() != 'member';
+            name = hasRealName
+                ? cleanName
+                : (user.email.isNotEmpty ? user.email.split('@').first : 'Member');
+            email = user.email;
+          } else if (user is Map) {
+            final nameVal = (user['name']?.toString() ?? '').trim();
+            final emailVal = (user['email']?.toString() ?? '').trim();
+            final hasRealName = nameVal.isNotEmpty && nameVal.toLowerCase() != 'member';
+            name = hasRealName
+                ? nameVal
+                : (emailVal.isNotEmpty ? emailVal.split('@').first : 'Member');
+            email = emailVal;
+          }
+
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppSizes.paddingS + 2.0),
             child: ProjectDetailCard(
-              padding: const EdgeInsets.all(13),
+              padding: const EdgeInsets.all(AppSizes.paddingS + 5.0),
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 18,
+                    radius: AppSizes.avatarS / 2 + 2.0,
                     backgroundColor: role == 'Owner'
-                        ? const Color(0xFFEAB308)
+                        ? AppColors.warning
                         : role == 'Manager'
-                            ? const Color(0xFF8B5CF6)
-                            : const Color(0xFF06B6D4),
+                            ? AppColors.dashboardAccent
+                            : role == 'Invited'
+                                ? Colors.grey
+                                : AppColors.projectAccent,
                     child: Text(
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                       style: const TextStyle(
                           color: Colors.white, fontWeight: FontWeight.w900),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSizes.paddingS + 4.0),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +164,7 @@ class _MemberGroup extends StatelessWidget {
                         if (email.isNotEmpty)
                           Text(email,
                               style:
-                                  TextStyle(color: captionColor, fontSize: 11)),
+                                  TextStyle(color: captionColor, fontSize: AppSizes.fontS)),
                       ],
                     ),
                   ),
@@ -151,10 +177,12 @@ class _MemberGroup extends StatelessWidget {
                       : ProjectStatusPill(
                           label: role,
                           color: role == 'Owner'
-                              ? const Color(0xFFEAB308)
+                              ? AppColors.warning
                               : role == 'Manager'
-                                  ? const Color(0xFF8B5CF6)
-                                  : const Color(0xFF06B6D4),
+                                  ? AppColors.dashboardAccent
+                                  : role == 'Invited'
+                                      ? Colors.grey
+                                      : AppColors.projectAccent,
                         ),
                 ],
               ),
@@ -180,17 +208,17 @@ class _RoleEditButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color =
-        role == 'Manager' ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4);
+        role == 'Manager' ? AppColors.dashboardAccent : AppColors.projectAccent;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSizes.radiusRound),
       onTap: () => _showEditRoleDialog(context),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           ProjectStatusPill(label: role, color: color),
-          const SizedBox(width: 4),
-          Icon(Icons.edit_rounded, size: 15, color: color),
+          const SizedBox(width: AppSizes.paddingXS),
+          Icon(Icons.edit_rounded, size: AppSizes.fontM + 1.0, color: color),
         ],
       ),
     );
@@ -213,7 +241,7 @@ class _RoleEditButton extends StatelessWidget {
             return AlertDialog(
               backgroundColor: dialogBg,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppSizes.radiusL),
               ),
               title: Text(
                 'Edit role',
@@ -232,7 +260,7 @@ class _RoleEditButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    value: selectedRole,
+                    initialValue: selectedRole,
                     decoration: const InputDecoration(labelText: 'Role'),
                     items: const ['Manager', 'Member']
                         .map(

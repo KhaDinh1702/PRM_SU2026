@@ -17,10 +17,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
             final isDark = ThemeService.isDarkMode.value;
             final textColor = ThemeService.getTextColor(isDark);
             final captionColor = ThemeService.getCaptionColor(isDark);
-            final visibleProjectModels =
-                _visibleProjects.map(_projectCardModel).toList();
-            final attentionProjectModels =
-                _attentionProjects.map(_projectCardModel).toList();
+            final visibleProjectModels = _visibleProjects;
+            final attentionProjectModels = _attentionProjects;
 
             return Scaffold(
           backgroundColor: Colors.transparent,
@@ -120,8 +118,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
     required Color themeColor,
     required Color textColor,
     required Color captionColor,
-    required List<ProjectCardModel> visibleProjectModels,
-    required List<ProjectCardModel> attentionProjectModels,
+    required List<ProjectModel> visibleProjectModels,
+    required List<ProjectModel> attentionProjectModels,
   }) {
     if (_isLoading) {
       return ListView.builder(
@@ -229,7 +227,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
             NeedsAttentionSection(
               projects: attentionProjectModels,
               onProjectTap: (project) =>
-                  _showProjectDetails(project.raw as Map<String, dynamic>),
+                  _showProjectDetails(project),
             ),
             if (attentionProjectModels.isNotEmpty)
               const SizedBox(height: 20),
@@ -266,8 +264,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: ProjectCard(
                   project: project,
-                  onTap: () => _showProjectDetails(
-                      project.raw as Map<String, dynamic>),
+                  onTap: () => _showProjectDetails(project),
                 ),
               ),
             );

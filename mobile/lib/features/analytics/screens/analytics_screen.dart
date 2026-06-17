@@ -16,8 +16,6 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  static const String _baseUrl = 'https://prm-tan.vercel.app/api';
-
   bool _isLoading = true;
   String _selectedRange = 'week'; // 'day', 'week', 'month'
 
@@ -42,7 +40,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
-        Uri.parse('$_baseUrl/analytics/reports?range=$_selectedRange'),
+        Uri.parse('${AuthService.apiBaseUrl}/analytics/reports?range=$_selectedRange'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

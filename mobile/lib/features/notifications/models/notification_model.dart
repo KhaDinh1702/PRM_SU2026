@@ -42,11 +42,11 @@ class NotificationModel {
       createdAt: _parseDate(json['createdAt']),
       invitationStatus: _parseInvitationStatus(
           json['invitationStatus']?.toString()),
-      relatedId: json['relatedId'] is Map<String, dynamic>
-          ? json['relatedId'] as Map<String, dynamic>
+      relatedId: json['relatedId'] is Map
+          ? Map<String, dynamic>.from(json['relatedId'] as Map)
           : null,
-      sender: json['sender'] is Map<String, dynamic>
-          ? json['sender'] as Map<String, dynamic>
+      sender: json['sender'] is Map
+          ? Map<String, dynamic>.from(json['sender'] as Map)
           : null,
     );
   }
