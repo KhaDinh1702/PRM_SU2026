@@ -184,19 +184,19 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                               padding: const EdgeInsets.symmetric(
                                                   horizontal: 10, vertical: 4),
                                               decoration: BoxDecoration(
-                                                color: themeColor.withOpacity(0.12 +
+                                                color: themeColor.withValues(alpha: 0.12 +
                                                     _pulseController.value * 0.08),
                                                 borderRadius:
                                                     BorderRadius.circular(12),
                                                 border: Border.all(
                                                   color:
-                                                      themeColor.withOpacity(0.3),
+                                                      themeColor.withValues(alpha: 0.3),
                                                   width: 1,
                                                 ),
                                               ),
                                               child: Text(
-                                                '${unreadCount} ${LocaleService.tr('mới', en: 'new')}',
-                                                style: TextStyle(
+                                                '$unreadCount ${LocaleService.tr('mới', en: 'new')}',
+                                                style: const TextStyle(
                                                   color: themeColor,
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
@@ -217,22 +217,22 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: themeColor.withOpacity(0.1),
+                                      color: themeColor.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: themeColor.withOpacity(0.2),
+                                        color: themeColor.withValues(alpha: 0.2),
                                       ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.done_all_rounded,
+                                        const Icon(Icons.done_all_rounded,
                                             color: themeColor, size: 16),
                                         const SizedBox(width: 6),
                                         Text(
                                           LocaleService.tr('Đọc tất cả',
                                               en: 'Mark all as read'),
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             color: themeColor,
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
@@ -285,8 +285,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                           child: Column(
                             children: List.generate(
                                 5,
-                                (i) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
+                                (i) => const Padding(
+                                      padding: EdgeInsets.only(bottom: 12),
                                       child: ShimmerLoading(
                                           width: double.infinity,
                                           height: 100,
@@ -307,12 +307,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                 Container(
                                   padding: const EdgeInsets.all(24),
                                   decoration: BoxDecoration(
-                                    color: themeColor.withOpacity(0.08),
+                                    color: themeColor.withValues(alpha: 0.08),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
                                     Icons.notifications_off_rounded,
-                                    color: themeColor.withOpacity(0.5),
+                                    color: themeColor.withValues(alpha: 0.5),
                                     size: 48,
                                   ),
                                 ),
@@ -396,7 +396,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               ? []
               : [
                   BoxShadow(
-                    color: color.withOpacity(isDark ? 0.08 : 0.12),
+                    color: color.withValues(alpha: isDark ? 0.08 : 0.12),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -407,15 +407,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(isRead ? 0.06 : 0.12),
+                  color: color.withValues(alpha: isRead ? 0.06 : 0.12),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: color.withOpacity(isRead ? 0.08 : 0.2),
+                    color: color.withValues(alpha: isRead ? 0.08 : 0.2),
                   ),
                 ),
                 child: Icon(
                   notification.typeIcon,
-                  color: color.withOpacity(isRead ? 0.5 : 1.0),
+                  color: color.withValues(alpha: isRead ? 0.5 : 1.0),
                   size: 22,
                 ),
               ),
@@ -430,7 +430,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.08),
+                            color: color.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -453,7 +453,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                               color: color,
                               boxShadow: [
                                 BoxShadow(
-                                  color: color.withOpacity(0.4),
+                                  color: color.withValues(alpha: 0.4),
                                   blurRadius: 6,
                                 ),
                               ],
@@ -527,7 +527,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(

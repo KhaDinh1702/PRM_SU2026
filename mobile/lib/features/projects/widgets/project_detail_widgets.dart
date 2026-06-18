@@ -55,7 +55,7 @@ class ProjectDetailHeader extends StatelessWidget {
             width: 50,
             height: 5,
             decoration: BoxDecoration(
-              color: captionColor.withOpacity(0.25),
+              color: captionColor.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -122,8 +122,8 @@ class ProjectDetailHeader extends StatelessWidget {
             value: progress / 100,
             minHeight: 7,
             backgroundColor: isDark
-                ? Colors.white.withOpacity(0.06)
-                : Colors.black.withOpacity(0.06),
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.06),
             valueColor: AlwaysStoppedAnimation(statusColor),
           ),
         ),

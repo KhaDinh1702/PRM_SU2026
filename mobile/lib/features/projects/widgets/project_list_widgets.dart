@@ -29,10 +29,10 @@ class ProjectSearchBar extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.black.withOpacity(0.04),
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: captionColor.withOpacity(0.12)),
+              border: Border.all(color: captionColor.withValues(alpha: 0.12)),
             ),
             child: TextField(
               controller: controller,
@@ -61,7 +61,7 @@ class ProjectSearchBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF06B6D4).withOpacity(0.24),
+                  color: const Color(0xFF06B6D4).withValues(alpha: 0.24),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -141,10 +141,10 @@ class _SummaryTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.black.withOpacity(0.035),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.035),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.18)),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,12 +213,12 @@ class ProjectTabs extends StatelessWidget {
             ),
             selectedColor: const Color(0xFF06B6D4),
             backgroundColor: isDark
-                ? Colors.white.withOpacity(0.06)
-                : Colors.black.withOpacity(0.04),
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
             side: BorderSide(
               color: selected
                   ? const Color(0xFF06B6D4)
-                  : captionColor.withOpacity(0.16),
+                  : captionColor.withValues(alpha: 0.16),
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
@@ -350,7 +350,7 @@ class ProjectFilterBottomSheet extends StatelessWidget {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: captionColor.withOpacity(0.28),
+                  color: captionColor.withValues(alpha: 0.28),
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -449,12 +449,12 @@ class _FilterGroup extends StatelessWidget {
               ),
               selectedColor: const Color(0xFF06B6D4),
               backgroundColor: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.black.withOpacity(0.04),
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
               side: BorderSide(
                 color: active
                     ? const Color(0xFF06B6D4)
-                    : captionColor.withOpacity(0.14),
+                    : captionColor.withValues(alpha: 0.14),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

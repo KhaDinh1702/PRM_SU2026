@@ -256,6 +256,41 @@ class ProjectService {
     }
   }
 
+  /// Lấy danh sách tin nhắn của dự án (tối đa 50 tin nhắn)
+  Future<List<dynamic>> getProjectMessages(String projectId) async {
+    final token = await AuthService.getToken();
+    final response = await http.get(
+      Uri.parse('${AuthService.apiBaseUrl}/projects/$projectId/messages?limit=50'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode != 200) {
+      throw Exception('Không thể tải tin nhắn');
+    }
+    return jsonDecode(response.body) as List<dynamic>;
+  }
+
+  /// Gửi tin nhắn mới vào dự án
+  Future<dynamic> sendProjectMessage(String projectId, String text) async {
+    final token = await AuthService.getToken();
+    final response = await http.post(
+      Uri.parse('${AuthService.apiBaseUrl}/projects/$projectId/messages'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'text': text}),
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode != 201) {
+      throw Exception('Không thể gửi tin nhắn');
+    }
+    return jsonDecode(response.body);
+  }
+
   // --- Private helper ---
   Map<String, dynamic>? _tryDecode(String body) {
     try {

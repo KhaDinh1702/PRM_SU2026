@@ -17,6 +17,7 @@ class AppColors {
   static const Color projectAccent = Color(0xFF06B6D4); // Cyan — Projects
   static const Color notifAccent = Color(0xFFF59E0B); // Amber — Notifications
   static const Color dashboardAccent = Color(0xFF8B5CF6); // Violet — Dashboard
+  static const Color analyticsAccent = Color(0xFFEC4899); // Pink — Analytics
   static const Color calendarEvent = Color(0xFF10B981); // Emerald
   static const Color calendarTask = Color(0xFF06B6D4); // Cyan
   static const Color calendarProjectTask = Color(0xFF8B5CF6); // Violet

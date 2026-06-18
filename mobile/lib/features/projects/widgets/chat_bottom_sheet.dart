@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../../services/auth_service.dart';
+import '../services/project_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../services/theme_service.dart';
@@ -32,7 +31,7 @@ class ChatBottomSheet extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ChatBottomSheetState createState() => _ChatBottomSheetState();
+  State<ChatBottomSheet> createState() => _ChatBottomSheetState();
 }
 
 class _ChatBottomSheetState extends State<ChatBottomSheet> {
@@ -83,42 +82,24 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     });
   }
 
+  final ProjectService _projectService = const ProjectService();
+
   Future<void> _fetchMessages({bool silent = false}) async {
     if (_isPollingMessages) return;
     _isPollingMessages = true;
 
     try {
-      final token = await AuthService.getToken();
-      final response = await http.get(
-        Uri.parse(
-            '$_backendBaseUrl/api/projects/${widget.projectId}/messages?limit=50'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final freshMessages = await _projectService.getProjectMessages(widget.projectId);
+      if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final freshMessages = jsonDecode(response.body) as List<dynamic>;
-        if (!mounted) return;
-
-        if (silent) {
-          _mergeMessages(freshMessages);
-        } else {
-          setState(() {
-            messages = freshMessages;
-            isLoading = false;
-          });
-          _scrollToBottom();
-        }
+      if (silent) {
+        _mergeMessages(freshMessages);
       } else {
-        print(
-            '❌ Fetch messages failed: ${response.statusCode} ${response.body}');
-        if (mounted && !silent) {
-          setState(() {
-            isLoading = false;
-          });
-        }
+        setState(() {
+          messages = freshMessages;
+          isLoading = false;
+        });
+        _scrollToBottom();
       }
     } catch (e) {
       print('❌ Error fetching messages: $e');
@@ -208,50 +189,24 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     _messageController.clear();
 
     try {
-      final token = await AuthService.getToken();
-      final response = await http
-          .post(
-            Uri.parse(
-                '$_backendBaseUrl/api/projects/${widget.projectId}/messages'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({'text': text}),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 201) {
-        final newMessage = jsonDecode(response.body);
-        _mergeMessages([newMessage]);
-      } else {
-        print('❌ Send message failed: ${response.statusCode} ${response.body}');
-        // Khôi phục text nếu gửi thất bại
-        _messageController.text = text;
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Không gửi được tin nhắn. Thử lại!'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
+      final newMessage = await _projectService.sendProjectMessage(widget.projectId, text);
+      _mergeMessages([newMessage]);
     } catch (e) {
       print('❌ Error sending message: $e');
       _messageController.text = text;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Lỗi kết nối. Kiểm tra mạng!'),
+            content: Text('Không gửi được tin nhắn. Thử lại!'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } finally {
-      if (mounted) setState(() => isSending = false);
+      if (mounted) {
+        setState(() => isSending = false);
+      }
     }
   }
 
