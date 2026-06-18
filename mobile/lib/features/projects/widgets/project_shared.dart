@@ -23,14 +23,14 @@ class ProjectDetailCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.055)
-            : Colors.black.withOpacity(0.035),
+            ? Colors.white.withValues(alpha: 0.055)
+            : Colors.black.withValues(alpha: 0.035),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: borderColor ??
               (isDark
-                  ? Colors.white.withOpacity(0.075)
-                  : Colors.black.withOpacity(0.06)),
+                  ? Colors.white.withValues(alpha: 0.075)
+                  : Colors.black.withValues(alpha: 0.06)),
         ),
       ),
       child: child,
@@ -68,7 +68,7 @@ class ProjectEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 54, color: subTextColor.withOpacity(0.65)),
+            Icon(icon, size: 54, color: subTextColor.withValues(alpha: 0.65)),
             const SizedBox(height: 14),
             Text(title,
                 textAlign: TextAlign.center,

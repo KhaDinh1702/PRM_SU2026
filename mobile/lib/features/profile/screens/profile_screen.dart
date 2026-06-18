@@ -162,14 +162,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         gradient: LinearGradient(
                                           colors: [
                                             activeThemeColor,
-                                            activeThemeColor.withOpacity(0.7)
+                                            activeThemeColor.withValues(alpha: 0.7)
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: activeThemeColor.withOpacity(0.3),
+                                            color: activeThemeColor.withValues(alpha: 0.3),
                                             blurRadius: 20,
                                             offset: const Offset(0, 6),
                                           )
@@ -252,13 +252,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
                               color: remaining == 0
-                                  ? Colors.redAccent.withOpacity(0.1)
-                                  : activeThemeColor.withOpacity(0.08),
+                                  ? Colors.redAccent.withValues(alpha: 0.1)
+                                  : activeThemeColor.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: remaining == 0
-                                    ? Colors.redAccent.withOpacity(0.3)
-                                    : activeThemeColor.withOpacity(0.2),
+                                    ? Colors.redAccent.withValues(alpha: 0.3)
+                                    : activeThemeColor.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -340,21 +340,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ? LinearGradient(
                                           colors: [
                                             activeThemeColor,
-                                            activeThemeColor.withOpacity(0.7)
+                                            activeThemeColor.withValues(alpha: 0.7)
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         )
                                       : LinearGradient(
                                           colors: [
-                                            Colors.grey.withOpacity(0.3),
-                                            Colors.grey.withOpacity(0.3)
+                                            Colors.grey.withValues(alpha: 0.3),
+                                            Colors.grey.withValues(alpha: 0.3)
                                           ],
                                         ),
                                   boxShadow: canChange
                                       ? [
                                           BoxShadow(
-                                              color: activeThemeColor.withOpacity(0.3),
+                                              color: activeThemeColor.withValues(alpha: 0.3),
                                               blurRadius: 16,
                                               offset: const Offset(0, 4))
                                         ]

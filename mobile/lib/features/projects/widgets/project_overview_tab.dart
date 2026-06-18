@@ -122,7 +122,7 @@ class NextActionCard extends StatelessWidget {
     final subTextColor = ThemeService.getSubTextColor(isDark);
 
     return ProjectDetailCard(
-      borderColor: color.withOpacity(0.32),
+      borderColor: color.withValues(alpha: 0.32),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -130,7 +130,7 @@ class NextActionCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.14),
+              color: color.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(Icons.bolt_rounded, color: color, size: 20),
@@ -217,8 +217,8 @@ class ProgressSummaryCard extends StatelessWidget {
               value: progress / 100,
               minHeight: 8,
               backgroundColor: isDark
-                  ? Colors.white.withOpacity(0.07)
-                  : Colors.black.withOpacity(0.06),
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.black.withValues(alpha: 0.06),
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),

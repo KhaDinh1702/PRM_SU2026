@@ -453,10 +453,10 @@ class _LoginScreenState extends State<LoginScreen>
                                                         ? null
                                                         : _sendOtpCode,
                                                     style: ElevatedButton.styleFrom(
-                                                      backgroundColor: themeColor.withOpacity(0.1),
+                                                      backgroundColor: themeColor.withValues(alpha: 0.1),
                                                       foregroundColor: themeColor,
                                                       side: BorderSide(
-                                                        color: themeColor.withOpacity(0.3),
+                                                        color: themeColor.withValues(alpha: 0.3),
                                                       ),
                                                       shape: RoundedRectangleBorder(
                                                         borderRadius: BorderRadius.circular(20),
@@ -645,14 +645,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                 boxShadow: [
                                                   BoxShadow(
                                                     color: buttonColor
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     blurRadius: 16,
                                                     spreadRadius: 1,
                                                     offset: const Offset(0, 4),
                                                   ),
                                                 ],
                                                 border: Border.all(
-                                                  color: isDark ? const Color(0xFF2EA44F).withOpacity(0.5) : const Color(0xFF1A7F37).withOpacity(0.5),
+                                                  color: isDark ? const Color(0xFF2EA44F).withValues(alpha: 0.5) : const Color(0xFF1A7F37).withValues(alpha: 0.5),
                                                   width: 1,
                                                 ),
                                               ),
@@ -739,7 +739,7 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(20),
                           border:
                               Border.all(color: borderColor),
@@ -785,8 +785,8 @@ class _LoginScreenState extends State<LoginScreen>
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final labelColor = isDark ? Colors.white38 : const Color(0xFF64748B);
     final iconColor = isDark ? Colors.white30 : const Color(0xFF94A3B8);
-    final fillColor = isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02);
-    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.06);
+    final fillColor = isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.06);
 
     return TextFormField(
       controller: controller,

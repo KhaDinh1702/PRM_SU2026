@@ -150,9 +150,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
     required Color dialogBg,
     required Color textColor,
   }) {
-    // ignore: deprecated_member_use
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       dropdownColor: dialogBg,
       icon: const Icon(Icons.keyboard_arrow_down_rounded),
       decoration: InputDecoration(
@@ -789,9 +788,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                         prefixIcon: Icons.description_outlined,
                       ),
                       const SizedBox(height: 12),
-                      // ignore: deprecated_member_use
                       DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         dropdownColor: dialogBg,
                         decoration: const InputDecoration(
                           labelText: 'System status',
@@ -822,7 +820,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                           style: TextStyle(color: captionColor, fontSize: 11),
                         ),
                         value: allowMembers,
-                        activeColor: const Color(0xFF06B6D4),
+                        activeThumbColor: const Color(0xFF06B6D4),
+                        activeTrackColor: const Color(0xFF06B6D4).withValues(alpha: 0.5),
                         contentPadding: EdgeInsets.zero,
                         onChanged: (value) {
                           setDialogState(() => allowMembers = value);

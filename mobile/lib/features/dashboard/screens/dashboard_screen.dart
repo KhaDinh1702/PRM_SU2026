@@ -104,20 +104,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: themeColor.withOpacity(0.1),
+                              color: themeColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: themeColor.withOpacity(0.3)),
+                                  color: themeColor.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.language,
+                                const Icon(Icons.language,
                                     color: themeColor, size: 16),
                                 const SizedBox(width: 6),
                                 Text(
                                   LocaleService.languageCode.value
                                       .toUpperCase(),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: themeColor,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -378,7 +378,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.videocam_rounded, color: color, size: 28),
