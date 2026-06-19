@@ -7,17 +7,27 @@ import '../../../services/auth_service.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../core/widgets/premium_widgets.dart';
-import '../widgets/chat_bottom_sheet.dart';
+import '../widgets/chat/chat_bottom_sheet.dart';
 import '../services/project_service.dart';
+import '../services/project_milestone_service.dart';
 import '../providers/project_provider.dart';
 import '../models/project_model.dart';
-import '../widgets/project_card.dart';
-import '../widgets/project_list_widgets.dart';
-import '../widgets/project_detail_widgets.dart';
-import '../widgets/project_overview_tab.dart';
-import '../widgets/project_tasks_tab.dart';
-import '../widgets/project_members_tab.dart';
-import '../widgets/project_chat_tab.dart';
+import '../models/project_milestone.dart';
+import '../utils/project_board_utils.dart';
+import '../utils/project_activity_builder.dart';
+import '../widgets/project_card_v2.dart';
+import '../widgets/list/project_search_bar.dart';
+import '../widgets/list/project_summary.dart';
+import '../widgets/list/project_tabs.dart';
+import '../widgets/list/project_filter_sheet.dart';
+import '../widgets/project_detail_header.dart';
+import '../widgets/overview/overview_tab.dart';
+import '../widgets/board/board_tab.dart';
+import '../widgets/timeline/timeline_tab.dart';
+import '../widgets/members/members_tab.dart';
+import '../widgets/chat/chat_tab.dart';
+import '../widgets/project_detail_fab.dart';
+import '../widgets/create_project/create_project_sheet.dart';
 
 part 'project_screen_sections.dart';
 part 'project_screen_helpers.dart';
@@ -33,6 +43,7 @@ class ProjectScreen extends StatefulWidget {
 
 class _ProjectScreenState extends State<ProjectScreen> {
   final _projectService = const ProjectService();
+  final _milestoneService = const ProjectMilestoneService();
   bool _isLoading = true;
   String? _projectLoadError;
   List<ProjectModel> _projects = [];
@@ -49,7 +60,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
   bool _isLoadingProjectTasks = false;
   bool _projectTasksLoaded = false;
   String _taskPriority = 'Medium';
-  String _taskFilter = 'All';
   DateTime? _taskDueDate;
   TimeOfDay? _taskDueTime;
   String _taskReminderType = 'none';
@@ -59,10 +69,16 @@ class _ProjectScreenState extends State<ProjectScreen> {
   String _projectTab = 'All';
   String _roleFilter = 'All';
   String _typeFilter = 'All';
+  String _statusFilter = 'All';
   String _sortBy = 'Recent';
   String? _selectedAssigneeId;
   final Map<String, Set<String>> _localPendingInviteIds = {};
   bool _isSavingProjectTask = false;
+  final Set<String> _reviewTaskIds = {};
+  List<ProjectMilestone> _projectMilestones = [];
+  bool _milestonesLoading = false;
+  final TextEditingController _milestoneTitleController =
+      TextEditingController();
 
   void _updateProjectState(VoidCallback update) {
     if (!mounted) return;
@@ -287,6 +303,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _projectSearchController.dispose();
     _taskTitleController.dispose();
     _taskDescController.dispose();
+    _milestoneTitleController.dispose();
     super.dispose();
   }
 
@@ -304,32 +321,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
         setState(() {
           _allUsers = users;
         });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _createProject(String type) async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) return;
-    try {
-      await context.read<ProjectProvider>().createProject(
-        name: name,
-        description: _descController.text.trim(),
-        type: type,
-      );
-      _nameController.clear();
-      _descController.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(LocaleService.tr(
-                'Đã khởi tạo dự án nhóm thành công!',
-                en: 'Project created successfully!')),
-            backgroundColor: const Color(0xFF06B6D4),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
       }
     } catch (_) {}
   }
@@ -414,104 +405,13 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showCreateProjectDialog() {
-    String selectedType = 'Personal';
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        final isDark = ThemeService.isDarkMode.value;
-        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
-        final textColor = ThemeService.getTextColor(isDark);
-        final captionColor = ThemeService.getCaptionColor(isDark);
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: AlertDialog(
-                backgroundColor: dialogBg.withValues(alpha: 0.9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  side: BorderSide(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.08)),
-                ),
-                title: Text(
-                  LocaleService.tr('TẠO DỰ ÁN MỚI', en: 'CREATE NEW PROJECT'),
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: textColor,
-                      letterSpacing: 1.5),
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PremiumInputField(
-                      controller: _nameController,
-                      label: LocaleService.tr('Tên dự án *', en: 'Project name *'),
-                      hintText: LocaleService.tr('Nhập tên dự án...',
-                          en: 'Enter project name...'),
-                      prefixIcon: Icons.folder_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    PremiumInputField(
-                      controller: _descController,
-                      label: LocaleService.tr('Mô tả dự án',
-                          en: 'Project description'),
-                      hintText: LocaleService.tr('Nhập mô tả dự án...',
-                          en: 'Enter project description...'),
-                      prefixIcon: Icons.description_outlined,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildRoundedDropdown<String>(
-                      value: selectedType,
-                      label: LocaleService.tr('Loại dự án', en: 'Project type'),
-                      items: ['Personal', 'Team', 'Study', 'Work'].map((type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() {
-                            selectedType = val;
-                          });
-                        }
-                      },
-                      dialogBg: dialogBg,
-                      textColor: textColor,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(LocaleService.tr('Hủy', en: 'Cancel'),
-                        style: TextStyle(
-                            color: captionColor, fontWeight: FontWeight.bold)),
-                  ),
-                  PremiumButton(
-                    onPressed: () {
-                      _createProject(selectedType);
-                      Navigator.pop(context);
-                    },
-                    backgroundColor: const Color(0xFF06B6D4),
-                    child: Text(LocaleService.tr('Tạo', en: 'Create'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        )),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+    CreateProjectSheet.show(context).then((createdId) {
+      if (createdId != null && mounted) {
+        // Refresh the list — the provider already reloads internally, but
+        // make sure any pending UI bound to it sees the new entry.
+        _loadProjects();
+      }
+    });
   }
 
   Future<void> _loadProjectTasks(String projectId,
@@ -696,6 +596,102 @@ class _ProjectScreenState extends State<ProjectScreen> {
       }
     }
     return false;
+  }
+
+  Future<void> _loadProjectMilestones(
+    ProjectModel projectData,
+    StateSetter sheetSetState,
+  ) async {
+    if (!mounted) return;
+    setState(() => _milestonesLoading = true);
+    sheetSetState(() {});
+    try {
+      _projectMilestones = await _milestoneService.loadMilestones(
+        projectId: projectData.project.id,
+        projectData: projectData,
+      );
+    } catch (_) {
+      _projectMilestones = [];
+    } finally {
+      if (mounted) {
+        setState(() => _milestonesLoading = false);
+        sheetSetState(() {});
+      }
+    }
+  }
+
+  Future<void> _updateBoardTaskColumn(
+    String projectId,
+    dynamic task,
+    BoardColumn targetColumn,
+    StateSetter sheetSetState,
+  ) async {
+    if (task is! Map) return;
+    final taskId = task['_id']?.toString() ?? '';
+    if (taskId.isEmpty) return;
+
+    setState(() {
+      if (ProjectBoardUtils.shouldMarkReview(targetColumn)) {
+        _reviewTaskIds.add(taskId);
+      } else {
+        _reviewTaskIds.remove(taskId);
+      }
+    });
+    sheetSetState(() {});
+
+    await _updateProjectTaskStatus(
+      projectId,
+      taskId,
+      ProjectBoardUtils.apiStatusForColumn(targetColumn),
+      sheetSetState,
+    );
+  }
+
+  Future<void> _handleBoardComplete(
+    String projectId,
+    dynamic task,
+    StateSetter sheetSetState,
+  ) =>
+      _updateBoardTaskColumn(
+        projectId,
+        task,
+        BoardColumn.completed,
+        sheetSetState,
+      );
+
+  Future<void> _handleBoardAdvance(
+    String projectId,
+    dynamic task,
+    StateSetter sheetSetState,
+  ) async {
+    final current =
+        ProjectBoardUtils.columnForTask(task, _reviewTaskIds);
+    final next = ProjectBoardUtils.nextColumn(current);
+    if (next == null) return;
+    await _updateBoardTaskColumn(
+      projectId,
+      task,
+      next,
+      sheetSetState,
+    );
+  }
+
+  int _activeProjectDays(ProjectDetails project) {
+    final created = project.createdAt;
+    if (created == null) return 1;
+    final days = DateTime.now().difference(created).inDays + 1;
+    return days.clamp(1, 9999);
+  }
+
+  Map<String, String> _memberRolesMap(ProjectDetails project) {
+    final roles = <String, String>{};
+    if (project.owner != null) {
+      roles[project.owner!.id] = 'Owner';
+    }
+    for (final entry in project.memberRoles) {
+      roles[entry.userId] = entry.role;
+    }
+    return roles;
   }
 
   @override

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'project_shared.dart';
+import '../project_shared.dart';
 
 /// Tab chat: hiển thị empty state và nút mở chat.
 class ChatTab extends StatelessWidget {

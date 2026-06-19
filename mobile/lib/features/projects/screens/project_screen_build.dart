@@ -18,7 +18,6 @@ extension _ProjectScreenBuild on _ProjectScreenState {
             final textColor = ThemeService.getTextColor(isDark);
             final captionColor = ThemeService.getCaptionColor(isDark);
             final visibleProjectModels = _visibleProjects;
-            final attentionProjectModels = _attentionProjects;
 
             return Scaffold(
           backgroundColor: Colors.transparent,
@@ -100,7 +99,6 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                     textColor: textColor,
                     captionColor: captionColor,
                     visibleProjectModels: visibleProjectModels,
-                    attentionProjectModels: attentionProjectModels,
                   ),
                 ),
               ],
@@ -119,102 +117,28 @@ extension _ProjectScreenBuild on _ProjectScreenState {
     required Color textColor,
     required Color captionColor,
     required List<ProjectModel> visibleProjectModels,
-    required List<ProjectModel> attentionProjectModels,
   }) {
     if (_isLoading) {
-      return ListView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 4,
-        itemBuilder: (context, index) => const Padding(
-          padding: EdgeInsets.only(bottom: 12.0),
-          child: ShimmerLoading(
-            width: double.infinity,
-            height: 150,
-            borderRadius: 18,
-          ),
-        ),
-      );
+      return _buildSkeletonList();
     }
 
     if (_projectLoadError != null) {
-      return FadeInSlide(
-        delayMs: 100,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.cloud_off_rounded,
-                size: 54,
-                color: Colors.redAccent.withValues(alpha: 0.75),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  _projectLoadError!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: captionColor, fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 14),
-              PremiumButton.icon(
-                onPressed: _loadProjects,
-                icon: Icons.refresh_rounded,
-                label: 'Retry',
-                backgroundColor: themeColor,
-              ),
-            ],
-          ),
-        ),
+      return _buildErrorState(
+        themeColor: themeColor,
+        captionColor: captionColor,
       );
     }
 
     if (_projects.isEmpty) {
-      return FadeInSlide(
-        delayMs: 100,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.dns_outlined,
-                  size: 54,
-                  color: captionColor.withValues(alpha: 0.4)),
-              const SizedBox(height: 12),
-              Text(
-                'No projects yet.',
-                style: TextStyle(color: captionColor, fontSize: 14),
-              ),
-            ],
-          ),
-        ),
+      return _buildFirstRunEmpty(
+        themeColor: themeColor,
+        textColor: textColor,
+        captionColor: captionColor,
       );
     }
 
     if (visibleProjectModels.isEmpty) {
-      return FadeInSlide(
-        delayMs: 100,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.filter_alt_off_rounded,
-                  size: 54,
-                  color: captionColor.withValues(alpha: 0.4)),
-              const SizedBox(height: 12),
-              Text(
-                'No projects match your filters',
-                style: TextStyle(color: captionColor, fontSize: 14),
-              ),
-              const SizedBox(height: 14),
-              TextButton(
-                onPressed: _clearProjectFilters,
-                child: const Text('Show all'),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildNoMatchEmpty(captionColor: captionColor);
     }
 
     return RefreshIndicator(
@@ -223,53 +147,182 @@ extension _ProjectScreenBuild on _ProjectScreenState {
       child: ListView(
         physics: const BouncingScrollPhysics(),
         children: [
-          if (_projectTab == 'All' && _projectSearchQuery.trim().isEmpty) ...[
-            NeedsAttentionSection(
-              projects: attentionProjectModels,
-              onProjectTap: (project) =>
-                  _showProjectDetails(project),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _sectionTitleForTab(_projectTab),
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '${visibleProjectModels.length}/${_projects.length}',
+                  style: TextStyle(
+                    color: captionColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-            if (attentionProjectModels.isNotEmpty)
-              const SizedBox(height: 20),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _projectTab == 'All'
-                    ? 'All Projects'
-                    : '$_projectTab Projects',
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(
-                '${visibleProjectModels.length}/${_projects.length}',
-                style: TextStyle(
-                  color: captionColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
           ),
-          const SizedBox(height: 10),
           ...visibleProjectModels.asMap().entries.map((entry) {
             final project = entry.value;
             return FadeInSlide(
               delayMs: entry.key * 50,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
-                child: ProjectCard(
+                child: ProjectCardV2(
                   project: project,
                   onTap: () => _showProjectDetails(project),
                 ),
               ),
             );
           }),
+          const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  String _sectionTitleForTab(String tab) {
+    switch (tab) {
+      case 'Mine':
+        return 'My Projects';
+      case 'Shared':
+        return 'Shared With Me';
+      case 'Archived':
+        return 'Archived';
+      default:
+        return 'All Projects';
+    }
+  }
+
+  Widget _buildSkeletonList() {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 4,
+      itemBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.only(bottom: 12.0),
+        child: ShimmerLoading(
+          width: double.infinity,
+          height: 132,
+          borderRadius: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState({
+    required Color themeColor,
+    required Color captionColor,
+  }) {
+    return FadeInSlide(
+      delayMs: 100,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 54,
+              color: Colors.redAccent.withValues(alpha: 0.75),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _projectLoadError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: captionColor, fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 14),
+            PremiumButton.icon(
+              onPressed: _loadProjects,
+              icon: Icons.refresh_rounded,
+              label: 'Retry',
+              backgroundColor: themeColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFirstRunEmpty({
+    required Color themeColor,
+    required Color textColor,
+    required Color captionColor,
+  }) {
+    return FadeInSlide(
+      delayMs: 100,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('📁', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 14),
+              Text(
+                'No projects yet',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Create your first project to start tracking work, milestones and collaborators.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: captionColor,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 18),
+              PremiumButton.icon(
+                onPressed: _showCreateProjectDialog,
+                icon: Icons.add_rounded,
+                label: 'Create project',
+                backgroundColor: themeColor,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoMatchEmpty({required Color captionColor}) {
+    return FadeInSlide(
+      delayMs: 100,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🔍', style: TextStyle(fontSize: 40)),
+            const SizedBox(height: 12),
+            Text(
+              'No projects match your filters',
+              style: TextStyle(color: captionColor, fontSize: 14),
+            ),
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: _clearProjectFilters,
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
       ),
     );
   }

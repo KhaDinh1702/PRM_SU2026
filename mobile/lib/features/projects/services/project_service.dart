@@ -46,11 +46,10 @@ class ProjectService {
     return jsonDecode(response.body) as List<dynamic>;
   }
 
-  /// Tạo project mới
-  Future<void> createProject({
-    required String name,
-    required String description,
-    required String type,
+  /// Tạo project mới. Trả về body JSON của project vừa tạo (gồm `_id`)
+  /// để caller có thể gọi tiếp các bước update / invite member.
+  Future<Map<String, dynamic>> createProject({
+    required Map<String, dynamic> payload,
   }) async {
     final token = await AuthService.getToken();
     final response = await http
@@ -60,17 +59,15 @@ class ProjectService {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
           },
-          body: jsonEncode({
-            'name': name,
-            'description': description,
-            'type': type,
-          }),
+          body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 201) {
-      throw Exception('Không thể tạo dự án');
+      final data = _tryDecode(response.body);
+      throw Exception(data?['error'] ?? 'Không thể tạo dự án');
     }
+    return _tryDecode(response.body) ?? const {};
   }
 
   /// Cập nhật thông tin project

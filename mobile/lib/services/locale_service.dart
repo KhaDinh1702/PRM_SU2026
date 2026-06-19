@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocaleService {
   static final ValueNotifier<String> languageCode = ValueNotifier<String>('en');
   static const String _langKey = 'app_language_code';
 
-  // Initialize language state from SharedPreferences
+  /// Initialize language state and intl date symbols for supported locales.
   static Future<void> init() async {
+    await initializeDateFormatting('en', null);
+    await initializeDateFormatting('vi', null);
+
     final prefs = await SharedPreferences.getInstance();
-    languageCode.value = prefs.getString(_langKey) ?? 'en'; // default: English
+    languageCode.value = prefs.getString(_langKey) ?? 'en';
   }
 
   // Toggle between vi and en

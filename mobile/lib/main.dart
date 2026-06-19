@@ -13,21 +13,19 @@ import 'services/event_check_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/dashboard/providers/dashboard_provider.dart';
 import 'features/tasks/screens/task_screen.dart';
 import 'features/tasks/providers/task_provider.dart';
 import 'features/timer/screens/timer_screen.dart';
 import 'features/projects/screens/project_screen.dart';
 import 'features/projects/providers/project_provider.dart';
-import 'features/calendar/screens/calendar_screen.dart';
-import 'features/notifications/screens/notifications_screen.dart';
 import 'features/notifications/providers/notification_provider.dart';
-import 'features/analytics/screens/analytics_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ThemeService.init(); // Initialize global dark/light theme state
-  await LocaleService.init(); // Initialize language preference
+  await ThemeService.init();
+  await LocaleService.init();
   final bool loggedIn = await AuthService.isLoggedIn();
   runApp(
     MultiProvider(
@@ -36,6 +34,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
       ],
       child: MyApp(isLoggedIn: loggedIn),
     ),
@@ -93,6 +92,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Primary app shell with 5-tab bottom navigation.
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -102,12 +102,17 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen>
     with WidgetsBindingObserver {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _currentIndex = 0; // Default to Home tab
-
-  late final List<Widget> _screens;
+  int _currentIndex = 0;
   Timer? _eventCheckTimer;
   final _eventService = EventCheckService();
+
+  static const int _tabDashboard = 0;
+  static const int _tabTasks = 1;
+  static const int _tabProjects = 2;
+  static const int _tabFocus = 3;
+  static const int _tabProfile = 4;
+
+  late final List<Widget> _screens;
 
   @override
   void initState() {
@@ -115,17 +120,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     WidgetsBinding.instance.addObserver(this);
     _screens = [
       DashboardScreen(onTabSelect: (index) {
-        if (mounted) {
-          setState(() => _currentIndex = index);
-        }
-      }), // 0: Home
-      const TaskScreen(), // 1: Tasks
-      TimerScreen(onLogout: _handleLogout), // 2: Timer
-      const ProjectScreen(), // 3: Projects
-      const CalendarScreen(), // 4: Calendar
-      const AnalyticsScreen(), // 5: Analytics
-      const NotificationsScreen(), // 6: Notifications
-      const ProfileScreen(), // 7: Profile
+        if (mounted) setState(() => _currentIndex = index);
+      }),
+      const TaskScreen(),
+      const ProjectScreen(),
+      TimerScreen(onLogout: _handleLogout),
+      ProfileScreen(onLogout: _handleLogout),
     ];
     _startEventCheckTimer();
     _checkEventsOnce();
@@ -161,17 +161,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   Future<void> _checkEventsOnce() async {
     final notifications = await _eventService.checkEvents();
     for (final notif in notifications) {
-      // Lưu notification lên backend (fire-and-forget)
       await _eventService.saveNotificationToBackend(notif);
 
-      // Cập nhật NotificationProvider thay vì gọi static refreshTrigger
       if (mounted) {
-        context
-            .read<NotificationProvider>()
-            .triggerRefresh();
+        context.read<NotificationProvider>().triggerRefresh();
       }
 
-      // Hiển thị popup trực quan
       if (!mounted) return;
       SystemSound.play(SystemSoundType.alert);
       HapticFeedback.heavyImpact();
@@ -201,9 +196,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: BorderSide(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.08)),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.08),
+              ),
             ),
             title: Row(
               children: [
@@ -286,7 +282,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Đã đăng xuất tài khoản thành công!'),
+          content: Text(LocaleService.tr(
+            'Đã đăng xuất tài khoản thành công!',
+            en: 'Logged out successfully!',
+          )),
           backgroundColor: Colors.amber[800],
           behavior: SnackBarBehavior.floating,
           shape:
@@ -305,8 +304,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         final activeColor = ThemeService.getPrimaryColor(isDark);
 
         return Scaffold(
-          key: _scaffoldKey,
-          drawer: _buildDrawer(isDark),
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -330,179 +327,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-  Widget _buildDrawer(bool isDark) {
-    return Drawer(
-      backgroundColor: ThemeService.getBackgroundColor(isDark),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Icon(Icons.bolt,
-                      color: ThemeService.getPrimaryColor(isDark), size: 32),
-                  const SizedBox(width: 12),
-                  Text(
-                    'FlowMate',
-                    style: TextStyle(
-                      color: ThemeService.getTextColor(isDark),
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
-            ListTile(
-              leading: Icon(Icons.calendar_month_rounded,
-                  color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Lịch', en: 'Calendar'),
-                  style: TextStyle(color: ThemeService.getTextColor(isDark))),
-              onTap: () {
-                setState(() => _currentIndex = 4);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.insights_rounded,
-                  color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Thống kê', en: 'Analytics'),
-                  style: TextStyle(color: ThemeService.getTextColor(isDark))),
-              onTap: () {
-                setState(() => _currentIndex = 5);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.notifications_outlined,
-                  color: ThemeService.getTextColor(isDark)),
-              title: Text(LocaleService.tr('Thông báo', en: 'Notifications'),
-                  style: TextStyle(color: ThemeService.getTextColor(isDark))),
-              onTap: () {
-                setState(() => _currentIndex = 6);
-                Navigator.pop(context);
-              },
-            ),
-            // Theme toggle
-            ListTile(
-              leading: Icon(
-                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                color: ThemeService.getTextColor(isDark),
-              ),
-              title: Text(
-                LocaleService.tr(
-                  isDark ? 'Chế độ sáng' : 'Chế độ tối',
-                  en: isDark ? 'Light Mode' : 'Dark Mode',
-                ),
-                style: TextStyle(color: ThemeService.getTextColor(isDark)),
-              ),
-              onTap: () => ThemeService.toggleTheme(),
-            ),
-            // Language toggle
-            ValueListenableBuilder<String>(
-              valueListenable: LocaleService.languageCode,
-              builder: (context, lang, _) {
-                final isEn = lang == 'en';
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () async {
-                      await LocaleService.toggleLanguage();
-                      setState(() {});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.04),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            isEn ? '🇬🇧' : '🇻🇳',
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  LocaleService.tr('Ngôn ngữ', en: 'Language'),
-                                  style: TextStyle(
-                                    color:
-                                        ThemeService.getCaptionColor(isDark),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                Text(
-                                  isEn ? 'English' : 'Tiếng Việt',
-                                  style: TextStyle(
-                                    color: ThemeService.getTextColor(isDark),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: ThemeService.getPrimaryColor(isDark)
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              LocaleService.tr('Chuyển sang EN',
-                                  en: 'Switch to VI'),
-                              style: TextStyle(
-                                color: ThemeService.getPrimaryColor(isDark),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const Spacer(),
-            Divider(color: Colors.grey.withValues(alpha: 0.2)),
-            ListTile(
-              leading:
-                  const Icon(Icons.logout_rounded, color: Colors.redAccent),
-              title: Text(
-                LocaleService.tr('Đăng xuất', en: 'Logout'),
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-              onTap: _handleLogout,
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildGlassmorphicNavBar(Color activeColor, bool isDark) {
     final navBg = isDark
         ? const Color(0xFF0A0F24).withValues(alpha: 0.85)
@@ -523,9 +347,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             height: 76,
             decoration: BoxDecoration(
               color: navBg,
-              border: Border(
-                top: BorderSide(color: borderColor, width: 1),
-              ),
+              border: Border(top: BorderSide(color: borderColor, width: 1)),
               boxShadow: [
                 BoxShadow(
                   color: activeColor.withValues(alpha: isDark ? 0.03 : 0.06),
@@ -535,46 +357,50 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildNavItem(
-                      0,
-                      Icons.space_dashboard_outlined,
-                      Icons.space_dashboard,
-                      LocaleService.tr('Trang chủ', en: 'Home'),
-                      activeColor,
-                      isDark),
+                    _tabDashboard,
+                    Icons.space_dashboard_outlined,
+                    Icons.space_dashboard,
+                    LocaleService.tr('Tổng quan', en: 'Dashboard'),
+                    activeColor,
+                    isDark,
+                  ),
                   _buildNavItem(
-                      1,
-                      Icons.playlist_add_check_rounded,
-                      Icons.playlist_add_check_rounded,
-                      LocaleService.tr('Nhiệm vụ', en: 'Tasks'),
-                      activeColor,
-                      isDark),
+                    _tabTasks,
+                    Icons.playlist_add_check_outlined,
+                    Icons.playlist_add_check_rounded,
+                    LocaleService.tr('Nhiệm vụ', en: 'Tasks'),
+                    activeColor,
+                    isDark,
+                  ),
                   _buildNavItem(
-                      2,
-                      Icons.hourglass_empty_rounded,
-                      Icons.hourglass_full_rounded,
-                      LocaleService.tr('Bấm giờ', en: 'Timer'),
-                      activeColor,
-                      isDark),
+                    _tabProjects,
+                    Icons.dns_outlined,
+                    Icons.dns_rounded,
+                    LocaleService.tr('Dự án', en: 'Projects'),
+                    activeColor,
+                    isDark,
+                  ),
                   _buildNavItem(
-                      3,
-                      Icons.dns_outlined,
-                      Icons.dns_rounded,
-                      LocaleService.tr('Dự án', en: 'Projects'),
-                      activeColor,
-                      isDark),
+                    _tabFocus,
+                    Icons.center_focus_strong_outlined,
+                    Icons.center_focus_strong_rounded,
+                    LocaleService.tr('Tập trung', en: 'Focus'),
+                    activeColor,
+                    isDark,
+                  ),
                   _buildNavItem(
-                      7,
-                      Icons.person_outline_rounded,
-                      Icons.person_rounded,
-                      LocaleService.tr('Hồ sơ', en: 'Profile'),
-                      activeColor,
-                      isDark),
-                  _buildMenuButton(isDark),
+                    _tabProfile,
+                    Icons.person_outline_rounded,
+                    Icons.person_rounded,
+                    LocaleService.tr('Hồ sơ', en: 'Profile'),
+                    activeColor,
+                    isDark,
+                  ),
                 ],
               ),
             ),
@@ -584,38 +410,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-  Widget _buildMenuButton(bool isDark) {
-    final themeColor = isDark ? Colors.white38 : Colors.black38;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _scaffoldKey.currentState?.openDrawer(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              child: Icon(Icons.menu_rounded, color: themeColor, size: 18),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              LocaleService.tr('Danh mục', en: 'Menu'),
-              style: TextStyle(
-                color: themeColor,
-                fontSize: 9,
-                fontWeight: FontWeight.normal,
-                letterSpacing: 0.3,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData outlineIcon, IconData solidIcon,
-      String label, Color activeColor, bool isDark) {
+  Widget _buildNavItem(
+    int index,
+    IconData outlineIcon,
+    IconData solidIcon,
+    String label,
+    Color activeColor,
+    bool isDark,
+  ) {
     final isSelected = _currentIndex == index;
     final themeColor =
         isSelected ? activeColor : (isDark ? Colors.white38 : Colors.black38);
@@ -631,7 +433,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               duration: AppDurations.animationSlow,
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(
-                  horizontal: 10, vertical: isSelected ? 6 : 4),
+                horizontal: 10,
+                vertical: isSelected ? 6 : 4,
+              ),
               decoration: BoxDecoration(
                 color: isSelected
                     ? activeColor.withValues(alpha: 0.1)
@@ -657,7 +461,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                 color: themeColor,
                 fontSize: 9,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                letterSpacing: 0.3,
+                letterSpacing: 0.2,
               ),
               overflow: TextOverflow.ellipsis,
             ),
