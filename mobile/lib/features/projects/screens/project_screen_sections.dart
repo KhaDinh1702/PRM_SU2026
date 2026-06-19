@@ -1,153 +1,224 @@
 part of project_screen;
 
 extension _ProjectScreenSections on _ProjectScreenState {
-  // ──────────────────────────────────────────────
-  // Tab builders — delegates sang widget files
-  // ──────────────────────────────────────────────
-
   Widget _buildProjectOverviewTab(
     ProjectModel projectData,
     ProjectDetails project,
-    ProjectStats stats,
+    bool canManage,
+    bool isOwner,
     Color textColor,
-    Color subTextColor,
     Color captionColor,
-    bool isDark,
     StateSetter sheetSetState,
   ) {
-    final total = projectData.totalTasks;
-    final completed = projectData.completedTasks;
-    final progress = projectData.progress;
-    final memberCount = projectData.memberCount;
-    final role = projectData.role;
-    final workStatus = projectData.stateLabel;
-    final statusColor = projectData.accentColor;
-    final openTasks = projectData.openTasks;
-
-    String title;
-    String text;
-    String cta;
-    VoidCallback action;
-
-    if (projectData.isOverdue) {
-      title = 'Needs attention';
-      text = '$openTasks open tasks need review. Start with overdue work.';
-      cta = 'Review overdue tasks';
-      action = () => DefaultTabController.of(context).animateTo(1);
-    } else if (total == 0) {
-      final allowMembers = project.allowMembersToCreateTasks;
-      final canManage = _canManage(role);
-      final canAddTask = canManage || allowMembers;
-
-      title = 'Get started';
-      text = canAddTask
-          ? 'No tasks have been created yet. Create the first task to start tracking progress.'
-          : 'No tasks have been created yet. Ask a manager to assign the first task.';
-      cta = canAddTask ? 'Add first task' : '';
-      action = canAddTask
-          ? () => _showCreateProjectTaskDialog(project, sheetSetState)
-          : () {};
-    } else {
-      final nextTask = _projectTasks.isNotEmpty
-          ? _projectTasks.firstWhere(
-              (task) => (task['status'] ?? '') != 'Completed',
-              orElse: () => _projectTasks.first,
-            )
-          : null;
-      title = 'Next up';
-      text = nextTask == null
-          ? '$openTasks open tasks remaining.'
-          : '${nextTask['title'] ?? 'Next task'} · ${_assigneeDisplayName(nextTask['assignedTo'] ?? nextTask['user'], project)}';
-      cta = 'View task';
-      action = () => DefaultTabController.of(context).animateTo(1);
-    }
+    final participants = _projectParticipants(project);
+    final teamMembers = participants
+        .map((p) => ProjectMember(
+              id: p.id,
+              name: p.name,
+              email: p.email,
+            ))
+        .toList();
+    final nextTask = ProjectBoardUtils.pickNextTask(_projectTasks);
+    final nextAssignee = nextTask == null
+        ? ''
+        : _assigneeDisplayName(
+            nextTask['assignedTo'] ?? nextTask['user'],
+            project,
+          );
+    final allowMembers = project.allowMembersToCreateTasks;
+    final canAddTask = canManage || allowMembers;
 
     return OverviewTab(
-      description: projectData.description,
-      actionTitle: title,
-      actionText: text,
-      actionLabel: cta,
-      actionColor: statusColor,
-      onAction: action,
-      progress: progress,
-      completedTasks: completed,
-      totalTasks: total,
-      memberCount: memberCount,
-      role: role,
-      workStatus: workStatus,
-      workStatusColor: statusColor,
-    );
-  }
-
-  // ignore: unused_element
-  Widget _buildOverviewMetric(
-      String label, String value, IconData icon, Color color) {
-    final isDark = ThemeService.isDarkMode.value;
-    final textColor = ThemeService.getTextColor(isDark);
-    final captionColor = ThemeService.getCaptionColor(isDark);
-
-    return GlassCard(
-      borderRadius: 18,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(color: captionColor, fontSize: 11)),
-        ],
+      projectData: projectData,
+      nextTask: nextTask,
+      nextTaskAssignee: nextAssignee.isEmpty ? 'Unassigned' : nextAssignee,
+      activities: ProjectActivityBuilder.build(
+        projectData: projectData,
+        tasks: _projectTasks,
+        members: teamMembers,
+      ),
+      teamMembers: teamMembers,
+      memberRoles: _memberRolesMap(project),
+      activeDays: _activeProjectDays(project),
+      onOpenNextTask: nextTask == null
+          ? null
+          : () => _showEditProjectTaskDialog(project, nextTask, sheetSetState),
+      onStartNextTask: nextTask == null
+          ? null
+          : () => _updateProjectTaskStatus(
+                project.id,
+                nextTask['_id'].toString(),
+                'In Progress',
+                sheetSetState,
+              ),
+      onCreateTask: canAddTask
+          ? () => _showCreateProjectTaskDialog(project, sheetSetState)
+          : null,
+      onInviteMember: canManage
+          ? () => _showInviteMemberDialog(project, projectData, sheetSetState)
+          : null,
+      onManageMembers: () => _showMembersManagementSheet(
+        projectData,
+        isOwner,
+        canManage,
+        textColor,
+        captionColor,
+        sheetSetState,
       ),
     );
   }
 
-  Widget _buildProjectTasksTab(
+  Widget _buildProjectBoardTab(
     ProjectDetails project,
     bool canManage,
-    Color textColor,
-    Color subTextColor,
-    Color captionColor,
     StateSetter sheetSetState,
   ) {
     final allowMembers = project.allowMembersToCreateTasks;
     final canAddTask = canManage || allowMembers;
-
-    return TasksTab(
+    return BoardTab(
       tasks: _projectTasks,
-      selectedFilter: _taskFilter,
+      reviewTaskIds: _reviewTaskIds,
       isLoading: _isLoadingProjectTasks,
       tasksLoaded: _projectTasksLoaded,
-      canManage: canManage,
-      canAddTask: canAddTask,
-      onFilterChanged: (filter) {
-        _updateProjectState(() => _taskFilter = filter);
-        sheetSetState(() {});
-      },
-      onAddTask: () => _showCreateProjectTaskDialog(project, sheetSetState),
-      onLoadTasks: () => _loadProjectTasks(project.id, sheetSetState),
       assigneeName: (assignee) => _assigneeDisplayName(assignee, project),
       canUpdateTask: (task) {
         final assignee = task['assignedTo'] ?? task['user'];
         return canManage || _itemId(assignee) == _currentUserId();
       },
-      onEditTask: (task) =>
+      onOpenTask: (task) =>
           _showEditProjectTaskDialog(project, task, sheetSetState),
-      onUpdateStatus: (task, status) => _updateProjectTaskStatus(
-        project.id,
-        task['_id'],
-        status,
-        sheetSetState,
+      onMarkComplete: (task) =>
+          _handleBoardComplete(project.id, task, sheetSetState),
+      onMoveToNextStatus: (task) =>
+          _handleBoardAdvance(project.id, task, sheetSetState),
+      onLoadTasks: () => _loadProjectTasks(project.id, sheetSetState),
+      onCreateTask: canAddTask
+          ? () => _showCreateProjectTaskDialog(project, sheetSetState)
+          : null,
+    );
+  }
+
+  Widget _buildProjectTimelineTab(StateSetter sheetSetState) {
+    return ProjectTimelineTab(
+      milestones: _projectMilestones,
+      isLoading: _milestonesLoading,
+    );
+  }
+
+  Future<void> _showInviteMemberDialog(
+    ProjectDetails project,
+    ProjectModel projectData,
+    StateSetter sheetSetState,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite member'),
+        content: PremiumInputField(
+          controller: _memberEmailController,
+          label: 'Email',
+          hintText: 'Enter email...',
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final invitedUserId = await _addMember(project.id);
+              if (invitedUserId != null) {
+                _markInvited(projectData, invitedUserId);
+              }
+              sheetSetState(() {});
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Invite'),
+          ),
+        ],
       ),
+    );
+  }
+
+  Future<void> _showCreateMilestoneDialog(
+    ProjectDetails project,
+    ProjectModel projectData,
+    StateSetter sheetSetState,
+  ) async {
+    _milestoneTitleController.clear();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Milestone'),
+        content: PremiumInputField(
+          controller: _milestoneTitleController,
+          label: 'Title',
+          hintText: 'e.g. UI Complete',
+          prefixIcon: Icons.flag_rounded,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final title = _milestoneTitleController.text.trim();
+              if (title.isEmpty) return;
+              await _milestoneService.addMilestone(
+                projectId: project.id,
+                current: _projectMilestones,
+                title: title,
+              );
+              if (context.mounted) Navigator.pop(context);
+              await _loadProjectMilestones(projectData, sheetSetState);
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMembersManagementSheet(
+    ProjectModel projectData,
+    bool isOwner,
+    bool canManage,
+    Color textColor,
+    Color captionColor,
+    StateSetter sheetSetState,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = ThemeService.isDarkMode.value;
+        final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
+        final borderColor = ThemeService.getBorderColor(isDark);
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.72,
+            decoration: BoxDecoration(
+              color: dialogBg.withValues(alpha: 0.95),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: borderColor),
+            ),
+            child: _buildProjectMembersTab(
+              projectData,
+              isOwner,
+              canManage,
+              textColor,
+              captionColor,
+              sheetSetState,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -176,7 +247,8 @@ extension _ProjectScreenSections on _ProjectScreenState {
       ...(_localPendingInviteIds[project.id] ?? const <String>{}),
     };
     final participantIds = participants.map((p) => p.id).toSet();
-    final invitedUserIdsFiltered = invitedUserIds.where((id) => !participantIds.contains(id)).toList();
+    final invitedUserIdsFiltered =
+        invitedUserIds.where((id) => !participantIds.contains(id)).toList();
 
     final invitedMembers = invitedUserIdsFiltered.map((id) {
       final matchedUser = _allUsers.firstWhere(
@@ -212,37 +284,11 @@ extension _ProjectScreenSections on _ProjectScreenState {
         );
         sheetSetState(() {});
       },
-      onInvite: () async {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Invite member'),
-            content: PremiumInputField(
-              controller: _memberEmailController,
-              label: 'Email',
-              hintText: 'Enter email...',
-              prefixIcon: Icons.mail_outline_rounded,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final invitedUserId = await _addMember(project.id);
-                  if (invitedUserId != null) {
-                    _markInvited(projectData, invitedUserId);
-                  }
-                  sheetSetState(() {});
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Invite'),
-              ),
-            ],
-          ),
-        );
-      },
+      onInvite: () => _showInviteMemberDialog(
+        project,
+        projectData,
+        sheetSetState,
+      ),
     );
   }
 
@@ -266,15 +312,12 @@ extension _ProjectScreenSections on _ProjectScreenState {
     );
   }
 
-  // ──────────────────────────────────────────────
-  // Project details bottom sheet
-  // ──────────────────────────────────────────────
-
   void _showProjectDetails(ProjectModel initialProjectData) {
     _loadUsers();
     _projectTasks = [];
     _projectTasksLoaded = false;
-    _taskFilter = 'All';
+    _projectMilestones = [];
+    _reviewTaskIds.clear();
 
     showModalBottomSheet(
       context: context,
@@ -283,14 +326,13 @@ extension _ProjectScreenSections on _ProjectScreenState {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, sheetSetState) {
-            // Find projectData from provider to keep it updated dynamically
-            final projectData = context.watch<ProjectProvider>().projects.firstWhere(
-                  (p) => p.project.id == initialProjectData.project.id,
-                  orElse: () => initialProjectData,
-                );
+            final projectData =
+                context.watch<ProjectProvider>().projects.firstWhere(
+                      (p) => p.project.id == initialProjectData.project.id,
+                      orElse: () => initialProjectData,
+                    );
 
             final project = projectData.project;
-            final stats = projectData.stats;
             final role = projectData.role;
             final canManage = _canManage(role);
             final isOwner = role == 'Owner';
@@ -305,6 +347,19 @@ extension _ProjectScreenSections on _ProjectScreenState {
             final statusColor = projectData.accentColor;
             final memberCount = projectData.memberCount;
             final description = projectData.description;
+            final allowMembers = project.allowMembersToCreateTasks;
+            final canAddTask = canManage || allowMembers;
+
+            if (!_projectTasksLoaded && !_isLoadingProjectTasks) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _loadProjectTasks(project.id, sheetSetState);
+              });
+            }
+            if (_projectMilestones.isEmpty && !_milestonesLoading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _loadProjectMilestones(projectData, sheetSetState);
+              });
+            }
 
             return DefaultTabController(
               length: 4,
@@ -320,96 +375,121 @@ extension _ProjectScreenSections on _ProjectScreenState {
                     ),
                     border: Border.all(color: borderColor),
                   ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ProjectDetailHeader(
-                              name: project.name,
-                              description: description,
-                              role: role,
-                              workStatus: workStatus,
-                              memberCount: memberCount,
-                              progress: projectData.progress,
-                              completedTasks:
-                                  projectData.completedTasks,
-                              totalTasks: projectData.totalTasks,
-                              statusColor: statusColor,
-                              canShowMenu: isOwner,
-                              canLeave: !isOwner,
-                              onEdit: () => _showEditProjectDialog(
-                                  projectData, sheetSetState),
-                              onDelete: () => _showDeleteConfirmationDialog(
-                                  project.id, project.name),
-                              onLeave: () => _showLeaveConfirmationDialog(
-                                  project.id, project.name),
+                  child: Scaffold(
+                    backgroundColor: Colors.transparent,
+                    floatingActionButton: (canAddTask || canManage)
+                        ? ProjectDetailFab(
+                            onCreateTask: canAddTask
+                                ? () => _showCreateProjectTaskDialog(
+                                      project,
+                                      sheetSetState,
+                                    )
+                                : () {},
+                            onCreateMilestone: () =>
+                                _showCreateMilestoneDialog(
+                              project,
+                              projectData,
+                              sheetSetState,
                             ),
-                            const SizedBox(height: 12),
-                            TabBar(
-                              labelColor: themeColor,
-                              unselectedLabelColor: captionColor,
-                              indicatorColor: themeColor,
-                              labelStyle: const TextStyle(
+                            onInviteMember: canManage
+                                ? () => _showInviteMemberDialog(
+                                      project,
+                                      projectData,
+                                      sheetSetState,
+                                    )
+                                : () {},
+                          )
+                        : null,
+                    body: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ProjectDetailHeader(
+                                name: project.name,
+                                description: description,
+                                role: role,
+                                workStatus: workStatus,
+                                memberCount: memberCount,
+                                progress: projectData.progress,
+                                completedTasks: projectData.completedTasks,
+                                totalTasks: projectData.totalTasks,
+                                statusColor: statusColor,
+                                canShowMenu: isOwner,
+                                canLeave: !isOwner,
+                                onEdit: () => _showEditProjectDialog(
+                                    projectData, sheetSetState),
+                                onDelete: () =>
+                                    _showDeleteConfirmationDialog(
+                                  project.id,
+                                  project.name,
+                                ),
+                                onLeave: () => _showLeaveConfirmationDialog(
+                                  project.id,
+                                  project.name,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TabBar(
+                                labelColor: themeColor,
+                                unselectedLabelColor: captionColor,
+                                indicatorColor: themeColor,
+                                labelStyle: const TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold),
-                              tabs: const [
-                                Tab(text: 'Overview'),
-                                Tab(text: 'Tasks'),
-                                Tab(text: 'Members'),
-                                Tab(text: 'Chat'),
-                              ],
-                              onTap: (index) {
-                                if (index == 1 && _projectTasks.isEmpty) {
-                                  _loadProjectTasks(
-                                      project.id, sheetSetState);
-                                }
-                              },
-                            ),
-                          ],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                tabs: const [
+                                  Tab(text: 'Overview'),
+                                  Tab(text: 'Board'),
+                                  Tab(text: 'Timeline'),
+                                  Tab(text: 'Chat'),
+                                ],
+                                onTap: (index) {
+                                  if ((index == 0 || index == 1) &&
+                                      !_projectTasksLoaded) {
+                                    _loadProjectTasks(
+                                        project.id, sheetSetState);
+                                  }
+                                  if (index == 2 &&
+                                      _projectMilestones.isEmpty) {
+                                    _loadProjectMilestones(
+                                        projectData, sheetSetState);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _buildProjectOverviewTab(
-                              projectData,
-                              project,
-                              stats,
-                              textColor,
-                              subTextColor,
-                              captionColor,
-                              isDark,
-                              sheetSetState,
-                            ),
-                            _buildProjectTasksTab(
-                              project,
-                              canManage,
-                              textColor,
-                              subTextColor,
-                              captionColor,
-                              sheetSetState,
-                            ),
-                            _buildProjectMembersTab(
-                              projectData,
-                              isOwner,
-                              canManage,
-                              textColor,
-                              captionColor,
-                              sheetSetState,
-                            ),
-                            _buildProjectChatTab(
-                              project,
-                              textColor,
-                              subTextColor,
-                            ),
-                          ],
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildProjectOverviewTab(
+                                projectData,
+                                project,
+                                canManage,
+                                isOwner,
+                                textColor,
+                                captionColor,
+                                sheetSetState,
+                              ),
+                              _buildProjectBoardTab(
+                                project,
+                                canManage,
+                                sheetSetState,
+                              ),
+                              _buildProjectTimelineTab(sheetSetState),
+                              _buildProjectChatTab(
+                                project,
+                                textColor,
+                                subTextColor,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

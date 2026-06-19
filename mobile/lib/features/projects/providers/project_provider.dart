@@ -59,13 +59,14 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   // --- Tạo project mới và tự reload ---
-  Future<void> createProject({
-    required String name,
-    required String description,
-    required String type,
+  /// Trả về `_id` của project vừa tạo (chuỗi rỗng nếu backend không trả).
+  /// Caller (sheet tạo project) dùng id này để gọi tiếp update/invite.
+  Future<String> createProject({
+    required Map<String, dynamic> payload,
   }) async {
-    await _service.createProject(name: name, description: description, type: type);
+    final created = await _service.createProject(payload: payload);
     await loadProjects(silent: true);
+    return (created['_id'] ?? created['id'] ?? '').toString();
   }
 
   // --- Cập nhật project và update local state ngay ---

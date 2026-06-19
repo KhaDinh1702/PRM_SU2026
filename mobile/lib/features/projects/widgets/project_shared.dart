@@ -104,6 +104,42 @@ class ProjectEmptyState extends StatelessWidget {
   }
 }
 
+/// Pill nhỏ hiển thị status / priority / role với màu nền và viền cùng tông.
+/// Dùng chung bởi project card, hero, members tab và tasks tab.
+class ProjectStatusPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  final EdgeInsetsGeometry padding;
+
+  const ProjectStatusPill({
+    super.key,
+    required this.label,
+    required this.color,
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
 /// Container glassmorphic wrapper cho project detail bottom sheet.
 class ProjectDetailSheetContainer extends StatelessWidget {
   final Color backgroundColor;

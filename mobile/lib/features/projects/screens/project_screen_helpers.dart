@@ -2,11 +2,14 @@ part of project_screen;
 
 extension _ProjectScreenHelpers on _ProjectScreenState {
 
+  /// Primary tabs. "Mine" = projects this user owns or manages; "Shared" =
+  /// projects this user is just a member of; "Archived" = inactive states
+  /// (On Hold or Completed). "All" stays as the catch-all default.
   List<String> get _projectFilterOptions => const [
         'All',
-        'Attention',
-        'Active',
-        'Completed',
+        'Mine',
+        'Shared',
+        'Archived',
       ];
 
   List<String> get _roleFilterOptions =>
@@ -14,6 +17,9 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
 
   List<String> get _typeFilterOptions =>
       const ['All', 'Personal', 'Team', 'Study', 'Work'];
+
+  List<String> get _statusFilterOptions =>
+      const ['All', 'Active', 'On Hold', 'Completed'];
 
   List<String> get _sortOptions =>
       const ['Recent', 'Deadline', 'Progress', 'Priority'];
@@ -34,17 +40,47 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
       if (_typeFilter != 'All' && projectData.type != _typeFilter) {
         return false;
       }
-      if (_projectTab == 'Attention') {
-        return projectData.needsAttention;
+      if (_statusFilter != 'All' &&
+          projectData.stateLabel != _statusFilter) {
+        return false;
       }
-      if (_projectTab == 'Active') {
-        return projectData.stateLabel == 'Active';
-      }
-      if (_projectTab == 'Completed') {
-        return projectData.stateLabel == 'Completed';
+      switch (_projectTab) {
+        case 'Mine':
+          if (projectData.role != 'Owner' &&
+              projectData.role != 'Manager') {
+            return false;
+          }
+          break;
+        case 'Shared':
+          if (projectData.role != 'Member') return false;
+          break;
+        case 'Archived':
+          if (projectData.stateLabel != 'On Hold' &&
+              projectData.stateLabel != 'Completed') {
+            return false;
+          }
+          break;
       }
       return true;
     }).toList();
+
+    // Pin attention items to the top of the list when looking at "All", so
+    // urgent projects rise above quieter ones without needing a separate
+    // horizontal section.
+    if (_projectTab == 'All' && _sortBy == 'Recent') {
+      filtered.sort((a, b) {
+        if (a.needsAttention != b.needsAttention) {
+          return a.needsAttention ? -1 : 1;
+        }
+        if (a.needsAttention && b.needsAttention) {
+          return b.attentionScore.compareTo(a.attentionScore);
+        }
+        final aCreated = a.project.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bCreated = b.project.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bCreated.compareTo(aCreated);
+      });
+      return filtered;
+    }
 
     filtered.sort((a, b) {
       if (_sortBy == 'Deadline') {
@@ -88,6 +124,7 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
       _projectTab = 'All';
       _roleFilter = 'All';
       _typeFilter = 'All';
+      _statusFilter = 'All';
       _sortBy = 'Recent';
     });
   }
@@ -103,9 +140,11 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
             return ProjectFilterBottomSheet(
               roleFilter: _roleFilter,
               typeFilter: _typeFilter,
+              statusFilter: _statusFilter,
               sortBy: _sortBy,
               roleOptions: _roleFilterOptions,
               typeOptions: _typeFilterOptions,
+              statusOptions: _statusFilterOptions,
               sortOptions: _sortOptions,
               onRoleChanged: (value) {
                 _updateProjectState(() => _roleFilter = value);
@@ -113,6 +152,10 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
               },
               onTypeChanged: (value) {
                 _updateProjectState(() => _typeFilter = value);
+                modalSetState(() {});
+              },
+              onStatusChanged: (value) {
+                _updateProjectState(() => _statusFilter = value);
                 modalSetState(() {});
               },
               onSortChanged: (value) {

@@ -1,12 +1,19 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../calendar/screens/calendar_screen.dart';
+import '../../analytics/screens/analytics_screen.dart';
+import '../../notifications/screens/notifications_screen.dart';
+import '../../notifications/providers/notification_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback? onLogout;
+
+  const ProfileScreen({super.key, this.onLogout});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -383,6 +390,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             );
                           }),
+                          const SizedBox(height: 32),
+
+                          Text(
+                            LocaleService.tr('CÔNG CỤ', en: 'TOOLS'),
+                            style: TextStyle(
+                              color: captionColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _hubTile(
+                            icon: Icons.calendar_month_rounded,
+                            title: LocaleService.tr('Lịch', en: 'Calendar'),
+                            subtitle: LocaleService.tr(
+                              'Sự kiện và lịch trình',
+                              en: 'Events and schedule',
+                            ),
+                            color: const Color(0xFF10B981),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CalendarScreen(),
+                              ),
+                            ),
+                            textColor: textColor,
+                            subTextColor: subTextColor,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                          ),
+                          const SizedBox(height: 10),
+                          _hubTile(
+                            icon: Icons.insights_rounded,
+                            title: LocaleService.tr('Thống kê', en: 'Analytics'),
+                            subtitle: LocaleService.tr(
+                              'Báo cáo năng suất',
+                              en: 'Productivity reports',
+                            ),
+                            color: const Color(0xFF8B5CF6),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AnalyticsScreen(),
+                              ),
+                            ),
+                            textColor: textColor,
+                            subTextColor: subTextColor,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                          ),
+                          const SizedBox(height: 10),
+                          Consumer<NotificationProvider>(
+                            builder: (context, notifProvider, _) {
+                              return _hubTile(
+                                icon: Icons.notifications_outlined,
+                                title: LocaleService.tr(
+                                  'Thông báo',
+                                  en: 'Notifications',
+                                ),
+                                subtitle: LocaleService.tr(
+                                  'Lời mời và cập nhật',
+                                  en: 'Invites and updates',
+                                ),
+                                color: const Color(0xFFF59E0B),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const NotificationsScreen(),
+                                  ),
+                                ),
+                                textColor: textColor,
+                                subTextColor: subTextColor,
+                                cardBg: cardBg,
+                                borderColor: borderColor,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 28),
+
+                          Text(
+                            LocaleService.tr('CÀI ĐẶT', en: 'SETTINGS'),
+                            style: TextStyle(
+                              color: captionColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _hubTile(
+                            icon: isDark
+                                ? Icons.light_mode_rounded
+                                : Icons.dark_mode_rounded,
+                            title: LocaleService.tr(
+                              isDark ? 'Chế độ sáng' : 'Chế độ tối',
+                              en: isDark ? 'Light Mode' : 'Dark Mode',
+                            ),
+                            subtitle: LocaleService.tr(
+                              'Thay đổi giao diện',
+                              en: 'Change appearance',
+                            ),
+                            color: activeThemeColor,
+                            onTap: ThemeService.toggleTheme,
+                            textColor: textColor,
+                            subTextColor: subTextColor,
+                            cardBg: cardBg,
+                            borderColor: borderColor,
+                          ),
+                          const SizedBox(height: 10),
+                          ValueListenableBuilder<String>(
+                            valueListenable: LocaleService.languageCode,
+                            builder: (context, lang, _) {
+                              final isEn = lang == 'en';
+                              return _hubTile(
+                                icon: Icons.language_rounded,
+                                title: LocaleService.tr('Ngôn ngữ', en: 'Language'),
+                                subtitle: isEn ? 'English' : 'Tiếng Việt',
+                                color: const Color(0xFF06B6D4),
+                                onTap: LocaleService.toggleLanguage,
+                                textColor: textColor,
+                                subTextColor: subTextColor,
+                                cardBg: cardBg,
+                                borderColor: borderColor,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 28),
+                          GestureDetector(
+                            onTap: widget.onLogout,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: Colors.redAccent.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.logout_rounded,
+                                      color: Colors.redAccent, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    LocaleService.tr('Đăng xuất', en: 'Logout'),
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -422,6 +589,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _hubTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+    required Color textColor,
+    required Color subTextColor,
+    required Color cardBg,
+    required Color borderColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: subTextColor, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: subTextColor, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

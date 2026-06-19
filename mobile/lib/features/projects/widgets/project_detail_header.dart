@@ -106,7 +106,7 @@ class ProjectDetailHeader extends StatelessWidget {
               ),
             ),
             if (canShowMenu || canLeave)
-              ProjectActionMenu(
+              _ProjectActionMenu(
                 canShowMenu: canShowMenu,
                 canLeave: canLeave,
                 onEdit: onEdit,
@@ -142,15 +142,14 @@ class ProjectDetailHeader extends StatelessWidget {
 }
 
 /// Popup menu edit/delete/leave trên header project.
-class ProjectActionMenu extends StatelessWidget {
+class _ProjectActionMenu extends StatelessWidget {
   final bool canShowMenu;
   final bool canLeave;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onLeave;
 
-  const ProjectActionMenu({
-    super.key,
+  const _ProjectActionMenu({
     required this.canShowMenu,
     required this.canLeave,
     required this.onEdit,
