@@ -243,8 +243,8 @@ class _LoginScreenState extends State<LoginScreen>
         final buttonHoverColor = isDark ? const Color(0xFF1F6FEB) : const Color(0xFF0C63E4); // Main Brand Blue hover
 
         final cardColor = isDark 
-            ? const Color(0xFF161B22).withOpacity(0.9) 
-            : const Color(0xFFFFFFFF).withOpacity(0.9);
+            ? const Color(0xFF161B22).withValues(alpha: 0.9) 
+            : const Color(0xFFFFFFFF).withValues(alpha: 0.9);
         final borderColor = isDark 
             ? const Color(0xFF30363D)
             : const Color(0xFFD0D7DE);
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: themeColor.withOpacity(0.15),
+                                        color: themeColor.withValues(alpha: 0.15),
                                         blurRadius: 40,
                                         spreadRadius: 10,
                                       ),
@@ -295,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
                                     border: Border.all(
                                         color: borderColor),
                                   ),
@@ -353,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                                     boxShadow: isDark ? [] : [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
+                                        color: Colors.black.withValues(alpha: 0.05),
                                         blurRadius: 20,
                                         offset: const Offset(0, 10),
                                       )

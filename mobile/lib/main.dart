@@ -213,7 +213,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
                     color: AppColors.notifAccent.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.notifications_active_rounded,
+                  child: const Icon(Icons.notifications_active_rounded,
                       color: AppColors.notifAccent, size: 24),
                 ),
                 const SizedBox(width: 14),

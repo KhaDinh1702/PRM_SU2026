@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:intl/intl.dart';
 import '../../../services/auth_service.dart';
 import '../services/project_service.dart';
@@ -13,7 +13,7 @@ import '../../../services/locale_service.dart';
 // ⚙️ Cấu hình URL backend động:
 // Tự động phân tích từ AuthService.apiBaseUrl để hỗ trợ cả local và production.
 String get _backendBaseUrl {
-  final apiBase = AuthService.apiBaseUrl;
+  const apiBase = AuthService.apiBaseUrl;
   if (apiBase.endsWith('/api')) {
     return apiBase.substring(0, apiBase.length - 4);
   }
@@ -35,7 +35,7 @@ class ChatBottomSheet extends StatefulWidget {
 }
 
 class _ChatBottomSheetState extends State<ChatBottomSheet> {
-  IO.Socket? socket;
+  io.Socket? socket;
   List<dynamic> messages = [];
   bool isLoading = true;
   bool isSending = false;
@@ -57,14 +57,14 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       if (userData != null) {
         // authController lưu user với field "id" (không phải "_id")
         currentUserId = (userData['id'] ?? userData['_id'] ?? '').toString();
-        print('✅ currentUserId: $currentUserId');
+        debugPrint('✅ currentUserId: $currentUserId');
       }
 
       await _fetchMessages();
       _connectSocket();
       _startMessagePolling();
     } catch (e) {
-      print('Error initializing chat: $e');
+      debugPrint('Error initializing chat: $e');
       setState(() {
         isLoading = false;
       });
@@ -102,7 +102,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
         _scrollToBottom();
       }
     } catch (e) {
-      print('❌ Error fetching messages: $e');
+      debugPrint('❌ Error fetching messages: $e');
       if (mounted && !silent) {
         setState(() {
           isLoading = false;
@@ -147,15 +147,15 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
   void _connectSocket() {
     final url = _backendBaseUrl;
     if (url.contains('vercel.app')) {
-      print('⚠️ Vercel deployment detected. Socket.IO connection disabled (falling back to HTTP polling).');
+      debugPrint('⚠️ Vercel deployment detected. Socket.IO connection disabled (falling back to HTTP polling).');
       return;
     }
 
     // Kết nối socket tới local backend
     // Dùng OptionBuilder (đúng cú pháp cho socket_io_client v3.x)
-    socket = IO.io(
+    socket = io.io(
       url,
-      IO.OptionBuilder()
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
           .enableReconnection()
@@ -166,19 +166,19 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
     socket!.connect();
 
     socket!.onConnect((_) {
-      print('✅ Connected to socket server');
+      debugPrint('✅ Connected to socket server');
       socket!.emit('joinProject', widget.projectId);
     });
 
     socket!.onConnectError((err) {
-      print('❌ Socket connection error: $err');
+      debugPrint('❌ Socket connection error: $err');
     });
 
     socket!.on('receiveMessage', (data) {
       _mergeMessages([data]);
     });
 
-    socket!.onDisconnect((_) => print('🔌 Disconnected from socket server'));
+    socket!.onDisconnect((_) => debugPrint('🔌 Disconnected from socket server'));
   }
 
   Future<void> _sendMessage() async {
@@ -192,7 +192,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
       final newMessage = await _projectService.sendProjectMessage(widget.projectId, text);
       _mergeMessages([newMessage]);
     } catch (e) {
-      print('❌ Error sending message: $e');
+      debugPrint('❌ Error sending message: $e');
       _messageController.text = text;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -243,7 +243,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
         final textColor = ThemeService.getTextColor(isDark);
         final subTextColor = ThemeService.getSubTextColor(isDark);
         final borderColor = ThemeService.getBorderColor(isDark);
-        final themeColor = AppColors.projectAccent;
+        const themeColor = AppColors.projectAccent;
 
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -292,7 +292,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                   color: themeColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(AppSizes.radiusS + 4.0),
                                 ),
-                                child: Icon(
+                                child: const Icon(
                                     Icons.chat_bubble_outline_rounded,
                                     color: themeColor,
                                     size: AppSizes.iconL),
@@ -337,7 +337,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                 // Messages List
                 Expanded(
                   child: isLoading
-                      ? Center(
+                      ? const Center(
                           child: CircularProgressIndicator(color: themeColor))
                       : messages.isEmpty
                           ? Center(
@@ -409,7 +409,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                                   (sender['name'] ??
                                                           sender['email'])[0]
                                                       .toUpperCase(),
-                                                  style: TextStyle(
+                                                  style: const TextStyle(
                                                       color: themeColor,
                                                       fontWeight:
                                                           FontWeight.bold,
@@ -584,7 +584,7 @@ class _ChatBottomSheetState extends State<ChatBottomSheet> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Icon(Icons.send_rounded,
+                              : const Icon(Icons.send_rounded,
                                   color: Colors.white, size: AppSizes.iconM),
                         ),
                       ),
