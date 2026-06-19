@@ -100,7 +100,7 @@ class ProjectDetails {
       if (r is Map) {
         return ProjectMemberRole.fromJson(Map<String, dynamic>.from(r));
       }
-      return ProjectMemberRole(userId: '', role: 'Member');
+      return const ProjectMemberRole(userId: '', role: 'Member');
     }).toList();
 
     final deadlineStr = json['deadline'] ?? json['dueDate'];

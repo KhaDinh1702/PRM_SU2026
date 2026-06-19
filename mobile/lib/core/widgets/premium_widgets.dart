@@ -49,8 +49,8 @@ class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProvid
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final baseColor = isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03);
-    final highlightColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.07);
+    final baseColor = isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03);
+    final highlightColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.07);
 
     return AnimatedBuilder(
       animation: _animation,
@@ -170,19 +170,19 @@ class GlassCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final cardBgColor = isDark 
-        ? Colors.white.withOpacity(0.015) 
-        : Colors.white.withOpacity(0.7);
+        ? Colors.white.withValues(alpha: 0.015) 
+        : Colors.white.withValues(alpha: 0.7);
 
     final borderColor = isDark 
-        ? Colors.white.withOpacity(0.05) 
-        : Colors.black.withOpacity(0.04);
+        ? Colors.white.withValues(alpha: 0.05) 
+        : Colors.black.withValues(alpha: 0.04);
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: boxShadow ?? [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.15 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
           )
@@ -230,12 +230,12 @@ class PremiumInputField extends StatelessWidget {
     final hintColor = isDark ? Colors.white30 : Colors.black38;
     
     final bgInputColor = isDark 
-        ? Colors.white.withOpacity(0.02) 
-        : Colors.black.withOpacity(0.02);
+        ? Colors.white.withValues(alpha: 0.02) 
+        : Colors.black.withValues(alpha: 0.02);
 
     final borderColor = isDark 
-        ? Colors.white.withOpacity(0.06) 
-        : Colors.black.withOpacity(0.06);
+        ? Colors.white.withValues(alpha: 0.06) 
+        : Colors.black.withValues(alpha: 0.06);
 
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
