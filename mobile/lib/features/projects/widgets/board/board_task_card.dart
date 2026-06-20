@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../services/theme_service.dart';
+import '../../../tasks/models/task_model.dart';
 import '../../utils/project_board_utils.dart';
 import '../../utils/task_display.dart';
 import 'board_palette.dart';
@@ -14,7 +15,7 @@ import 'board_palette.dart';
 /// - Swipe right marks the task complete via [onSwipeComplete].
 /// - Swipe left advances the task to the next column via [onSwipeAdvance].
 class BoardTaskCard extends StatelessWidget {
-  final dynamic task;
+  final TaskModel task;
   final BoardColumn column;
   final String assigneeName;
   final bool canSwipe;
@@ -37,15 +38,13 @@ class BoardTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (task is! Map) return const SizedBox.shrink();
-
     final isDark = ThemeService.isDarkMode.value;
     final textColor = ThemeService.getTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
     final subTextColor = ThemeService.getSubTextColor(isDark);
 
-    final title = task['title']?.toString() ?? 'Untitled';
-    final priority = task['priority']?.toString() ?? 'Medium';
+    final title = task.title.isEmpty ? 'Untitled' : task.title;
+    final priority = task.priorityLabel;
     final priorityColor = BoardPalette.priorityColorFromString(priority);
     final statusColor = BoardPalette.statusColor(column);
     final dueText = taskDueText(task);
@@ -165,7 +164,7 @@ class BoardTaskCard extends StatelessWidget {
     }
 
     return Dismissible(
-      key: ValueKey(task['_id'] ?? title),
+      key: ValueKey(task.id.isEmpty ? title : task.id),
       direction: DismissDirection.horizontal,
       movementDuration: const Duration(milliseconds: 200),
       confirmDismiss: (direction) async {

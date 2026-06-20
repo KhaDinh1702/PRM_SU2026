@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/premium_widgets.dart';
 import '../../../../services/theme_service.dart';
+import '../../../tasks/models/task_model.dart';
 import '../../utils/task_display.dart';
 
 class ProjectNextTaskCard extends StatelessWidget {
-  final dynamic task;
+  final TaskModel? task;
   final String assigneeName;
   final VoidCallback? onOpenTask;
   final VoidCallback? onMarkInProgress;
@@ -65,11 +66,11 @@ class ProjectNextTaskCard extends StatelessWidget {
       );
     }
 
-    final title = task['title']?.toString() ?? 'Untitled task';
-    final priority = task['priority']?.toString() ?? 'Medium';
-    final status = task['status']?.toString() ?? 'Pending';
-    final priorityColor = taskPriorityColor(priority);
-    final dueText = taskDueText(task);
+    final taskModel = task!;
+    final title = taskModel.title.isEmpty ? 'Untitled task' : taskModel.title;
+    final priority = taskModel.priorityLabel;
+    final priorityColor = taskPriorityColor(taskModel.priority);
+    final dueText = taskDueText(taskModel);
 
     return GlassCard(
       borderRadius: 22,
@@ -128,7 +129,7 @@ class ProjectNextTaskCard extends StatelessWidget {
               ),
               _Chip(
                 label: dueText,
-                color: taskIsVisuallyOverdue(task)
+                color: taskIsVisuallyOverdue(taskModel)
                     ? AppColors.priorityUrgent
                     : subTextColor,
               ),
@@ -158,7 +159,8 @@ class ProjectNextTaskCard extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ),
-              if (status != 'In Progress' && onMarkInProgress != null) ...[
+              if (taskModel.status != TaskStatus.inProgress &&
+                  onMarkInProgress != null) ...[
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton(

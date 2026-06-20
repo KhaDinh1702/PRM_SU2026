@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../tasks/models/task_model.dart';
 import '../../models/project_activity.dart';
 import '../../models/project_model.dart';
 import 'project_activity_feed.dart';
@@ -10,7 +11,7 @@ import 'project_team_avatars.dart';
 
 class OverviewTab extends StatelessWidget {
   final ProjectModel projectData;
-  final dynamic nextTask;
+  final TaskModel? nextTask;
   final String nextTaskAssignee;
   final List<ProjectActivity> activities;
   final List<ProjectMember> teamMembers;

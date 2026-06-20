@@ -21,10 +21,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
     final nextTask = ProjectBoardUtils.pickNextTask(_projectTasks);
     final nextAssignee = nextTask == null
         ? ''
-        : _assigneeDisplayName(
-            nextTask['assignedTo'] ?? nextTask['user'],
-            project,
-          );
+        : _assigneeDisplayName(nextTask.assignedTo, project);
     final allowMembers = project.allowMembersToCreateTasks;
     final canAddTask = canManage || allowMembers;
 
@@ -34,7 +31,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
       nextTaskAssignee: nextAssignee.isEmpty ? 'Unassigned' : nextAssignee,
       activities: ProjectActivityBuilder.build(
         projectData: projectData,
-        tasks: _projectTasks,
+        tasks: _projectTasks.map((t) => t.toMap()).toList(),
         members: teamMembers,
       ),
       teamMembers: teamMembers,
@@ -42,12 +39,13 @@ extension _ProjectScreenSections on _ProjectScreenState {
       activeDays: _activeProjectDays(project),
       onOpenNextTask: nextTask == null
           ? null
-          : () => _showEditProjectTaskDialog(project, nextTask, sheetSetState),
+          : () => _showEditProjectTaskDialog(
+                project, nextTask.toMap(), sheetSetState),
       onStartNextTask: nextTask == null
           ? null
           : () => _updateProjectTaskStatus(
                 project.id,
-                nextTask['_id'].toString(),
+                nextTask.id,
                 'In Progress',
                 sheetSetState,
               ),
@@ -82,15 +80,15 @@ extension _ProjectScreenSections on _ProjectScreenState {
       tasksLoaded: _projectTasksLoaded,
       assigneeName: (assignee) => _assigneeDisplayName(assignee, project),
       canUpdateTask: (task) {
-        final assignee = task['assignedTo'] ?? task['user'];
-        return canManage || _itemId(assignee) == _currentUserId();
+        return canManage ||
+            _itemId(task.assignedTo) == _currentUserId();
       },
       onOpenTask: (task) =>
-          _showEditProjectTaskDialog(project, task, sheetSetState),
+          _showEditProjectTaskDialog(project, task.toMap(), sheetSetState),
       onMarkComplete: (task) =>
-          _handleBoardComplete(project.id, task, sheetSetState),
+          _handleBoardComplete(project.id, task.toMap(), sheetSetState),
       onMoveToNextStatus: (task) =>
-          _handleBoardAdvance(project.id, task, sheetSetState),
+          _handleBoardAdvance(project.id, task.toMap(), sheetSetState),
       onLoadTasks: () => _loadProjectTasks(project.id, sheetSetState),
       onCreateTask: canAddTask
           ? () => _showCreateProjectTaskDialog(project, sheetSetState)

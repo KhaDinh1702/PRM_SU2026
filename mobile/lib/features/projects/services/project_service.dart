@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../services/auth_service.dart';
+import '../../tasks/models/task_model.dart';
 
 /// Service xử lý tất cả API calls liên quan đến Projects.
 /// Thay thế các lời gọi http trực tiếp rải rác trong ProjectScreen.
@@ -136,8 +137,9 @@ class ProjectService {
     }
   }
 
-  /// Lấy danh sách task của project
-  Future<List<dynamic>> getProjectTasks(String projectId) async {
+  /// Lấy danh sách task của project — parsed into [TaskModel] at the
+  /// service boundary so downstream code doesn't have to deal with raw maps.
+  Future<List<TaskModel>> getProjectTasks(String projectId) async {
     final token = await AuthService.getToken();
     final response = await http.get(
       Uri.parse('${AuthService.apiBaseUrl}/projects/$projectId/tasks'),
@@ -147,8 +149,12 @@ class ProjectService {
       },
     ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) return [];
-    return jsonDecode(response.body) as List<dynamic>;
+    if (response.statusCode != 200) return const [];
+    final raw = jsonDecode(response.body) as List<dynamic>;
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(TaskModel.fromJson)
+        .toList(growable: false);
   }
 
   /// Tạo task trong project

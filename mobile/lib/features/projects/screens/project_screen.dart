@@ -14,6 +14,7 @@ import '../services/project_milestone_service.dart';
 import '../providers/project_provider.dart';
 import '../models/project_model.dart';
 import '../models/project_milestone.dart';
+import '../../tasks/models/task_model.dart';
 import '../utils/project_board_utils.dart';
 import '../utils/project_activity_builder.dart';
 import '../widgets/project_card_v2.dart';
@@ -58,7 +59,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _taskDescController = TextEditingController();
   Map<String, dynamic>? _currentUser;
-  List<dynamic> _projectTasks = [];
+  List<TaskModel> _projectTasks = const [];
   bool _isLoadingProjectTasks = false;
   bool _projectTasksLoaded = false;
   String _taskPriority = 'Medium';
@@ -422,6 +423,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
       // Gọi qua ProjectService
       final tasks = await _projectService.getProjectTasks(projectId);
       _projectTasks = tasks;
+      // Re-validate review set so it never holds ids that no longer exist.
+      final liveIds = tasks.map((t) => t.id).toSet();
+      _reviewTaskIds.retainWhere(liveIds.contains);
       _projectTasksLoaded = true;
     } catch (_) {
     } finally {

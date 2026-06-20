@@ -44,6 +44,10 @@ class TaskModel {
 
   /// Parse từ JSON response của backend
   factory TaskModel.fromJson(Map<String, dynamic> json) {
+    // Project tasks historically arrive with the assignee under either
+    // `assignedTo` (new endpoint) or `user` (older endpoint). Accept both
+    // so consumers can stop checking themselves.
+    final rawAssignee = json['assignedTo'] ?? json['user'];
     return TaskModel(
       id: json['_id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -59,10 +63,30 @@ class TaskModel {
       project: json['project'] is Map
           ? Map<String, dynamic>.from(json['project'] as Map)
           : null,
-      assignedTo: json['assignedTo'] is Map
-          ? Map<String, dynamic>.from(json['assignedTo'] as Map)
+      assignedTo: rawAssignee is Map
+          ? Map<String, dynamic>.from(rawAssignee)
           : null,
     );
+  }
+
+  /// Round-trip back to the legacy `Map<String, dynamic>` shape so
+  /// widgets that still consume raw maps can keep working while we migrate.
+  /// Once every callsite consumes [TaskModel] directly this can be removed.
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id,
+      'title': title,
+      'description': description,
+      'status': statusLabel,
+      'priority': priorityLabel,
+      if (deadline != null) 'deadline': deadline!.toIso8601String(),
+      if (dueDate != null) 'dueDate': dueDate!.toIso8601String(),
+      if (dueTime != null) 'dueTime': dueTime,
+      'notificationEnabled': notificationEnabled,
+      if (reminderType != null) 'reminderType': reminderType,
+      if (project != null) 'project': project,
+      if (assignedTo != null) 'assignedTo': assignedTo,
+    };
   }
 
   /// Tạo bản sao với một vài field được thay đổi
