@@ -5,6 +5,9 @@ import '../../../core/widgets/premium_widgets.dart';
 import '../models/calendar_item.dart';
 import '../utils/calendar_utils.dart';
 
+/// Top header for the Calendar screen: back button (if pushed), title, and
+/// a compact "+ New" CTA. Replaces the previous tall two-line header that
+/// got clipped under the status bar.
 class CalendarHeader extends StatelessWidget {
   final Color textColor;
   final Color captionColor;
@@ -19,41 +22,49 @@ class CalendarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'PERSONAL SCHEDULE',
-                style: TextStyle(
-                  color: captionColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
+    final canPop = Navigator.of(context).canPop();
+    const accent = Color(0xFF06B6D4);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+      child: Row(
+        children: [
+          if (canPop)
+            IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: Icon(Icons.arrow_back_rounded, color: textColor),
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            )
+          else
+            const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Calendar',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Calendar',
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        PremiumButton.icon(
-          onPressed: onAddPressed,
-          icon: Icons.add_rounded,
-          label: 'New',
-          backgroundColor: const Color(0xFF06B6D4),
-        ),
-      ],
+          FilledButton.icon(
+            onPressed: onAddPressed,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'New',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: accent,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -68,54 +79,80 @@ class CalendarFilterTabs extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const _labels = {
-    CalendarFilter.all: 'All',
-    CalendarFilter.events: 'Events',
-    CalendarFilter.tasks: 'Tasks',
-    CalendarFilter.project: 'Project',
-    CalendarFilter.overdue: 'Overdue',
-  };
+  /// Filter chip metadata. "Overdue" stays as a quick-access state filter
+  /// — semantically not a type, but it is the most common follow-up when
+  /// browsing dates.
+  static const _filters = <(CalendarFilter, String, IconData)>[
+    (CalendarFilter.all, 'All', Icons.layers_rounded),
+    (CalendarFilter.events, 'Events', Icons.event_rounded),
+    (CalendarFilter.tasks, 'Tasks', Icons.checklist_rounded),
+    (CalendarFilter.project, 'Projects', Icons.dns_rounded),
+    (CalendarFilter.overdue, 'Overdue', Icons.warning_amber_rounded),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeService.isDarkMode.value;
-    final textColor = ThemeService.getTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
+    const accent = Color(0xFF06B6D4);
+    const overdueAccent = Color(0xFFEF4444);
 
     return SizedBox(
-      height: 40,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        itemCount: CalendarFilter.values.length,
+        itemCount: _filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final filter = CalendarFilter.values[index];
+          final entry = _filters[index];
+          final filter = entry.$1;
+          final label = entry.$2;
+          final icon = entry.$3;
           final selected = filter == selectedFilter;
-          return GestureDetector(
-            onTap: () => onChanged(filter),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF06B6D4).withValues(alpha: 0.16)
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.035)
-                        : Colors.white.withValues(alpha: 0.72)),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected
-                      ? const Color(0xFF06B6D4)
-                      : captionColor.withValues(alpha: 0.14),
+          final accentColor =
+              filter == CalendarFilter.overdue ? overdueAccent : accent;
+
+          final fg = selected ? Colors.white : captionColor;
+          final bg = selected
+              ? accentColor
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04));
+          final border = selected
+              ? accentColor
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.08));
+
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onChanged(filter),
+              borderRadius: BorderRadius.circular(999),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: border),
                 ),
-              ),
-              child: Text(
-                _labels[filter]!,
-                style: TextStyle(
-                  color: selected ? const Color(0xFF06B6D4) : textColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 14, color: fg),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -347,6 +384,9 @@ class AgendaSection extends StatelessWidget {
         .toList()
       ..sort((a, b) => a.key.compareTo(b.key));
 
+    final countLabel =
+        items.length == 1 ? '1 item' : '${items.length} items';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -362,12 +402,20 @@ class AgendaSection extends StatelessWidget {
                 ),
               ),
             ),
-            Text(
-              '${items.length} items',
-              style: TextStyle(
-                color: captionColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: captionColor.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                countLabel,
+                style: TextStyle(
+                  color: captionColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],

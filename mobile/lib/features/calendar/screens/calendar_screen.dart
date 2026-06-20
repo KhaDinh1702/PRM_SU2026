@@ -598,7 +598,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           backgroundColor: Colors.transparent,
           body: AppScaffoldBackground(
             child: SafeArea(
-            top: false,
             child: RefreshIndicator(
               onRefresh: _loadCalendarItems,
               color: _accent,
@@ -608,7 +607,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(12, 4, 16, 0),
                     sliver: SliverToBoxAdapter(
                       child: CalendarHeader(
                         textColor: textColor,
@@ -618,7 +617,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                     sliver: SliverToBoxAdapter(
                       child: CalendarFilterTabs(
                         selectedFilter: _selectedFilter,

@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../services/theme_service.dart';
-import '../../../services/locale_service.dart';
+
 import '../../../core/widgets/app_scaffold_background.dart';
-import '../../../core/widgets/premium_widgets.dart';
+import '../../../services/locale_service.dart';
+import '../../../services/theme_service.dart';
 import '../models/notification_model.dart';
 import '../providers/notification_provider.dart';
+import '../utils/notification_deep_link.dart';
+import '../widgets/notification_day_header.dart';
+import '../widgets/notification_empty_state.dart';
+import '../widgets/notification_filter_chips.dart';
+import '../widgets/notification_invitation_card.dart';
+import '../widgets/notification_list_tile.dart';
 
+/// Notifications screen.
+///
+/// Provides a back button, SafeArea, filter chips, day-grouped list and
+/// swipe-to-mark-read for unread notifications. Invitations always render
+/// with their dedicated Accept/Reject card.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -14,19 +25,12 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  NotificationFilter _filter = NotificationFilter.all;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    
-    // Load notifications on init using provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<NotificationProvider>().loadNotifications();
@@ -34,22 +38,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     });
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadNotifications() async {
-    if (mounted) {
-      await context.read<NotificationProvider>().loadNotifications();
-    }
-  }
-
-  Future<void> _markAsRead(String notificationId) async {
-    if (mounted) {
-      await context.read<NotificationProvider>().markAsRead(notificationId);
-    }
+  Future<void> _refresh() async {
+    if (!mounted) return;
+    await context.read<NotificationProvider>().loadNotifications();
   }
 
   Future<void> _markAllAsRead(List<NotificationModel> notifications) async {
@@ -60,315 +51,119 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     for (final n in unread) {
       await provider.markAsRead(n.id);
     }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(LocaleService.tr(
+            'Đã đánh dấu tất cả là đã đọc.',
+            en: 'Marked everything as read.',
+          )),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _respondToInvitation(
-      String projectId, String notificationId, String action) async {
-    try {
-      final provider = context.read<NotificationProvider>();
-      final result = await provider.respondToInvitation(
-        projectId: projectId,
-        notificationId: notificationId,
-        action: action,
+    NotificationModel invite,
+    String action,
+  ) async {
+    final provider = context.read<NotificationProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await provider.respondToInvitation(
+      projectId: invite.invitationProjectId,
+      notificationId: invite.id,
+      action: action,
+    );
+    if (!mounted) return;
+    if (result != null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(action == 'accept'
+              ? LocaleService.tr('Đã chấp nhận lời mời!',
+                  en: 'Invitation accepted!')
+              : LocaleService.tr('Đã từ chối lời mời.',
+                  en: 'Invitation declined.')),
+          backgroundColor:
+              action == 'accept' ? const Color(0xFF10B981) : Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
-      if (mounted && result != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(action == 'accept'
-                ? LocaleService.tr('Đã chấp nhận lời mời!',
-                    en: 'Invitation accepted!')
-                : LocaleService.tr('Đã từ chối lời mời.',
-                    en: 'Invitation rejected.')),
-            backgroundColor:
-                action == 'accept' ? Colors.green : Colors.orange,
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  LocaleService.tr('Có lỗi xảy ra', en: 'An error occurred'))),
-        );
-      }
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+              LocaleService.tr('Có lỗi xảy ra', en: 'Something went wrong')),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  // --- UI Helpers --- (giờ dùng model getters thay vì switch thô)
-
-  String _timeAgo(DateTime? date) {
-    if (date == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inMinutes < 1) {
-      return LocaleService.tr('Vừa xong', en: 'Just now');
+  List<NotificationModel> _applyFilter(List<NotificationModel> source) {
+    switch (_filter) {
+      case NotificationFilter.all:
+        return source;
+      case NotificationFilter.unread:
+        return source.where((n) => !n.isRead).toList();
+      case NotificationFilter.invitations:
+        return source.where((n) => n.isPendingInvitation).toList();
     }
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} ${LocaleService.tr('phút trước', en: 'mins ago')}';
-    }
-    if (diff.inHours < 24) {
-      return '${diff.inHours} ${LocaleService.tr('giờ trước', en: 'hours ago')}';
-    }
-    if (diff.inDays < 7) {
-      return '${diff.inDays} ${LocaleService.tr('ngày trước', en: 'days ago')}';
-    }
-    return '${date.day}/${date.month}/${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    const themeColor = Color(0xFFF59E0B); // Amber for Notifications
-
     return ListenableBuilder(
       listenable: Listenable.merge(
           [ThemeService.isDarkMode, LocaleService.languageCode]),
-      builder: (context, child) {
+      builder: (context, _) {
         final isDark = ThemeService.isDarkMode.value;
         final textColor = ThemeService.getTextColor(isDark);
-        final captionColor = ThemeService.getCaptionColor(isDark);
+        final primary = ThemeService.getPrimaryColor(isDark);
 
         return Consumer<NotificationProvider>(
-          builder: (context, provider, child) {
-            final notifications = provider.notifications;
-            final isLoading = provider.isLoading;
+          builder: (context, provider, _) {
+            final all = provider.notifications;
+            final filtered = _applyFilter(all);
             final unreadCount = provider.unreadCount;
+            final invitationsCount = provider.pendingInvitations.length;
 
             return Scaffold(
               backgroundColor: Colors.transparent,
               body: AppScaffoldBackground(
-                child: RefreshIndicator(
-                onRefresh: _loadNotifications,
-                color: themeColor,
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics()),
-                  slivers: [
-                    // --- Header ---
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                        child: FadeInSlide(
-                          delayMs: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    LocaleService.tr('THÔNG BÁO',
-                                        en: 'NOTIFICATIONS'),
-                                    style: TextStyle(
-                                      color: captionColor,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Notifications',
-                                        style: TextStyle(
-                                          color: textColor,
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      if (unreadCount > 0) ...[
-                                        const SizedBox(width: 10),
-                                        AnimatedBuilder(
-                                          animation: _pulseController,
-                                          builder: (context, child) {
-                                            return Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: themeColor.withValues(alpha: 0.12 +
-                                                    _pulseController.value * 0.08),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                border: Border.all(
-                                                  color:
-                                                      themeColor.withValues(alpha: 0.3),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                '$unreadCount ${LocaleService.tr('mới', en: 'new')}',
-                                                style: const TextStyle(
-                                                  color: themeColor,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              if (unreadCount > 0)
-                                GestureDetector(
-                                  onTap: () => _markAllAsRead(notifications),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: themeColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: themeColor.withValues(alpha: 0.2),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.done_all_rounded,
-                                            color: themeColor, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          LocaleService.tr('Đọc tất cả',
-                                              en: 'Mark all as read'),
-                                          style: const TextStyle(
-                                            color: themeColor,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      _Header(
+                        title:
+                            LocaleService.tr('Thông báo', en: 'Notifications'),
+                        textColor: textColor,
+                        primary: primary,
+                        showMarkAll: unreadCount > 0,
+                        onMarkAll: () => _markAllAsRead(all),
+                      ),
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(top: 4, bottom: 10),
+                        child: NotificationFilterChips(
+                          selected: _filter,
+                          onChanged: (next) => setState(() => _filter = next),
+                          unreadCount: unreadCount,
+                          invitationsCount: invitationsCount,
                         ),
                       ),
-                    ),
-
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                    if (notifications.any((n) => n.isPendingInvitation))
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                LocaleService.tr('Lời mời dự án',
-                                    en: 'Project Invitations'),
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              ...notifications
-                                  .where((n) => n.isPendingInvitation)
-                                  .map((invite) =>
-                                      _buildInvitationCard(invite, isDark)),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
+                      Expanded(
+                        child: _buildBody(
+                          provider: provider,
+                          filtered: filtered,
+                          primary: primary,
                         ),
                       ),
-
-                    // --- Content ---
-                    if (isLoading)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            children: List.generate(
-                                5,
-                                (i) => const Padding(
-                                      padding: EdgeInsets.only(bottom: 12),
-                                      child: ShimmerLoading(
-                                          width: double.infinity,
-                                          height: 100,
-                                          borderRadius: 20),
-                                    )),
-                          ),
-                        ),
-                      )
-                    else if (notifications.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                          child: FadeInSlide(
-                            delayMs: 100,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: themeColor.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications_off_rounded,
-                                    color: themeColor.withValues(alpha: 0.5),
-                                    size: 48,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  LocaleService.tr('You are all caught up!',
-                                      en: 'You are all caught up!'),
-                                  style: TextStyle(
-                                    color: textColor,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  LocaleService.tr(
-                                      'Không có thông báo nào. Hãy quay lại sau!',
-                                      en: 'No notifications. Check back later!'),
-                                  style: TextStyle(
-                                    color: captionColor,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final notification = notifications
-                                  .where((n) => !n.isPendingInvitation)
-                                  .toList()[index];
-                              return FadeInSlide(
-                                delayMs: 80 * index,
-                                child: _buildNotificationCard(notification, isDark),
-                              );
-                            },
-                            childCount: notifications
-                                .where((n) => !n.isPendingInvitation)
-                                .length,
-                          ),
-                        ),
-                      ),
-
-                    // Bottom padding for navbar
-                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               ),
             );
           },
@@ -377,227 +172,199 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  Widget _buildNotificationCard(
-      NotificationModel notification, bool isDark) {
-    final isRead = notification.isRead;
-    // Dùng getter từ model thay vì switch thủ công
-    final color = notification.typeColor;
-    final textColor = ThemeService.getTextColor(isDark);
-    final subTextColor = ThemeService.getSubTextColor(isDark);
-    final captionColor = ThemeService.getCaptionColor(isDark);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GestureDetector(
-        onTap: () {
-          if (!isRead) _markAsRead(notification.id);
-        },
-        child: GlassCard(
-          borderRadius: 20,
-          padding: const EdgeInsets.all(18),
-          boxShadow: isRead
-              ? []
-              : [
-                  BoxShadow(
-                    color: color.withValues(alpha: isDark ? 0.08 : 0.12),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: isRead ? 0.06 : 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: color.withValues(alpha: isRead ? 0.08 : 0.2),
-                  ),
-                ),
-                child: Icon(
-                  notification.typeIcon,
-                  color: color.withValues(alpha: isRead ? 0.5 : 1.0),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            notification.typeLabel,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        if (!isRead)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: color,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: color.withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      notification.title.isNotEmpty
-                          ? notification.title
-                          : LocaleService.tr('Thông báo', en: 'Notification'),
-                      style: TextStyle(
-                        color: isRead ? subTextColor : textColor,
-                        fontSize: 14,
-                        fontWeight:
-                            isRead ? FontWeight.w500 : FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.message,
-                      style: TextStyle(
-                        color: isRead ? captionColor : subTextColor,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _timeAgo(notification.createdAt),
-                      style: TextStyle(
-                        color: captionColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInvitationCard(
-    NotificationModel invite,
-    bool isDark,
-  ) {
-    final textColor = ThemeService.getTextColor(isDark);
-    final subTextColor = ThemeService.getSubTextColor(isDark);
-    // Dùng getter từ model thay vì map['field'] thủ công
-    final projectName = invite.invitationProjectName;
-    final senderName = invite.senderName;
-    final projectId = invite.invitationProjectId;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        borderRadius: 20,
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBody({
+    required NotificationProvider provider,
+    required List<NotificationModel> filtered,
+    required Color primary,
+  }) {
+    if (provider.isLoading && filtered.isEmpty) {
+      return Center(child: CircularProgressIndicator(color: primary));
+    }
+    if (filtered.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        color: primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.group_add_rounded,
-                    color: Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        projectName,
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        LocaleService.tr(
-                          '$senderName đã mời bạn tham gia dự án',
-                          en: '$senderName invited you to join the project',
-                        ),
-                        style: TextStyle(
-                          color: subTextColor,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: PremiumButton.icon(
-                    onPressed: projectId.isEmpty
-                        ? null
-                        : () => _respondToInvitation(
-                            projectId, invite.id, 'accept'),
-                    icon: Icons.check,
-                    label: LocaleService.tr('Chấp nhận', en: 'Accept'),
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: PremiumButton.icon(
-                    onPressed: projectId.isEmpty
-                        ? null
-                        : () => _respondToInvitation(
-                            projectId, invite.id, 'reject'),
-                    icon: Icons.close,
-                    label: LocaleService.tr('Từ chối', en: 'Reject'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 40),
+            NotificationEmptyState(filter: _filter),
           ],
         ),
+      );
+    }
+
+    final groups = _groupByDay(filtered);
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: primary,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+        itemCount: groups.length,
+        itemBuilder: (context, index) {
+          final group = groups[index];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NotificationDayHeader(label: group.label),
+              for (final notification in group.items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: notification.isPendingInvitation
+                      ? NotificationInvitationCard(
+                          invite: notification,
+                          onRespond: (action) =>
+                              _respondToInvitation(notification, action),
+                        )
+                      : NotificationListTile(
+                          notification: notification,
+                          onTap: () => NotificationDeepLink.open(
+                              context, notification),
+                          onMarkRead: () => context
+                              .read<NotificationProvider>()
+                              .markAsRead(notification.id),
+                        ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
+
+  /// Groups notifications into Today / Yesterday / Earlier this week / Older.
+  List<_DayGroup> _groupByDay(List<NotificationModel> items) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final groups = <String, List<NotificationModel>>{
+      _GroupKey.today: [],
+      _GroupKey.yesterday: [],
+      _GroupKey.thisWeek: [],
+      _GroupKey.older: [],
+    };
+
+    for (final n in items) {
+      final created = n.createdAt;
+      if (created == null) {
+        groups[_GroupKey.older]!.add(n);
+        continue;
+      }
+      final createdDay =
+          DateTime(created.year, created.month, created.day);
+      final diff = today.difference(createdDay).inDays;
+      if (diff <= 0) {
+        groups[_GroupKey.today]!.add(n);
+      } else if (diff == 1) {
+        groups[_GroupKey.yesterday]!.add(n);
+      } else if (diff < 7) {
+        groups[_GroupKey.thisWeek]!.add(n);
+      } else {
+        groups[_GroupKey.older]!.add(n);
+      }
+    }
+
+    return [
+      if (groups[_GroupKey.today]!.isNotEmpty)
+        _DayGroup(
+          label: LocaleService.tr('HÔM NAY', en: 'TODAY'),
+          items: groups[_GroupKey.today]!,
+        ),
+      if (groups[_GroupKey.yesterday]!.isNotEmpty)
+        _DayGroup(
+          label: LocaleService.tr('HÔM QUA', en: 'YESTERDAY'),
+          items: groups[_GroupKey.yesterday]!,
+        ),
+      if (groups[_GroupKey.thisWeek]!.isNotEmpty)
+        _DayGroup(
+          label: LocaleService.tr('TUẦN NÀY', en: 'EARLIER THIS WEEK'),
+          items: groups[_GroupKey.thisWeek]!,
+        ),
+      if (groups[_GroupKey.older]!.isNotEmpty)
+        _DayGroup(
+          label: LocaleService.tr('CŨ HƠN', en: 'OLDER'),
+          items: groups[_GroupKey.older]!,
+        ),
+    ];
+  }
+}
+
+class _DayGroup {
+  final String label;
+  final List<NotificationModel> items;
+  const _DayGroup({required this.label, required this.items});
+}
+
+/// Custom header row used in place of Scaffold.appBar so the gradient
+/// background (from [AppScaffoldBackground]) extends all the way to the top
+/// of the screen instead of leaving a transparent AppBar area that exposes
+/// the device's default black background.
+class _Header extends StatelessWidget {
+  final String title;
+  final Color textColor;
+  final Color primary;
+  final bool showMarkAll;
+  final VoidCallback onMarkAll;
+
+  const _Header({
+    required this.title,
+    required this.textColor,
+    required this.primary,
+    required this.showMarkAll,
+    required this.onMarkAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 12, 4),
+      child: Row(
+        children: [
+          if (canPop)
+            IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: Icon(Icons.arrow_back_rounded, color: textColor),
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            )
+          else
+            const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          if (showMarkAll)
+            TextButton.icon(
+              onPressed: onMarkAll,
+              icon: Icon(Icons.done_all_rounded, size: 18, color: primary),
+              label: Text(
+                LocaleService.tr('Đọc hết', en: 'Mark all'),
+                style: TextStyle(
+                  color: primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupKey {
+  static const today = 'today';
+  static const yesterday = 'yesterday';
+  static const thisWeek = 'this_week';
+  static const older = 'older';
 }
