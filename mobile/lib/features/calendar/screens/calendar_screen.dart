@@ -8,6 +8,7 @@ import '../../../features/calendar/utils/calendar_utils.dart';
 import '../../../features/calendar/widgets/calendar_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../../../core/widgets/app_scaffold_background.dart';
 import '../../../core/widgets/premium_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -595,7 +596,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: SafeArea(
+          body: AppScaffoldBackground(
+            child: SafeArea(
             top: false,
             child: RefreshIndicator(
               onRefresh: _loadCalendarItems,
@@ -677,6 +679,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ],
               ),
             ),
+          ),
           ),
         );
       },

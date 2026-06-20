@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
@@ -409,6 +410,7 @@ class _TaskScreenState extends State<TaskScreen> {
                             ],
                           ),
                         ),
+                        const NotificationBell(),
                         IconButton(
                           tooltip: 'Filters',
                           onPressed: _showFilterSheet,

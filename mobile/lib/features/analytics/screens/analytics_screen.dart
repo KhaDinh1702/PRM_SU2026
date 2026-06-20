@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/widgets/app_scaffold_background.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
@@ -89,7 +90,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: RefreshIndicator(
+          body: AppScaffoldBackground(
+            child: RefreshIndicator(
             onRefresh: _loadReports,
             color: themeColor,
             child: SingleChildScrollView(
@@ -314,6 +316,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ],
               ),
             ),
+          ),
           ),
         );
       },

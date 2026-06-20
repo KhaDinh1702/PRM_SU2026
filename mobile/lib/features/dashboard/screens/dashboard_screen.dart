@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
@@ -80,9 +81,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         delegate: SliverChildListDelegate([
                           FadeInSlide(
                             delayMs: 0,
-                            child: DashboardGreetingHeader(
-                              userName: userName,
-                              productivityScore: data.productivityScore,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: DashboardGreetingHeader(
+                                    userName: userName,
+                                    productivityScore: data.productivityScore,
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: NotificationBell(),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 24),

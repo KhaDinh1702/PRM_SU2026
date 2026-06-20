@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
+import '../../../core/widgets/app_scaffold_background.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../models/notification_model.dart';
 import '../providers/notification_provider.dart';
@@ -135,7 +136,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
             return Scaffold(
               backgroundColor: Colors.transparent,
-              body: RefreshIndicator(
+              body: AppScaffoldBackground(
+                child: RefreshIndicator(
                 onRefresh: _loadNotifications,
                 color: themeColor,
                 child: CustomScrollView(
@@ -366,6 +368,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                     const SliverToBoxAdapter(child: SizedBox(height: 100)),
                   ],
                 ),
+              ),
               ),
             );
           },
