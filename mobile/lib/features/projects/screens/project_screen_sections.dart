@@ -98,10 +98,37 @@ extension _ProjectScreenSections on _ProjectScreenState {
     );
   }
 
-  Widget _buildProjectTimelineTab(StateSetter sheetSetState) {
+  Widget _buildProjectTimelineTab(
+    ProjectDetails project,
+    ProjectModel projectData,
+    bool canManage,
+    StateSetter sheetSetState,
+  ) {
     return ProjectTimelineTab(
       milestones: _projectMilestones,
       isLoading: _milestonesLoading,
+      onCreateMilestone: canManage
+          ? () => _showCreateMilestoneDialog(
+                project, projectData, sheetSetState)
+          : null,
+      onEditMilestone: canManage
+          ? (milestone) => _showEditMilestoneSheet(
+                project, projectData, milestone, sheetSetState)
+          : null,
+      onDeleteMilestone: canManage
+          ? (milestone) => _confirmDeleteMilestone(
+                project, projectData, milestone, sheetSetState)
+          : null,
+      onToggleComplete: canManage
+          ? (milestone) async {
+              await _milestoneService.toggleCompleted(
+                projectId: project.id,
+                current: _projectMilestones,
+                milestoneId: milestone.id,
+              );
+              await _loadProjectMilestones(projectData, sheetSetState);
+            }
+          : null,
     );
   }
 
@@ -146,39 +173,71 @@ extension _ProjectScreenSections on _ProjectScreenState {
     ProjectModel projectData,
     StateSetter sheetSetState,
   ) async {
-    _milestoneTitleController.clear();
-    await showDialog(
+    final result = await MilestoneCreateSheet.show(context);
+    if (result == null) return;
+    await _milestoneService.addMilestone(
+      projectId: project.id,
+      current: _projectMilestones,
+      title: result.title,
+      description: result.description.isEmpty ? null : result.description,
+      targetDate: result.targetDate,
+    );
+    await _loadProjectMilestones(projectData, sheetSetState);
+  }
+
+  Future<void> _showEditMilestoneSheet(
+    ProjectDetails project,
+    ProjectModel projectData,
+    ProjectMilestone milestone,
+    StateSetter sheetSetState,
+  ) async {
+    final result = await MilestoneCreateSheet.show(context, initial: milestone);
+    if (result == null) return;
+    await _milestoneService.updateMilestone(
+      projectId: project.id,
+      current: _projectMilestones,
+      milestoneId: milestone.id,
+      title: result.title,
+      description: result.description.isEmpty ? null : result.description,
+      targetDate: result.targetDate,
+      clearTargetDate: result.targetDate == null,
+    );
+    await _loadProjectMilestones(projectData, sheetSetState);
+  }
+
+  Future<void> _confirmDeleteMilestone(
+    ProjectDetails project,
+    ProjectModel projectData,
+    ProjectMilestone milestone,
+    StateSetter sheetSetState,
+  ) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create Milestone'),
-        content: PremiumInputField(
-          controller: _milestoneTitleController,
-          label: 'Title',
-          hintText: 'e.g. UI Complete',
-          prefixIcon: Icons.flag_rounded,
+        title: const Text('Delete milestone?'),
+        content: Text(
+          'Remove "${milestone.title}" from the timeline? This cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
-              final title = _milestoneTitleController.text.trim();
-              if (title.isEmpty) return;
-              await _milestoneService.addMilestone(
-                projectId: project.id,
-                current: _projectMilestones,
-                title: title,
-              );
-              if (context.mounted) Navigator.pop(context);
-              await _loadProjectMilestones(projectData, sheetSetState);
-            },
-            child: const Text('Create'),
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
+    if (confirm != true) return;
+    await _milestoneService.deleteMilestone(
+      projectId: project.id,
+      current: _projectMilestones,
+      milestoneId: milestone.id,
+    );
+    await _loadProjectMilestones(projectData, sheetSetState);
   }
 
   void _showMembersManagementSheet(
@@ -479,7 +538,12 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                 canManage,
                                 sheetSetState,
                               ),
-                              _buildProjectTimelineTab(sheetSetState),
+                              _buildProjectTimelineTab(
+                                project,
+                                projectData,
+                                canManage,
+                                sheetSetState,
+                              ),
                               _buildProjectChatTab(
                                 project,
                                 textColor,

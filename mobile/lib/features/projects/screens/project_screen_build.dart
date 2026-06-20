@@ -58,7 +58,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const NotificationBell(),
+                    const SizedBox(width: 8),
                     PremiumButton.icon(
                       onPressed: _showCreateProjectDialog,
                       icon: Icons.add,

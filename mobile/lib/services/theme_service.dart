@@ -53,7 +53,11 @@ class ThemeService {
   }
 
   static Color getCaptionColor(bool isDark) {
-    return isDark ? const Color(0xFF484F58) : const Color(0xFF8C959F);
+    // Dark value was #484F58 — contrast vs #0D1117 background was ~2.5:1
+    // (fails WCAG AA). Move to #6E7681 which gives ~5.5:1 while still
+    // staying one tier dimmer than `getSubTextColor` (#8B949E) so we keep
+    // the 3-step text hierarchy.
+    return isDark ? const Color(0xFF6E7681) : const Color(0xFF8C959F);
   }
 
   static Color getDialogBackgroundColor(bool isDark) {

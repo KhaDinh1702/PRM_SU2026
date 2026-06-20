@@ -168,13 +168,17 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    final cardBgColor = isDark 
-        ? Colors.white.withValues(alpha: 0.015) 
+
+    // Previously the dark variant used `Colors.white.withValues(alpha: 0.015)`
+    // (about 1.5% alpha) which made the card essentially invisible on the
+    // app's near-black scaffold background. Bump it to a level that reads as
+    // a real card while keeping the glassy feel.
+    final cardBgColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
         : Colors.white.withValues(alpha: 0.7);
 
-    final borderColor = isDark 
-        ? Colors.white.withValues(alpha: 0.05) 
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
         : Colors.black.withValues(alpha: 0.04);
 
     return Container(

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/theme_service.dart';
 import '../../../services/locale_service.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../widgets/chat/chat_bottom_sheet.dart';
 import '../services/project_service.dart';
@@ -24,6 +25,7 @@ import '../widgets/project_detail_header.dart';
 import '../widgets/overview/overview_tab.dart';
 import '../widgets/board/board_tab.dart';
 import '../widgets/timeline/timeline_tab.dart';
+import '../widgets/timeline/milestone_create_sheet.dart';
 import '../widgets/members/members_tab.dart';
 import '../widgets/chat/chat_tab.dart';
 import '../widgets/project_detail_fab.dart';
@@ -77,8 +79,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final Set<String> _reviewTaskIds = {};
   List<ProjectMilestone> _projectMilestones = [];
   bool _milestonesLoading = false;
-  final TextEditingController _milestoneTitleController =
-      TextEditingController();
 
   void _updateProjectState(VoidCallback update) {
     if (!mounted) return;
@@ -303,7 +303,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _projectSearchController.dispose();
     _taskTitleController.dispose();
     _taskDescController.dispose();
-    _milestoneTitleController.dispose();
     super.dispose();
   }
 
