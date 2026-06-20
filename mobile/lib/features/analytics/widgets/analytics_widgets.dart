@@ -120,63 +120,60 @@ class AnalyticsStatCard extends StatelessWidget {
     final captionColor = ThemeService.getCaptionColor(isDark);
 
     return GlassCard(
-      borderRadius: 20,
-      padding: const EdgeInsets.all(AppSizes.paddingM),
+      borderRadius: 18,
+      padding: const EdgeInsets.all(AppSizes.paddingM - 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
             children: [
-              Icon(icon, color: color, size: 22),
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: textColor,
+                    height: 1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (unit.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: AppSizes.fontS,
+                    color: captionColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                textBaseline: TextBaseline.alphabetic,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                children: [
-                  Flexible(
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (unit.isNotEmpty) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      unit,
-                      style: TextStyle(fontSize: AppSizes.fontS, color: captionColor),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppSizes.fontS,
-                  color: subTextColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: AppSizes.fontS + 1,
+              color: subTextColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -516,28 +513,31 @@ class AnalyticsBarChart extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.bar_chart_rounded,
-                size: 44,
-                color: captionColor.withValues(alpha: 0.3),
-              ),
+              const Text('📊', style: TextStyle(fontSize: 44)),
               const SizedBox(height: 12),
               Text(
                 LocaleService.tr('Chưa có dữ liệu thống kê',
-                    en: 'No stats data available'),
+                    en: 'No stats yet'),
                 style: TextStyle(
                   color: textColor,
                   fontSize: AppSizes.fontM,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                LocaleService.tr('Hãy bắt đầu hoạt động để ghi nhận dữ liệu',
-                    en: 'Start active tasks to see details here'),
-                style: TextStyle(
-                  color: captionColor,
-                  fontSize: AppSizes.fontS,
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  LocaleService.tr(
+                    'Hãy bắt đầu hoàn thành task hoặc chạy Focus session để ghi nhận dữ liệu.',
+                    en: 'Complete a task or run a Focus session to start tracking.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: captionColor,
+                    fontSize: AppSizes.fontS + 1,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],

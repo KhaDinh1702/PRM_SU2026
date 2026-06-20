@@ -91,45 +91,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: AppScaffoldBackground(
+            child: SafeArea(
             child: RefreshIndicator(
             onRefresh: _loadReports,
             color: themeColor,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics()),
-              padding: const EdgeInsets.all(AppSizes.paddingL),
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.paddingL,
+                4,
+                AppSizes.paddingL,
+                AppSizes.paddingL,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- Header ---
-                  FadeInSlide(
-                    delayMs: 0,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          LocaleService.tr('THỐNG KÊ NĂNG SUẤT',
-                              en: 'PRODUCTIVITY STATS'),
-                          style: TextStyle(
-                            color: captionColor,
-                            fontSize: AppSizes.fontS,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Analytics & Reports',
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: AppSizes.fontXXL,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  // --- Header with back button ---
+                  _AnalyticsHeader(textColor: textColor),
+                  const SizedBox(height: 16),
 
                   // --- Range selector pills ---
                   FadeInSlide(
@@ -173,18 +153,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   // --- Focus Time Chart ---
                   FadeInSlide(
                     delayMs: 400,
-                    child: Text(
-                      LocaleService.tr('BIỂU ĐỒ THỜI GIAN TẬP TRUNG',
-                          en: 'FOCUS TIME CHART'),
-                      style: TextStyle(
-                        color: captionColor,
-                        fontSize: AppSizes.fontS,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.bolt_rounded,
+                            size: 16,
+                            color: const Color(0xFFEC4899)
+                                .withValues(alpha: 0.8)),
+                        const SizedBox(width: 6),
+                        Text(
+                          LocaleService.tr('THỜI GIAN TẬP TRUNG',
+                              en: 'FOCUS TIME'),
+                          style: TextStyle(
+                            color: captionColor,
+                            fontSize: AppSizes.fontS + 1,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.6,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _isLoading
                       ? const ShimmerLoading(
                           width: double.infinity,
@@ -318,8 +307,50 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
           ),
+          ),
         );
       },
+    );
+  }
+}
+
+/// Top header for the Analytics screen: back button (if pushed) + title.
+class _AnalyticsHeader extends StatelessWidget {
+  final Color textColor;
+
+  const _AnalyticsHeader({required this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          if (canPop)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                style: IconButton.styleFrom(padding: EdgeInsets.zero),
+              ),
+            ),
+          Expanded(
+            child: Text(
+              LocaleService.tr('Phân tích', en: 'Analytics'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
