@@ -1,3 +1,5 @@
+import '../../tasks/models/task_model.dart';
+
 /// Mobile Kanban columns mapped to backend task statuses.
 enum BoardColumn { todo, inProgress, review, completed }
 
@@ -28,16 +30,12 @@ class ProjectBoardUtils {
   }
 
   static BoardColumn columnForTask(
-    dynamic task,
+    TaskModel task,
     Set<String> reviewTaskIds,
   ) {
-    if (task is! Map) return BoardColumn.todo;
-    final status = task['status']?.toString() ?? 'Pending';
-    final id = task['_id']?.toString() ?? '';
-
-    if (status == 'Completed') return BoardColumn.completed;
-    if (status == 'In Progress') {
-      return reviewTaskIds.contains(id)
+    if (task.status == TaskStatus.completed) return BoardColumn.completed;
+    if (task.status == TaskStatus.inProgress) {
+      return reviewTaskIds.contains(task.id)
           ? BoardColumn.review
           : BoardColumn.inProgress;
     }
@@ -65,36 +63,34 @@ class ProjectBoardUtils {
   static bool shouldMarkReview(BoardColumn column) =>
       column == BoardColumn.review;
 
-  static int priorityWeight(String? priority) {
-    switch (priority?.toLowerCase()) {
-      case 'urgent':
+  static int priorityWeight(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.urgent:
         return 4;
-      case 'high':
+      case TaskPriority.high:
         return 3;
-      case 'medium':
+      case TaskPriority.medium:
         return 2;
-      case 'low':
+      case TaskPriority.low:
         return 1;
-      default:
-        return 0;
     }
   }
 
-  static dynamic pickNextTask(List<dynamic> tasks) {
-    final open = tasks.where((task) {
-      if (task is! Map) return false;
-      return (task['status'] ?? '') != 'Completed';
-    }).toList();
-
+  /// Picks the most important still-open task — used by the project overview
+  /// "next task" surface.
+  static TaskModel? pickNextTask(List<TaskModel> tasks) {
+    final open = tasks
+        .where((task) => task.status != TaskStatus.completed)
+        .toList();
     if (open.isEmpty) return null;
 
     open.sort((a, b) {
-      final pa = priorityWeight(a['priority']?.toString());
-      final pb = priorityWeight(b['priority']?.toString());
+      final pa = priorityWeight(a.priority);
+      final pb = priorityWeight(b.priority);
       if (pa != pb) return pb.compareTo(pa);
 
-      final da = _dueMillis(a);
-      final db = _dueMillis(b);
+      final da = a.effectiveDueDateTime?.millisecondsSinceEpoch;
+      final db = b.effectiveDueDateTime?.millisecondsSinceEpoch;
       if (da != null && db != null) return da.compareTo(db);
       if (da != null) return -1;
       if (db != null) return 1;
@@ -102,12 +98,5 @@ class ProjectBoardUtils {
     });
 
     return open.first;
-  }
-
-  static int? _dueMillis(dynamic task) {
-    if (task is! Map) return null;
-    final raw = task['deadline'] ?? task['dueDate'];
-    if (raw == null) return null;
-    return DateTime.tryParse(raw.toString())?.millisecondsSinceEpoch;
   }
 }

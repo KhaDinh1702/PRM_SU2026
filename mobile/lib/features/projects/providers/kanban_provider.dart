@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../tasks/models/task_model.dart';
 import '../utils/project_board_utils.dart';
 
 /// Sort criteria for the mobile Kanban board.
@@ -115,18 +116,17 @@ class KanbanProvider extends ChangeNotifier {
   /// Group the given task list into board columns after applying search,
   /// filter and sort. Tasks that don't match the active query / filters are
   /// dropped before grouping.
-  Map<BoardColumn, List<dynamic>> groupTasks(
-    List<dynamic> tasks,
+  Map<BoardColumn, List<TaskModel>> groupTasks(
+    List<TaskModel> tasks,
     Set<String> reviewTaskIds,
   ) {
-    final grouped = <BoardColumn, List<dynamic>>{
+    final grouped = <BoardColumn, List<TaskModel>>{
       for (final column in ProjectBoardUtils.columnOrder) column: [],
     };
 
     final query = _query.trim().toLowerCase();
 
     for (final task in tasks) {
-      if (task is! Map) continue;
       final column = ProjectBoardUtils.columnForTask(task, reviewTaskIds);
 
       if (_statusFilter != null && _statusFilter != column) continue;
@@ -147,14 +147,13 @@ class KanbanProvider extends ChangeNotifier {
   /// popup, derived from the supplied tasks. Tasks without an assignee are
   /// ignored.
   List<({String id, String name})> assigneeOptions(
-    List<dynamic> tasks,
-    String Function(dynamic assignee) resolveName,
+    List<TaskModel> tasks,
+    String Function(Map<String, dynamic>? assignee) resolveName,
   ) {
     final seen = <String>{};
     final result = <({String id, String name})>[];
     for (final task in tasks) {
-      if (task is! Map) continue;
-      final assignee = task['assignedTo'] ?? task['user'];
+      final assignee = task.assignedTo;
       final id = _assigneeId(assignee);
       if (id.isEmpty || seen.contains(id)) continue;
       seen.add(id);
@@ -166,80 +165,59 @@ class KanbanProvider extends ChangeNotifier {
 
   // --- Internal helpers ---
 
-  bool _matchesQuery(Map task, String query) {
+  bool _matchesQuery(TaskModel task, String query) {
     if (query.isEmpty) return true;
-    final title = (task['title'] ?? '').toString().toLowerCase();
-    final description = (task['description'] ?? '').toString().toLowerCase();
+    final title = task.title.toLowerCase();
+    final description = task.description.toLowerCase();
     return title.contains(query) || description.contains(query);
   }
 
-  bool _matchesPriority(Map task) {
+  bool _matchesPriority(TaskModel task) {
     if (_priorityFilter == null) return true;
-    final raw = (task['priority'] ?? '').toString().toLowerCase();
     switch (_priorityFilter!) {
       case KanbanPriority.low:
-        return raw == 'low';
+        return task.priority == TaskPriority.low;
       case KanbanPriority.medium:
-        return raw == 'medium';
+        return task.priority == TaskPriority.medium;
       case KanbanPriority.high:
         // Urgent is treated as a stronger flavour of High.
-        return raw == 'high' || raw == 'urgent';
+        return task.priority == TaskPriority.high ||
+            task.priority == TaskPriority.urgent;
     }
   }
 
-  bool _matchesAssignee(Map task) {
+  bool _matchesAssignee(TaskModel task) {
     if (_assigneeFilter == null) return true;
-    final id = _assigneeId(task['assignedTo'] ?? task['user']);
-    return id == _assigneeFilter;
+    return _assigneeId(task.assignedTo) == _assigneeFilter;
   }
 
-  int _compareTasks(dynamic a, dynamic b) {
+  int _compareTasks(TaskModel a, TaskModel b) {
     switch (_sort) {
       case KanbanSort.priority:
-        final pa = ProjectBoardUtils.priorityWeight(a['priority']?.toString());
-        final pb = ProjectBoardUtils.priorityWeight(b['priority']?.toString());
+        final pa = ProjectBoardUtils.priorityWeight(a.priority);
+        final pb = ProjectBoardUtils.priorityWeight(b.priority);
         if (pa != pb) return pb.compareTo(pa);
         return _compareByDue(a, b);
       case KanbanSort.recentlyUpdated:
-        final ua = _millis(a, 'updatedAt') ?? _millis(a, 'createdAt');
-        final ub = _millis(b, 'updatedAt') ?? _millis(b, 'createdAt');
-        if (ua != null && ub != null) return ub.compareTo(ua);
-        if (ua != null) return -1;
-        if (ub != null) return 1;
-        return 0;
+        // TaskModel does not carry updatedAt explicitly — fall back to
+        // due-date ordering which is the next-most-meaningful signal.
+        return _compareByDue(a, b);
       case KanbanSort.dueDate:
         return _compareByDue(a, b);
     }
   }
 
-  int _compareByDue(dynamic a, dynamic b) {
-    final da = _dueMillis(a);
-    final db = _dueMillis(b);
+  int _compareByDue(TaskModel a, TaskModel b) {
+    final da = a.effectiveDueDateTime?.millisecondsSinceEpoch;
+    final db = b.effectiveDueDateTime?.millisecondsSinceEpoch;
     if (da != null && db != null) return da.compareTo(db);
     if (da != null) return -1;
     if (db != null) return 1;
     return 0;
   }
 
-  static String _assigneeId(dynamic assignee) {
-    if (assignee is Map) {
-      return (assignee['_id'] ?? assignee['id'] ?? '').toString();
-    }
+  static String _assigneeId(Map<String, dynamic>? assignee) {
     if (assignee == null) return '';
-    return assignee.toString();
-  }
-
-  static int? _dueMillis(dynamic task) {
-    if (task is! Map) return null;
-    final raw = task['deadline'] ?? task['dueDate'];
-    if (raw == null) return null;
-    return DateTime.tryParse(raw.toString())?.millisecondsSinceEpoch;
-  }
-
-  static int? _millis(dynamic task, String key) {
-    if (task is! Map) return null;
-    final raw = task[key];
-    if (raw == null) return null;
-    return DateTime.tryParse(raw.toString())?.millisecondsSinceEpoch;
+    return (assignee['_id'] ?? assignee['id'] ?? '').toString();
   }
 }

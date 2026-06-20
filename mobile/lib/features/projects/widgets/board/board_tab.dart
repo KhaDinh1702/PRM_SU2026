@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../services/theme_service.dart';
+import '../../../tasks/models/task_model.dart';
 import '../../providers/kanban_provider.dart';
 import '../../utils/project_board_utils.dart';
 import 'board_empty_state.dart';
@@ -19,15 +20,15 @@ import 'board_task_card.dart';
 /// internally-scoped [KanbanProvider] so the rest of the screen does not need
 /// to know about them.
 class BoardTab extends StatelessWidget {
-  final List<dynamic> tasks;
+  final List<TaskModel> tasks;
   final Set<String> reviewTaskIds;
   final bool isLoading;
   final bool tasksLoaded;
-  final String Function(dynamic assignee) assigneeName;
-  final bool Function(dynamic task) canUpdateTask;
-  final void Function(dynamic task) onOpenTask;
-  final void Function(dynamic task) onMarkComplete;
-  final void Function(dynamic task) onMoveToNextStatus;
+  final String Function(Map<String, dynamic>? assignee) assigneeName;
+  final bool Function(TaskModel task) canUpdateTask;
+  final void Function(TaskModel task) onOpenTask;
+  final void Function(TaskModel task) onMarkComplete;
+  final void Function(TaskModel task) onMoveToNextStatus;
   final VoidCallback onLoadTasks;
 
   /// Optional. When supplied, a Floating Action Button is shown that
@@ -36,7 +37,7 @@ class BoardTab extends StatelessWidget {
   final VoidCallback? onCreateTask;
 
   /// Optional. Long-press handler. Falls back to [onOpenTask] when omitted.
-  final void Function(dynamic task)? onLongPressTask;
+  final void Function(TaskModel task)? onLongPressTask;
 
   const BoardTab({
     super.key,
@@ -77,16 +78,16 @@ class BoardTab extends StatelessWidget {
 }
 
 class _BoardTabBody extends StatefulWidget {
-  final List<dynamic> tasks;
+  final List<TaskModel> tasks;
   final Set<String> reviewTaskIds;
   final bool isLoading;
   final bool tasksLoaded;
-  final String Function(dynamic assignee) assigneeName;
-  final bool Function(dynamic task) canUpdateTask;
-  final void Function(dynamic task) onOpenTask;
-  final void Function(dynamic task) onLongPressTask;
-  final void Function(dynamic task) onMarkComplete;
-  final void Function(dynamic task) onMoveToNextStatus;
+  final String Function(Map<String, dynamic>? assignee) assigneeName;
+  final bool Function(TaskModel task) canUpdateTask;
+  final void Function(TaskModel task) onOpenTask;
+  final void Function(TaskModel task) onLongPressTask;
+  final void Function(TaskModel task) onMarkComplete;
+  final void Function(TaskModel task) onMoveToNextStatus;
   final VoidCallback onLoadTasks;
   final VoidCallback? onCreateTask;
 
@@ -226,13 +227,12 @@ class _BoardTabBodyState extends State<_BoardTabBody> {
     );
   }
 
-  Widget _buildCard(dynamic task, BoardColumn column) {
+  Widget _buildCard(TaskModel task, BoardColumn column) {
     final canUpdate = widget.canUpdateTask(task);
-    final assignee = task is Map ? (task['assignedTo'] ?? task['user']) : null;
     return BoardTaskCard(
       task: task,
       column: column,
-      assigneeName: widget.assigneeName(assignee),
+      assigneeName: widget.assigneeName(task.assignedTo),
       canSwipe: canUpdate,
       onTap: () => widget.onOpenTask(task),
       onLongPress: () => widget.onLongPressTask(task),

@@ -1,29 +1,42 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../tasks/models/task_model.dart';
 
-/// Display-layer helpers for project tasks (Map-shaped backend payloads).
+/// Display-layer helpers for project tasks.
 ///
-/// These were previously top-level functions inside `widgets/project_tasks_tab.dart`,
-/// which made that UI file double as a utility module. Moving them here lets
-/// other UI files (board card, overview, etc.) depend on a `utils/` symbol
-/// instead of importing a tab widget.
-Color taskStatusColor(String status) {
-  if (status == 'Completed') return AppColors.success;
-  if (status == 'In Progress') return AppColors.taskAccent;
-  return Colors.blueGrey;
+/// These now consume [TaskModel] rather than raw `Map<String, dynamic>`.
+/// The board cards, the project tasks tab and the overview "next task"
+/// card all share these helpers — keeping them off the UI files makes the
+/// status / priority / due-date conventions consistent.
+Color taskStatusColor(TaskStatus status) {
+  switch (status) {
+    case TaskStatus.completed:
+      return AppColors.success;
+    case TaskStatus.inProgress:
+      return AppColors.taskAccent;
+    case TaskStatus.pending:
+      return Colors.blueGrey;
+  }
 }
 
-Color taskPriorityColor(String priority) {
-  if (priority == 'Urgent') return AppColors.priorityUrgent;
-  if (priority == 'High') return AppColors.priorityHigh;
-  if (priority == 'Medium') return AppColors.priorityMedium;
-  return AppColors.priorityLow;
+Color taskPriorityColor(TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.urgent:
+      return AppColors.priorityUrgent;
+    case TaskPriority.high:
+      return AppColors.priorityHigh;
+    case TaskPriority.medium:
+      return AppColors.priorityMedium;
+    case TaskPriority.low:
+      return AppColors.priorityLow;
+  }
 }
 
-String taskDueText(dynamic task) {
-  if (task is! Map) return 'No due date';
-  final due = _taskDate(task['dueDate'] ?? task['deadline']);
+/// Friendly due-date text — falls back to `No due date` when neither
+/// deadline nor `dueDate` is set.
+String taskDueText(TaskModel task) {
+  final due = task.effectiveDueDateTime;
   if (due == null) return 'No due date';
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -36,28 +49,16 @@ String taskDueText(dynamic task) {
           : diff == -1
               ? 'Yesterday'
               : '${due.day}/${due.month}/${due.year}';
-  return '$dateText · ${_taskTimeText(_taskTime(task['dueTime']))}';
+  return '$dateText · ${_timeText(due)}';
 }
 
-bool taskIsVisuallyOverdue(dynamic task) {
-  if (task is! Map) return false;
-  if ((task['status'] ?? '').toString() == 'Completed') return false;
-  final due = _taskDate(task['dueDate'] ?? task['deadline']);
-  if (due == null) return false;
-  final time = _taskTime(task['dueTime']);
-  final dueAt = DateTime(
-    due.year,
-    due.month,
-    due.day,
-    time?.hour ?? 23,
-    time?.minute ?? 59,
-  );
-  return dueAt.isBefore(DateTime.now());
+bool taskIsVisuallyOverdue(TaskModel task) {
+  return task.isOverdue;
 }
 
-String taskReminderLabel(dynamic task) {
-  if (task is! Map || task['notificationEnabled'] != true) return '';
-  switch ((task['reminderType'] ?? 'none').toString()) {
+String taskReminderLabel(TaskModel task) {
+  if (!task.notificationEnabled) return '';
+  switch (task.reminderType) {
     case 'at_time':
       return 'Reminder: due time';
     case '15_min_before':
@@ -77,25 +78,9 @@ String taskReminderLabel(dynamic task) {
 
 // --- Private helpers ---
 
-DateTime? _taskDate(dynamic value) {
-  if (value == null) return null;
-  return DateTime.tryParse(value.toString())?.toLocal();
-}
-
-TimeOfDay? _taskTime(dynamic value) {
-  final raw = value?.toString() ?? '';
-  final parts = raw.split(':');
-  if (parts.length < 2) return null;
-  final hour = int.tryParse(parts[0]);
-  final minute = int.tryParse(parts[1]);
-  if (hour == null || minute == null) return null;
-  return TimeOfDay(hour: hour, minute: minute);
-}
-
-String _taskTimeText(TimeOfDay? time) {
-  if (time == null) return 'End of day';
-  final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-  final minute = time.minute.toString().padLeft(2, '0');
-  final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-  return '$hour:$minute $period';
+String _timeText(DateTime due) {
+  final hourOfPeriod = due.hour % 12 == 0 ? 12 : due.hour % 12;
+  final minute = due.minute.toString().padLeft(2, '0');
+  final period = due.hour >= 12 ? 'PM' : 'AM';
+  return '$hourOfPeriod:$minute $period';
 }
