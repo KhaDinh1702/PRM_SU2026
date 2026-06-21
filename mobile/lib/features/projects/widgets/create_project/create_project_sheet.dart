@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../providers/project_create_provider.dart';
 import '../../providers/project_provider.dart';
@@ -11,6 +12,7 @@ import 'create_project_basics.dart';
 import 'create_project_members.dart';
 import 'create_project_schedule.dart';
 import 'create_project_settings.dart';
+import 'create_project_template_picker.dart';
 import 'create_project_type_picker.dart';
 
 /// Glassmorphic bottom sheet that hosts the multi-section "Create New Project"
@@ -100,7 +102,7 @@ class _SheetBody extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Create new project',
+                  LocaleService.tr('Tạo dự án mới', en: 'Create new project'),
                   style: TextStyle(
                     color: textColor,
                     fontSize: AppSizes.fontL,
@@ -110,7 +112,7 @@ class _SheetBody extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Close',
+                tooltip: LocaleService.tr('Đóng', en: 'Close'),
                 icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.of(context).pop(null),
               ),
@@ -129,6 +131,8 @@ class _SheetBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                CreateProjectTemplatePicker(),
+                SizedBox(height: AppSizes.paddingL - 4),
                 CreateProjectBasicsSection(),
                 SizedBox(height: AppSizes.paddingL - 4),
                 CreateProjectTypePicker(),
@@ -208,9 +212,9 @@ class _SubmitBar extends StatelessWidget {
           TextButton(
             onPressed:
                 provider.isSubmitting ? null : () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            child: Text(
+              LocaleService.tr('Huỷ', en: 'Cancel'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 6),
@@ -230,7 +234,9 @@ class _SubmitBar extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.check_rounded, size: 18),
-              label: Text(provider.isSubmitting ? 'Creating…' : 'Create'),
+              label: Text(provider.isSubmitting
+                  ? LocaleService.tr('Đang tạo…', en: 'Creating…')
+                  : LocaleService.tr('Tạo', en: 'Create')),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF06B6D4),
                 shape: RoundedRectangleBorder(

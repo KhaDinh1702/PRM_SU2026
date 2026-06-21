@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/project_create_draft.dart';
+import '../models/project_template.dart';
 import '../models/project_type.dart';
+import '../services/project_milestone_service.dart';
 import 'project_provider.dart';
 
 /// Result returned by [ProjectCreateProvider.submit].
@@ -41,6 +43,12 @@ class ProjectCreateResult {
 /// [ProjectProvider] / `ProjectService`, so this class never touches `http`
 /// directly — it just orchestrates the multi-step submit flow.
 class ProjectCreateProvider extends ChangeNotifier {
+  final ProjectMilestoneService _milestoneService;
+
+  ProjectCreateProvider({ProjectMilestoneService? milestoneService})
+      : _milestoneService =
+            milestoneService ?? const ProjectMilestoneService();
+
   ProjectCreateDraft _draft = const ProjectCreateDraft();
   bool _isSubmitting = false;
   String? _submitError;
@@ -87,6 +95,27 @@ class ProjectCreateProvider extends ChangeNotifier {
     if (!_draft.inviteEmails.contains(email)) return;
     _update(_draft.copyWith(
       inviteEmails: _draft.inviteEmails.where((e) => e != email).toList(),
+    ));
+  }
+
+  /// Apply a project template — pre-fills name, description, type and the
+  /// suggested deadline. The user can still edit anything before submit.
+  /// Pass `null` to clear the template selection.
+  void applyTemplate(ProjectTemplate? template) {
+    if (template == null) {
+      _update(_draft.copyWith(clearTemplate: true));
+      return;
+    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _update(_draft.copyWith(
+      template: template,
+      name: template.projectName,
+      description: template.projectDescription,
+      type: template.projectType,
+      deadline: template.defaultDeadlineOffset == null
+          ? _draft.deadline
+          : today.add(template.defaultDeadlineOffset!),
     ));
   }
 
@@ -143,6 +172,32 @@ class ProjectCreateProvider extends ChangeNotifier {
           if (result['success'] != true) {
             failedInvites.add(email);
           }
+        }
+      }
+
+      // Materialise template milestones (if any) into the local milestone
+      // store. Failures here don't roll back the project — log and move on.
+      final template = _draft.template;
+      if (template != null) {
+        final milestones = template.materializeMilestones(DateTime.now());
+        var current = await _milestoneService.loadMilestones(
+          projectId: projectId,
+          projectData: projects.projects.firstWhere(
+            (p) => p.project.id == projectId,
+            orElse: () => projects.projects.isNotEmpty
+                ? projects.projects.first
+                : (throw StateError('no project available')),
+          ),
+        );
+        for (final m in milestones) {
+          final created = await _milestoneService.addMilestone(
+            projectId: projectId,
+            current: current,
+            title: m.title,
+            description: m.description,
+            targetDate: m.targetDate,
+          );
+          current = [...current, created];
         }
       }
 

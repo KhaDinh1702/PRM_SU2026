@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../../tasks/models/task_model.dart';
 import '../../providers/kanban_provider.dart';
@@ -164,19 +165,27 @@ class _BoardTabBodyState extends State<_BoardTabBody> {
             Expanded(
               child: !hasAnyTask
                   ? BoardEmptyState(
-                      title: 'No tasks in this project',
-                      subtitle: 'Create your first task',
-                      ctaLabel:
-                          widget.onCreateTask != null ? 'Create Task' : null,
+                      title: LocaleService.tr(
+                          'Dự án chưa có task nào',
+                          en: 'No tasks in this project'),
+                      subtitle: LocaleService.tr(
+                          'Tạo task đầu tiên',
+                          en: 'Create your first task'),
+                      ctaLabel: widget.onCreateTask != null
+                          ? LocaleService.tr('Tạo task', en: 'Create Task')
+                          : null,
                       onCta: widget.onCreateTask,
                     )
                   : totalVisible == 0
                       ? BoardEmptyState(
-                          title: 'No matches',
-                          subtitle:
-                              'Try a different search or clear the filters.',
+                          title: LocaleService.tr('Không khớp',
+                              en: 'No matches'),
+                          subtitle: LocaleService.tr(
+                              'Thử tìm khác hoặc xoá bộ lọc.',
+                              en: 'Try a different search or clear the filters.'),
                           emoji: '🔍',
-                          ctaLabel: 'Clear filters',
+                          ctaLabel: LocaleService.tr('Xoá bộ lọc',
+                              en: 'Clear filters'),
                           onCta: () {
                             _searchController.clear();
                             provider.clearFilters();
@@ -201,12 +210,19 @@ class _BoardTabBodyState extends State<_BoardTabBody> {
                                 onToggle: () =>
                                     provider.toggleExpanded(column),
                                 emptyState: BoardEmptyState(
-                                  title: 'No tasks in this column',
+                                  title: LocaleService.tr(
+                                      'Cột này chưa có task',
+                                      en: 'No tasks in this column'),
                                   subtitle: widget.onCreateTask != null
-                                      ? 'Create your first task'
-                                      : 'Drag tasks here as you work.',
+                                      ? LocaleService.tr(
+                                          'Tạo task đầu tiên',
+                                          en: 'Create your first task')
+                                      : LocaleService.tr(
+                                          'Kéo task vào đây khi bắt đầu làm.',
+                                          en: 'Drag tasks here as you work.'),
                                   ctaLabel: widget.onCreateTask != null
-                                      ? 'Create Task'
+                                      ? LocaleService.tr('Tạo task',
+                                          en: 'Create Task')
                                       : null,
                                   onCta: widget.onCreateTask,
                                   padding: const EdgeInsets.symmetric(
@@ -291,7 +307,7 @@ class _BoardToolbar extends StatelessWidget {
                 style: TextStyle(color: textColor, fontSize: AppSizes.fontM),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search tasks',
+                  hintText: LocaleService.tr('Tìm task', en: 'Search tasks'),
                   hintStyle: TextStyle(
                     color: subTextColor,
                     fontSize: AppSizes.fontM,
@@ -342,7 +358,7 @@ class _BoardToolbar extends StatelessWidget {
             icon: Icons.tune_rounded,
             badge: activeFilters,
             onTap: onOpenFilter,
-            tooltip: 'Filter',
+            tooltip: LocaleService.tr('Bộ lọc', en: 'Filter'),
           ),
           const SizedBox(width: AppSizes.paddingS - 2),
           _SortMenuButton(
@@ -453,7 +469,7 @@ class _SortMenuButton extends StatelessWidget {
         : Colors.black.withValues(alpha: 0.08);
 
     return PopupMenuButton<KanbanSort>(
-      tooltip: 'Sort by',
+      tooltip: LocaleService.tr('Sắp xếp', en: 'Sort by'),
       initialValue: currentSort,
       onSelected: onSortChanged,
       itemBuilder: (context) => [

@@ -100,19 +100,22 @@ class TaskProvider extends ChangeNotifier {
     await loadTasks();
   }
 
-  // --- Tạo task mới ---
-  Future<void> createTask({
+  // --- Tạo task mới — returns new task id so the caller can attach
+  // side-state (recurrence rule, ...).
+  Future<String> createTask({
     required String title,
     String description = '',
     String priority = 'Medium',
     DateTime? dueDate,
   }) async {
-    await _service.createTask(
-        title: title,
-        description: description,
-        priority: priority,
-        dueDate: dueDate);
+    final id = await _service.createTask(
+      title: title,
+      description: description,
+      priority: priority,
+      dueDate: dueDate,
+    );
     await loadTasks(silent: true);
+    return id;
   }
 
   // --- Cập nhật trạng thái task với optimistic update ---

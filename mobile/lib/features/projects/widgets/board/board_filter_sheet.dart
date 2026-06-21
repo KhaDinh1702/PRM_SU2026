@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../providers/kanban_provider.dart';
 import '../../utils/project_board_utils.dart';
@@ -76,16 +77,23 @@ class BoardFilterSheet extends StatelessWidget {
                       onClear: provider.clearFilters,
                     ),
                     const SizedBox(height: AppSizes.paddingM),
-                    _SectionTitle(text: 'Status', color: textColor),
+                    _SectionTitle(
+                        text: LocaleService.tr('Trạng thái', en: 'Status'),
+                        color: textColor),
                     const SizedBox(height: AppSizes.paddingS),
                     _StatusChips(provider: provider),
                     const SizedBox(height: AppSizes.paddingM),
-                    _SectionTitle(text: 'Priority', color: textColor),
+                    _SectionTitle(
+                        text: LocaleService.tr('Ưu tiên', en: 'Priority'),
+                        color: textColor),
                     const SizedBox(height: AppSizes.paddingS),
                     _PriorityChips(provider: provider),
                     if (assignees.isNotEmpty) ...[
                       const SizedBox(height: AppSizes.paddingM),
-                      _SectionTitle(text: 'Assignee', color: textColor),
+                      _SectionTitle(
+                          text: LocaleService.tr('Người phụ trách',
+                              en: 'Assignee'),
+                          color: textColor),
                       const SizedBox(height: AppSizes.paddingS),
                       _AssigneeChips(
                         provider: provider,
@@ -93,7 +101,9 @@ class BoardFilterSheet extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: AppSizes.paddingM),
-                    _SectionTitle(text: 'Sort By', color: textColor),
+                    _SectionTitle(
+                        text: LocaleService.tr('Sắp xếp', en: 'Sort By'),
+                        color: textColor),
                     const SizedBox(height: AppSizes.paddingS),
                     _SortChips(provider: provider),
                     const SizedBox(height: AppSizes.paddingM),
@@ -110,9 +120,9 @@ class BoardFilterSheet extends StatelessWidget {
                                 BorderRadius.circular(AppSizes.radiusM),
                           ),
                         ),
-                        child: const Text(
-                          'Apply',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                        child: Text(
+                          LocaleService.tr('Áp dụng', en: 'Apply'),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
@@ -166,7 +176,7 @@ class _HeaderRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Filter & Sort',
+            LocaleService.tr('Lọc & sắp xếp', en: 'Filter & Sort'),
             style: TextStyle(
               color: textColor,
               fontSize: AppSizes.fontL,
@@ -177,9 +187,9 @@ class _HeaderRow extends StatelessWidget {
         if (hasActiveFilter)
           TextButton(
             onPressed: onClear,
-            child: const Text(
-              'Reset',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            child: Text(
+              LocaleService.tr('Đặt lại', en: 'Reset'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
       ],
@@ -218,7 +228,7 @@ class _StatusChips extends StatelessWidget {
       runSpacing: AppSizes.paddingS,
       children: [
         _OptionChip(
-          label: 'All',
+          label: LocaleService.tr('Tất cả', en: 'All'),
           color: BoardPalette.neutral,
           selected: provider.statusFilter == null,
           onTap: () => provider.setStatusFilter(null),
@@ -246,7 +256,7 @@ class _PriorityChips extends StatelessWidget {
       runSpacing: AppSizes.paddingS,
       children: [
         _OptionChip(
-          label: 'All',
+          label: LocaleService.tr('Tất cả', en: 'All'),
           color: BoardPalette.neutral,
           selected: provider.priorityFilter == null,
           onTap: () => provider.setPriorityFilter(null),
@@ -276,7 +286,7 @@ class _AssigneeChips extends StatelessWidget {
       runSpacing: AppSizes.paddingS,
       children: [
         _OptionChip(
-          label: 'All',
+          label: LocaleService.tr('Tất cả', en: 'All'),
           color: BoardPalette.neutral,
           selected: provider.assigneeFilter == null,
           onTap: () => provider.setAssigneeFilter(null),

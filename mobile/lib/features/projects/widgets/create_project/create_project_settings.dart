@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../models/project_type.dart';
 import '../../providers/project_create_provider.dart';
@@ -26,9 +27,9 @@ class CreateProjectSettingsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CreateProjectSectionHeader(
+        CreateProjectSectionHeader(
           icon: Icons.tune_rounded,
-          title: 'Settings',
+          title: LocaleService.tr('Cài đặt', en: 'Settings'),
         ),
         Container(
           padding: const EdgeInsets.symmetric(
@@ -52,7 +53,10 @@ class CreateProjectSettingsSection extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             activeThumbColor: meta.color,
             title: Text(
-              'Members can add tasks',
+              LocaleService.tr(
+                'Thành viên được tạo task',
+                en: 'Members can add tasks',
+              ),
               style: TextStyle(
                 color: textColor,
                 fontSize: AppSizes.fontM - 1,
@@ -60,7 +64,10 @@ class CreateProjectSettingsSection extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              'Otherwise only owners and managers can create tasks.',
+              LocaleService.tr(
+                'Nếu tắt, chỉ owner và manager tạo được task.',
+                en: 'Otherwise only owners and managers can create tasks.',
+              ),
               style:
                   TextStyle(color: captionColor, fontSize: AppSizes.fontS + 1),
             ),

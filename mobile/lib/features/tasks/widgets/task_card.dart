@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
+import '../../../services/locale_service.dart';
 import '../models/task_model.dart';
 
 /// Badge màu hiển thị nhãn nhỏ gọn (status, priority, source, reminder).
@@ -43,6 +44,10 @@ class TaskInboxCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback? onDelete;
 
+  /// When `true`, shows a small "Repeat" badge so the user knows this task
+  /// auto-creates the next instance on completion.
+  final bool isRecurring;
+
   const TaskInboxCard({
     super.key,
     required this.task,
@@ -51,6 +56,7 @@ class TaskInboxCard extends StatelessWidget {
     required this.captionColor,
     required this.onToggle,
     required this.onDelete,
+    this.isRecurring = false,
   });
 
   @override
@@ -195,13 +201,21 @@ class TaskInboxCard extends StatelessWidget {
                                 if (assigneeNameStr.isNotEmpty &&
                                     sourceLabelStr == 'Project')
                                   TaskBadge(
-                                    label: 'Assigned to $assigneeNameStr',
+                                    label: LocaleService.tr(
+                                        'Giao cho $assigneeNameStr',
+                                        en: 'Assigned to $assigneeNameStr'),
                                     color: captionColor,
                                   ),
                                 if (reminderLabelStr.isNotEmpty)
                                   TaskBadge(
                                     label: reminderLabelStr,
                                     color: AppColors.timerFocus,
+                                  ),
+                                if (isRecurring)
+                                  TaskBadge(
+                                    label:
+                                        LocaleService.tr('Lặp', en: 'Repeat'),
+                                    color: const Color(0xFF06B6D4),
                                   ),
                               ],
                             ),

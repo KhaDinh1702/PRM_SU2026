@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../services/theme_service.dart';
+import '../../../../services/locale_service.dart';
 import '../../models/project_type.dart';
 import '../../providers/project_create_provider.dart';
 import 'section_header.dart';
@@ -21,10 +22,13 @@ class CreateProjectTypePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CreateProjectSectionHeader(
+        CreateProjectSectionHeader(
           icon: Icons.category_rounded,
-          title: 'Type',
-          subtitle: 'How will you use this project?',
+          title: LocaleService.tr('Loại', en: 'Type'),
+          subtitle: LocaleService.tr(
+            'Bạn sẽ dùng dự án này thế nào?',
+            en: 'How will you use this project?',
+          ),
         ),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -84,7 +88,7 @@ class _ProjectTypeTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${meta.label} project. ${meta.description}',
+      label: '${meta.localizedLabel} · ${meta.localizedDescription}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -119,7 +123,7 @@ class _ProjectTypeTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        meta.label,
+                        meta.localizedLabel,
                         style: TextStyle(
                           color: selected ? meta.color : textColor,
                           fontSize: AppSizes.fontM,
@@ -128,7 +132,7 @@ class _ProjectTypeTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        meta.description,
+                        meta.localizedDescription,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

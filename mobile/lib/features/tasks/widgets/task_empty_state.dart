@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
+import '../../../services/locale_service.dart';
 
 /// Widget empty state khi không có task nào trong danh sách.
 class TaskEmptyState extends StatelessWidget {
@@ -28,7 +29,7 @@ class TaskEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No tasks for now',
+            LocaleService.tr('Chưa có task nào', en: 'No tasks for now'),
             style: TextStyle(
               color: textColor,
               fontSize: 16,
@@ -37,7 +38,10 @@ class TaskEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Personal tasks, scheduled tasks, and project tasks assigned to you will appear here.',
+            LocaleService.tr(
+              'Task cá nhân, task theo lịch và task dự án được giao cho bạn sẽ hiện ở đây.',
+              en: 'Personal tasks, scheduled tasks, and project tasks assigned to you will appear here.',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(color: captionColor, fontSize: 12),
           ),
@@ -47,7 +51,8 @@ class TaskEmptyState extends StatelessWidget {
             child: PremiumButton.icon(
               onPressed: onAddTask,
               icon: Icons.add_rounded,
-              label: 'New personal task',
+              label: LocaleService.tr('Tạo task cá nhân',
+                  en: 'New personal task'),
               backgroundColor: AppColors.taskAccent,
             ),
           ),

@@ -16,6 +16,21 @@ class TimerHeader extends StatelessWidget {
     required this.onForestPressed,
   });
 
+  String _localizedModeLabel(String mode) {
+    switch (mode) {
+      case 'Focus':
+        return LocaleService.tr('Tập trung', en: 'Focus');
+      case 'Short Break':
+        return LocaleService.tr('Nghỉ ngắn', en: 'Short Break');
+      case 'Long Break':
+        return LocaleService.tr('Nghỉ dài', en: 'Long Break');
+      case 'Custom':
+        return LocaleService.tr('Tuỳ chỉnh', en: 'Custom');
+      default:
+        return mode;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeService.isDarkMode.value;
@@ -76,7 +91,7 @@ class TimerHeader extends StatelessWidget {
                   Icon(Icons.bolt, color: themeColor, size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    currentMode.toUpperCase(),
+                    _localizedModeLabel(currentMode).toUpperCase(),
                     style: TextStyle(
                       color: themeColor,
                       fontWeight: FontWeight.bold,

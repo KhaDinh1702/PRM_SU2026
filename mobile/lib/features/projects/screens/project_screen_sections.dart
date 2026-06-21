@@ -138,17 +138,17 @@ extension _ProjectScreenSections on _ProjectScreenState {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Invite member'),
+        title: Text(LocaleService.tr('Mời thành viên', en: 'Invite member')),
         content: PremiumInputField(
           controller: _memberEmailController,
           label: 'Email',
-          hintText: 'Enter email...',
+          hintText: LocaleService.tr('Nhập email...', en: 'Enter email...'),
           prefixIcon: Icons.mail_outline_rounded,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(LocaleService.tr('Huỷ', en: 'Cancel')),
           ),
           TextButton(
             onPressed: () async {
@@ -159,7 +159,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
               sheetSetState(() {});
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Invite'),
+            child: Text(LocaleService.tr('Mời', en: 'Invite')),
           ),
         ],
       ),
@@ -212,19 +212,22 @@ extension _ProjectScreenSections on _ProjectScreenState {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete milestone?'),
+        title: Text(LocaleService.tr('Xoá milestone?', en: 'Delete milestone?')),
         content: Text(
-          'Remove "${milestone.title}" from the timeline? This cannot be undone.',
+          LocaleService.tr(
+            'Xoá "${milestone.title}" khỏi timeline? Không thể hoàn tác.',
+            en: 'Remove "${milestone.title}" from the timeline? This cannot be undone.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(LocaleService.tr('Huỷ', en: 'Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete'),
+            child: Text(LocaleService.tr('Xoá', en: 'Delete')),
           ),
         ],
       ),

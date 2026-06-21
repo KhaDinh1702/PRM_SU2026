@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 
 /// Bottom sheet lọc project theo role, type và sort.
@@ -68,7 +69,7 @@ class ProjectFilterBottomSheet extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Project filters',
+                  LocaleService.tr('Bộ lọc dự án', en: 'Project filters'),
                   style: TextStyle(
                     color: textColor,
                     fontSize: 18,
@@ -77,34 +78,34 @@ class ProjectFilterBottomSheet extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: onClear,
-                  child: const Text('Clear'),
+                  child: Text(LocaleService.tr('Xoá', en: 'Clear')),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             _FilterGroup(
-              title: 'Status',
+              title: LocaleService.tr('Trạng thái', en: 'Status'),
               options: statusOptions,
               selected: statusFilter,
               onChanged: onStatusChanged,
             ),
             const SizedBox(height: 16),
             _FilterGroup(
-              title: 'Role',
+              title: LocaleService.tr('Vai trò', en: 'Role'),
               options: roleOptions,
               selected: roleFilter,
               onChanged: onRoleChanged,
             ),
             const SizedBox(height: 16),
             _FilterGroup(
-              title: 'Project type',
+              title: LocaleService.tr('Loại dự án', en: 'Project type'),
               options: typeOptions,
               selected: typeFilter,
               onChanged: onTypeChanged,
             ),
             const SizedBox(height: 16),
             _FilterGroup(
-              title: 'Sort by',
+              title: LocaleService.tr('Sắp xếp', en: 'Sort by'),
               options: sortOptions,
               selected: sortBy,
               onChanged: onSortChanged,

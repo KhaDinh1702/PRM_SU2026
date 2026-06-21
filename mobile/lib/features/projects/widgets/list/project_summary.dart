@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 
 /// Inline summary: "3 projects · 3 active · 1 needs attention".
@@ -23,16 +24,21 @@ class ProjectSummary extends StatelessWidget {
     final textColor = ThemeService.getTextColor(isDark);
 
     final parts = <_Stat>[
-      _Stat(value: totalProjects, label: 'projects', color: textColor),
+      _Stat(
+        value: totalProjects,
+        label: LocaleService.tr('dự án', en: 'projects'),
+        color: textColor,
+      ),
       _Stat(
         value: activeProjects,
-        label: 'active',
+        label: LocaleService.tr('đang chạy', en: 'active'),
         color: const Color(0xFF06B6D4),
       ),
       if (attentionProjects > 0)
         _Stat(
           value: attentionProjects,
-          label: attentionProjects == 1 ? 'needs attention' : 'need attention',
+          label: LocaleService.tr('cần chú ý',
+              en: attentionProjects == 1 ? 'needs attention' : 'need attention'),
           color: const Color(0xFFEF4444),
         ),
     ];

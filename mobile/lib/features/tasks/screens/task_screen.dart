@@ -8,8 +8,12 @@ import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
 import '../providers/task_provider.dart';
+import '../services/recurrence_service.dart';
+import '../widgets/priority_picker.dart';
+import '../widgets/recurrence_picker.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_empty_state.dart';
 import '../widgets/task_filter_sheet.dart';
@@ -33,6 +37,47 @@ class _TaskScreenState extends State<TaskScreen> {
     'Completed',
   ];
 
+  /// Maps tab key → localized label for display only. Keys stay English
+  /// because filter logic compares against them.
+  String _tabLabel(String key) {
+    switch (key) {
+      case 'Today':
+        return LocaleService.tr('Hôm nay', en: 'Today');
+      case 'Upcoming':
+        return LocaleService.tr('Sắp tới', en: 'Upcoming');
+      case 'Overdue':
+        return LocaleService.tr('Quá hạn', en: 'Overdue');
+      case 'Project':
+        return LocaleService.tr('Dự án', en: 'Project');
+      case 'Personal':
+        return LocaleService.tr('Cá nhân', en: 'Personal');
+      case 'Completed':
+        return LocaleService.tr('Hoàn tất', en: 'Completed');
+      default:
+        return key;
+    }
+  }
+
+  /// Localized label for `_groupTasks` keys.
+  String _groupLabel(String key) {
+    switch (key) {
+      case 'Overdue':
+        return LocaleService.tr('QUÁ HẠN', en: 'OVERDUE');
+      case 'Today':
+        return LocaleService.tr('HÔM NAY', en: 'TODAY');
+      case 'Tomorrow':
+        return LocaleService.tr('NGÀY MAI', en: 'TOMORROW');
+      case 'This Week':
+        return LocaleService.tr('TUẦN NÀY', en: 'THIS WEEK');
+      case 'Later':
+        return LocaleService.tr('SAU NÀY', en: 'LATER');
+      case 'No Due Date':
+        return LocaleService.tr('CHƯA CÓ HẠN', en: 'NO DUE DATE');
+      default:
+        return key.toUpperCase();
+    }
+  }
+
   bool _isLoading = true;
   List<TaskModel> _tasks = [];
   String _selectedTab = 'Today';
@@ -45,6 +90,16 @@ class _TaskScreenState extends State<TaskScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   String _taskPriority = 'Medium';
+
+  /// In-progress recurrence rule for the Create Task dialog. Cleared after
+  /// each successful submit.
+  RecurrenceRule? _draftRecurrence;
+
+  /// Cache of task IDs that have an attached recurrence rule. Populated
+  /// after each `loadTasks`, drives the small "Repeat" badge on task cards.
+  Set<String> _recurringTaskIds = const {};
+
+  final RecurrenceService _recurrenceService = const RecurrenceService();
 
   @override
   void initState() {
@@ -63,16 +118,38 @@ class _TaskScreenState extends State<TaskScreen> {
   }
 
   Future<void> _loadTasks() async {
-    if (mounted) {
-      await context.read<TaskProvider>().applyFilters(
-        tab: _selectedTab,
-        sortBy: _sortBy,
-        sourceFilter: _sourceFilter,
-        statusFilter: _statusFilter,
-        priorityFilter: _priorityFilter,
-        searchQuery: _searchController.text.trim(),
-      );
-    }
+    if (!mounted) return;
+    await context.read<TaskProvider>().applyFilters(
+      tab: _selectedTab,
+      sortBy: _sortBy,
+      sourceFilter: _sourceFilter,
+      statusFilter: _statusFilter,
+      priorityFilter: _priorityFilter,
+      searchQuery: _searchController.text.trim(),
+    );
+    await _refreshRecurringIds();
+  }
+
+  /// Reads recurrence rules for every loaded task in parallel and caches
+  /// which ones are recurring. Drives the "↻" badge.
+  Future<void> _refreshRecurringIds() async {
+    if (!mounted) return;
+    final tasks = context.read<TaskProvider>().tasks;
+    final results = await Future.wait(
+      tasks
+          .where((t) => t.id.isNotEmpty)
+          .map((t) async => (
+                id: t.id,
+                rule: await _recurrenceService.loadRule(t.id),
+              )),
+    );
+    if (!mounted) return;
+    setState(() {
+      _recurringTaskIds = {
+        for (final entry in results)
+          if (entry.rule != null) entry.id,
+      };
+    });
   }
 
   Future<void> _createTask() async {
@@ -80,23 +157,36 @@ class _TaskScreenState extends State<TaskScreen> {
     if (title.isEmpty) return;
 
     try {
-      await context.read<TaskProvider>().createTask(
-        title: title,
-        description: _descController.text.trim(),
-        priority: _taskPriority,
-        dueDate: _selectedTab == 'Upcoming'
-            ? DateTime.now().add(const Duration(days: 1))
-            : DateTime.now(),
-      );
+      final newId = await context.read<TaskProvider>().createTask(
+            title: title,
+            description: _descController.text.trim(),
+            priority: _taskPriority,
+            dueDate: _selectedTab == 'Upcoming'
+                ? DateTime.now().add(const Duration(days: 1))
+                : DateTime.now(),
+          );
+      if (_draftRecurrence != null && newId.isNotEmpty) {
+        await _recurrenceService.saveRule(newId, _draftRecurrence!);
+      }
       _titleController.clear();
       _descController.clear();
       _taskPriority = 'Medium';
+      _draftRecurrence = null;
       if (mounted) {
         Navigator.pop(context);
-        _showSnack('Task added successfully', _accent);
+        _showSnack(
+          LocaleService.tr('Đã tạo task', en: 'Task added successfully'),
+          _accent,
+        );
+        await _refreshRecurringIds();
       }
     } catch (_) {
-      if (mounted) _showSnack('Could not create task', Colors.redAccent);
+      if (mounted) {
+        _showSnack(
+          LocaleService.tr('Không thể tạo task', en: 'Could not create task'),
+          Colors.redAccent,
+        );
+      }
     }
   }
 
@@ -104,20 +194,66 @@ class _TaskScreenState extends State<TaskScreen> {
     final taskId = task.id;
     if (taskId.isEmpty) return;
 
-    final newStatus = task.status == TaskStatus.completed ? TaskStatus.pending : TaskStatus.completed;
+    final wasCompleted = task.status == TaskStatus.completed;
+    final newStatus =
+        wasCompleted ? TaskStatus.pending : TaskStatus.completed;
 
     try {
       await context.read<TaskProvider>().updateTaskStatus(
-        taskId: taskId,
-        newStatus: newStatus,
-      );
+            taskId: taskId,
+            newStatus: newStatus,
+          );
+
+      // When a recurring task transitions to completed, spawn the next
+      // instance with the next-occurrence date and transfer the rule onto it.
+      if (!wasCompleted) {
+        await _spawnNextRecurringInstance(task);
+      }
+
+      if (!mounted) return;
       _showSnack(
-        newStatus == TaskStatus.completed ? 'Task completed' : 'Task reopened',
+        newStatus == TaskStatus.completed
+            ? LocaleService.tr('Đã hoàn thành task', en: 'Task completed')
+            : LocaleService.tr('Đã mở lại task', en: 'Task reopened'),
         newStatus == TaskStatus.completed ? AppColors.success : Colors.amber,
       );
     } catch (_) {
-      if (mounted) _showSnack('Could not update task', Colors.redAccent);
+      if (mounted) {
+        _showSnack(
+          LocaleService.tr('Không thể cập nhật task',
+              en: 'Could not update task'),
+          Colors.redAccent,
+        );
+      }
     }
+  }
+
+  /// If [completedTask] had a recurrence rule, create a fresh task at the
+  /// next-occurrence date and move the rule onto the new task id. Series
+  /// auto-ends when the rule's endDate is passed.
+  Future<void> _spawnNextRecurringInstance(TaskModel completedTask) async {
+    final rule = await _recurrenceService.loadRule(completedTask.id);
+    if (rule == null) return;
+    final currentDue = completedTask.effectiveDueDateTime ?? DateTime.now();
+    final nextDue = rule.nextOccurrence(currentDue);
+    if (nextDue == null) {
+      await _recurrenceService.deleteRule(completedTask.id);
+      return;
+    }
+    if (!mounted) return;
+    final newId = await context.read<TaskProvider>().createTask(
+          title: completedTask.title,
+          description: completedTask.description,
+          priority: completedTask.priorityLabel,
+          dueDate: nextDue,
+        );
+    if (newId.isNotEmpty) {
+      await _recurrenceService.transferRule(
+        oldTaskId: completedTask.id,
+        newTaskId: newId,
+      );
+    }
+    if (mounted) await _refreshRecurringIds();
   }
 
   Future<void> _deleteTask(TaskModel task) async {
@@ -126,9 +262,17 @@ class _TaskScreenState extends State<TaskScreen> {
 
     try {
       await context.read<TaskProvider>().deleteTask(taskId);
-      _showSnack('Task deleted successfully', Colors.redAccent);
+      _showSnack(
+        LocaleService.tr('Đã xoá task', en: 'Task deleted successfully'),
+        Colors.redAccent,
+      );
     } catch (_) {
-      if (mounted) _showSnack('Could not delete task', Colors.redAccent);
+      if (mounted) {
+        _showSnack(
+          LocaleService.tr('Không thể xoá task', en: 'Could not delete task'),
+          Colors.redAccent,
+        );
+      }
     }
   }
 
@@ -155,7 +299,6 @@ class _TaskScreenState extends State<TaskScreen> {
             final isDark = ThemeService.isDarkMode.value;
             final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
             final textColor = ThemeService.getTextColor(isDark);
-            final subTextColor = ThemeService.getSubTextColor(isDark);
             final captionColor = ThemeService.getCaptionColor(isDark);
 
             return BackdropFilter(
@@ -171,7 +314,8 @@ class _TaskScreenState extends State<TaskScreen> {
                   ),
                 ),
                 title: Text(
-                  'CREATE PERSONAL TASK',
+                  LocaleService.tr('TẠO TASK CÁ NHÂN',
+                      en: 'CREATE PERSONAL TASK'),
                   style: TextStyle(
                     color: textColor,
                     fontSize: 16,
@@ -184,76 +328,38 @@ class _TaskScreenState extends State<TaskScreen> {
                   children: [
                     PremiumInputField(
                       controller: _titleController,
-                      label: 'Task title *',
-                      hintText: 'Enter title...',
+                      label: LocaleService.tr('Tên task *', en: 'Task title *'),
+                      hintText: LocaleService.tr('Nhập tên task...',
+                          en: 'Enter title...'),
                       prefixIcon: Icons.check_circle_outline_rounded,
                     ),
                     const SizedBox(height: 14),
                     PremiumInputField(
                       controller: _descController,
-                      label: 'Short description',
-                      hintText: 'Enter details...',
+                      label: LocaleService.tr('Mô tả ngắn',
+                          en: 'Short description'),
+                      hintText: LocaleService.tr('Chi tiết...',
+                          en: 'Enter details...'),
                       prefixIcon: Icons.notes_rounded,
                     ),
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.03)
-                            : Colors.black.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Priority',
-                            style: TextStyle(
-                              color: subTextColor,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _taskPriority,
-                              dropdownColor: dialogBg,
-                              icon: Icon(Icons.keyboard_arrow_down_rounded,
-                                  color: subTextColor),
-                              items: ['Low', 'Medium', 'High', 'Urgent']
-                                  .map(
-                                    (value) => DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(
-                                        value,
-                                        style: TextStyle(
-                                          color: textColor,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setDialogState(() => _taskPriority = value);
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 14),
+                    PriorityPickerTile(
+                      value: _taskPriority,
+                      onChanged: (value) =>
+                          setDialogState(() => _taskPriority = value),
+                    ),
+                    const SizedBox(height: 10),
+                    RecurrencePickerTile(
+                      rule: _draftRecurrence,
+                      onChanged: (next) =>
+                          setDialogState(() => _draftRecurrence = next),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Project tasks are assigned inside Project Detail and appear here automatically.',
+                      LocaleService.tr(
+                        'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
+                        en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
+                      ),
                       style: TextStyle(color: captionColor, fontSize: 11),
                     ),
                   ],
@@ -262,7 +368,7 @@ class _TaskScreenState extends State<TaskScreen> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Cancel',
+                      LocaleService.tr('Huỷ', en: 'Cancel'),
                       style: TextStyle(
                           color: captionColor, fontWeight: FontWeight.bold),
                     ),
@@ -270,9 +376,9 @@ class _TaskScreenState extends State<TaskScreen> {
                   PremiumButton(
                     onPressed: _createTask,
                     backgroundColor: _accent,
-                    child: const Text(
-                      'Create',
-                      style: TextStyle(
+                    child: Text(
+                      LocaleService.tr('Tạo', en: 'Create'),
+                      style: const TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -390,7 +496,8 @@ class _TaskScreenState extends State<TaskScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'UNIFIED INBOX',
+                                LocaleService.tr('HỘP THƯ THỐNG NHẤT',
+                                    en: 'UNIFIED INBOX'),
                                 style: TextStyle(
                                   color: captionColor,
                                   fontSize: 10,
@@ -400,7 +507,7 @@ class _TaskScreenState extends State<TaskScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Tasks',
+                                LocaleService.tr('Nhiệm vụ', en: 'Tasks'),
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 28,
@@ -412,7 +519,7 @@ class _TaskScreenState extends State<TaskScreen> {
                         ),
                         const NotificationBell(),
                         IconButton(
-                          tooltip: 'Filters',
+                          tooltip: LocaleService.tr('Bộ lọc', en: 'Filters'),
                           onPressed: _showFilterSheet,
                           icon: Icon(Icons.tune_rounded, color: subTextColor),
                         ),
@@ -440,7 +547,8 @@ class _TaskScreenState extends State<TaskScreen> {
                         onSubmitted: (_) => _loadTasks(),
                         style: TextStyle(color: textColor),
                         decoration: InputDecoration(
-                          hintText: 'Search tasks...',
+                          hintText: LocaleService.tr('Tìm task...',
+                              en: 'Search tasks...'),
                           hintStyle:
                               TextStyle(color: captionColor, fontSize: 14),
                           prefixIcon:
@@ -471,7 +579,7 @@ class _TaskScreenState extends State<TaskScreen> {
                           final tab = _tabs[index];
                           final selected = _selectedTab == tab;
                           return ChoiceChip(
-                            label: Text(tab),
+                            label: Text(_tabLabel(tab)),
                             selected: selected,
                             showCheckmark: false,
                             selectedColor: _accent.withValues(alpha: 0.18),
@@ -525,7 +633,7 @@ class _TaskScreenState extends State<TaskScreen> {
                                           padding: const EdgeInsets.only(
                                               top: 8, bottom: 10),
                                           child: Text(
-                                            entry.key,
+                                            _groupLabel(entry.key),
                                             style: TextStyle(
                                               color: captionColor,
                                               fontSize: 11,
@@ -540,6 +648,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                             textColor: textColor,
                                             subTextColor: subTextColor,
                                             captionColor: captionColor,
+                                            isRecurring:
+                                                _recurringTaskIds.contains(task.id),
                                             onToggle: () =>
                                                 _toggleTaskComplete(task),
                                             onDelete: task.source == TaskSource.personal

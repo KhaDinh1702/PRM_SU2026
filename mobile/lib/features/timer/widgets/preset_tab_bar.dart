@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 
 class PresetTabBar extends StatelessWidget {
@@ -29,6 +30,7 @@ class PresetTabBar extends StatelessWidget {
           Expanded(
             child: _buildPresetTab(
               title: 'Focus',
+              displayTitle: LocaleService.tr('Tập trung', en: 'Focus'),
               subtitle: '25M',
               isSelected: currentMode == 'Focus',
               onTap: () => onPresetSelected('Focus', 25),
@@ -38,6 +40,8 @@ class PresetTabBar extends StatelessWidget {
           Expanded(
             child: _buildPresetTab(
               title: 'Short Break',
+              displayTitle:
+                  LocaleService.tr('Nghỉ ngắn', en: 'Short Break'),
               subtitle: '5M',
               isSelected: currentMode == 'Short Break',
               onTap: () => onPresetSelected('Short Break', 5),
@@ -47,6 +51,7 @@ class PresetTabBar extends StatelessWidget {
           Expanded(
             child: _buildPresetTab(
               title: 'Long Break',
+              displayTitle: LocaleService.tr('Nghỉ dài', en: 'Long Break'),
               subtitle: '15M',
               isSelected: currentMode == 'Long Break',
               onTap: () => onPresetSelected('Long Break', 15),
@@ -60,6 +65,7 @@ class PresetTabBar extends StatelessWidget {
 
   Widget _buildPresetTab({
     required String title,
+    required String displayTitle,
     required String subtitle,
     required bool isSelected,
     required VoidCallback onTap,
@@ -89,7 +95,7 @@ class PresetTabBar extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              title,
+              displayTitle,
               style: TextStyle(
                 color: isSelected
                     ? (isDark ? Colors.white : const Color(0xFF0F172A))

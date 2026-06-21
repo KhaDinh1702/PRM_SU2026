@@ -1,3 +1,4 @@
+import 'project_template.dart';
 import 'project_type.dart';
 
 /// Validation feedback returned by [ProjectCreateDraft.validate]. Keeps
@@ -36,6 +37,10 @@ class ProjectCreateDraft {
   final List<String> inviteEmails;
   final bool allowMembersToCreateTasks;
 
+  /// When set, the sheet selected a [ProjectTemplate] and its milestones
+  /// should be materialised after the project is created.
+  final ProjectTemplate? template;
+
   const ProjectCreateDraft({
     this.name = '',
     this.description = '',
@@ -43,6 +48,7 @@ class ProjectCreateDraft {
     this.deadline,
     this.inviteEmails = const [],
     this.allowMembersToCreateTasks = true,
+    this.template,
   });
 
   ProjectCreateDraft copyWith({
@@ -53,6 +59,8 @@ class ProjectCreateDraft {
     bool clearDeadline = false,
     List<String>? inviteEmails,
     bool? allowMembersToCreateTasks,
+    ProjectTemplate? template,
+    bool clearTemplate = false,
   }) {
     return ProjectCreateDraft(
       name: name ?? this.name,
@@ -62,6 +70,7 @@ class ProjectCreateDraft {
       inviteEmails: inviteEmails ?? this.inviteEmails,
       allowMembersToCreateTasks:
           allowMembersToCreateTasks ?? this.allowMembersToCreateTasks,
+      template: clearTemplate ? null : (template ?? this.template),
     );
   }
 

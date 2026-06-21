@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../services/locale_service.dart';
 import '../../tasks/models/task_model.dart';
 import '../utils/project_board_utils.dart';
 
@@ -14,11 +15,11 @@ extension KanbanPriorityX on KanbanPriority {
   String get label {
     switch (this) {
       case KanbanPriority.low:
-        return 'Low';
+        return LocaleService.tr('Thấp', en: 'Low');
       case KanbanPriority.medium:
-        return 'Medium';
+        return LocaleService.tr('Vừa', en: 'Medium');
       case KanbanPriority.high:
-        return 'High';
+        return LocaleService.tr('Cao', en: 'High');
     }
   }
 }
@@ -27,11 +28,11 @@ extension KanbanSortX on KanbanSort {
   String get label {
     switch (this) {
       case KanbanSort.dueDate:
-        return 'Due Date';
+        return LocaleService.tr('Hạn', en: 'Due Date');
       case KanbanSort.priority:
-        return 'Priority';
+        return LocaleService.tr('Ưu tiên', en: 'Priority');
       case KanbanSort.recentlyUpdated:
-        return 'Recently Updated';
+        return LocaleService.tr('Mới cập nhật', en: 'Recently Updated');
     }
   }
 }

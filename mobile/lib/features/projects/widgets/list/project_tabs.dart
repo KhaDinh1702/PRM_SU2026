@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 
 /// Tab bar lọc danh sách project (All / Owned / Member / Invited...).
@@ -13,6 +14,22 @@ class ProjectTabs extends StatelessWidget {
     required this.selectedTab,
     required this.onChanged,
   });
+
+  /// Translate filter tab keys for display.
+  String _labelFor(String key) {
+    switch (key) {
+      case 'All':
+        return LocaleService.tr('Tất cả', en: 'All');
+      case 'Mine':
+        return LocaleService.tr('Của tôi', en: 'Mine');
+      case 'Shared':
+        return LocaleService.tr('Chia sẻ', en: 'Shared');
+      case 'Archived':
+        return LocaleService.tr('Lưu trữ', en: 'Archived');
+      default:
+        return key;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +48,7 @@ class ProjectTabs extends StatelessWidget {
           return ChoiceChip(
             selected: selected,
             label: Text(
-              tab,
+              _labelFor(tab),
               style: TextStyle(
                 color: selected ? Colors.white : captionColor,
                 fontSize: 12,

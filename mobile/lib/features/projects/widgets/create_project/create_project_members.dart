@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../models/project_type.dart';
 import '../../providers/project_create_provider.dart';
@@ -32,11 +33,14 @@ class _CreateProjectMembersSectionState
     final value = _controller.text.trim().toLowerCase();
     if (value.isEmpty) return;
     if (!_emailRegex.hasMatch(value)) {
-      setState(() => _localError = 'Invalid email address');
+      setState(() => _localError = LocaleService.tr(
+          'Email không hợp lệ',
+          en: 'Invalid email address'));
       return;
     }
     if (provider.draft.inviteEmails.contains(value)) {
-      setState(() => _localError = 'Already added');
+      setState(() =>
+          _localError = LocaleService.tr('Đã thêm rồi', en: 'Already added'));
       return;
     }
     provider.addInviteEmail(value);
@@ -57,10 +61,13 @@ class _CreateProjectMembersSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CreateProjectSectionHeader(
+        CreateProjectSectionHeader(
           icon: Icons.group_add_rounded,
-          title: 'Members',
-          subtitle: 'Invite teammates by email — optional.',
+          title: LocaleService.tr('Thành viên', en: 'Members'),
+          subtitle: LocaleService.tr(
+            'Mời đồng đội qua email — tuỳ chọn.',
+            en: 'Invite teammates by email — optional.',
+          ),
         ),
         Row(
           children: [
@@ -100,7 +107,7 @@ class _CreateProjectMembersSectionState
               child: FilledButton.icon(
                 onPressed: () => _add(provider),
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add'),
+                label: Text(LocaleService.tr('Thêm', en: 'Add')),
                 style: FilledButton.styleFrom(
                   backgroundColor: meta.color,
                   shape: RoundedRectangleBorder(

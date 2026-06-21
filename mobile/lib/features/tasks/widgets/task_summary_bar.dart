@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
+import '../../../services/locale_service.dart';
 
 /// Pill hiển thị tóm tắt số liệu nhanh (tổng task, project, overdue).
 class TaskSummaryPill extends StatelessWidget {
@@ -55,15 +56,20 @@ class TaskSummaryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        TaskSummaryPill(label: '$totalCount Tasks', color: _accent),
+        TaskSummaryPill(
+          label: LocaleService.tr('$totalCount task', en: '$totalCount tasks'),
+          color: _accent,
+        ),
         const SizedBox(width: 8),
         TaskSummaryPill(
-          label: '$projectCount Project',
+          label: LocaleService.tr('$projectCount dự án',
+              en: '$projectCount project'),
           color: AppColors.timerFocus,
         ),
         const SizedBox(width: 8),
         TaskSummaryPill(
-          label: '$overdueCount Overdue',
+          label: LocaleService.tr('$overdueCount quá hạn',
+              en: '$overdueCount overdue'),
           color: AppColors.error,
         ),
         const Spacer(),
@@ -72,7 +78,7 @@ class TaskSummaryBar extends StatelessWidget {
           child: PremiumButton.icon(
             onPressed: onAddTask,
             icon: Icons.add_rounded,
-            label: 'New',
+            label: LocaleService.tr('Tạo', en: 'New'),
             backgroundColor: _accent,
           ),
         ),

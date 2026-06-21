@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
+import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 
 /// Group chip filter cho một nhóm options (Source, Status, Priority, Sort).
@@ -188,7 +189,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Filter tasks',
+            LocaleService.tr('Lọc task', en: 'Filter tasks'),
             style: TextStyle(
               color: textColor,
               fontSize: 20,
@@ -197,25 +198,25 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
           ),
           const SizedBox(height: 18),
           TaskFilterGroup(
-            title: 'Source',
+            title: LocaleService.tr('Nguồn', en: 'Source'),
             value: _source,
             options: const ['All', 'Personal', 'Project', 'Schedule'],
             onChanged: (v) => setState(() => _source = v),
           ),
           TaskFilterGroup(
-            title: 'Status',
+            title: LocaleService.tr('Trạng thái', en: 'Status'),
             value: _status,
             options: const ['All', 'Pending', 'In Progress', 'Completed'],
             onChanged: (v) => setState(() => _status = v),
           ),
           TaskFilterGroup(
-            title: 'Priority',
+            title: LocaleService.tr('Ưu tiên', en: 'Priority'),
             value: _priority,
             options: const ['All', 'Low', 'Medium', 'High', 'Urgent'],
             onChanged: (v) => setState(() => _priority = v),
           ),
           TaskFilterGroup(
-            title: 'Sort by',
+            title: LocaleService.tr('Sắp xếp', en: 'Sort by'),
             value: _sort,
             options: const ['recent', 'deadline', 'priority'],
             onChanged: (v) => setState(() => _sort = v),
@@ -235,7 +236,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                     ),
                   ),
                   child: Text(
-                    'Reset',
+                    LocaleService.tr('Đặt lại', en: 'Reset'),
                     style: TextStyle(
                       color: subTextColor,
                       fontWeight: FontWeight.w800,
@@ -256,9 +257,9 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                     ),
                   ),
                   backgroundColor: _accent,
-                  child: const Text(
-                    'Apply',
-                    style: TextStyle(
+                  child: Text(
+                    LocaleService.tr('Áp dụng', en: 'Apply'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
