@@ -7,13 +7,18 @@ import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../widgets/dashboard_focus_stats_section.dart';
 import '../widgets/dashboard_greeting_header.dart';
-import '../widgets/dashboard_productivity_card.dart';
 import '../widgets/dashboard_recent_projects_section.dart';
-import '../widgets/dashboard_today_tasks_section.dart';
-import '../widgets/dashboard_upcoming_events_section.dart';
+import '../widgets/dashboard_today_summary.dart';
+import '../widgets/dashboard_today_timeline.dart';
 
+/// Home screen.
+///
+/// Redesigned as a "Today view" — the greeting, today summary and the unified
+/// task + event timeline are the dominant content. The scattered cards
+/// (productivity ring, separate "today tasks", focus stats, upcoming events)
+/// have been folded into the timeline and the summary chip so the user can
+/// see the whole day at a glance.
 class DashboardScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSelect;
 
@@ -24,6 +29,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  static const int _tabTasks = 1;
+  static const int _tabProjects = 2;
+
   @override
   void initState() {
     super.initState();
@@ -45,27 +53,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       listenable: Listenable.merge(
         [ThemeService.isDarkMode, LocaleService.languageCode],
       ),
-      builder: (context, child) {
+      builder: (context, _) {
         final isDark = ThemeService.isDarkMode.value;
         final primary = ThemeService.getPrimaryColor(isDark);
 
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Consumer2<DashboardProvider, AuthProvider>(
-            builder: (context, dashboardProvider, authProvider, child) {
-              final isLoading = dashboardProvider.isLoading &&
-                  dashboardProvider.status !=
-                      DashboardLoadStatus.loaded;
-              final data = dashboardProvider.data;
-              final userName = authProvider.currentUser?['name']
-                      ?.toString()
-                      .trim()
-                      .isNotEmpty ==
-                  true
-                  ? authProvider.currentUser!['name'].toString()
-                  : authProvider.username.isNotEmpty
-                      ? authProvider.username
-                      : 'FlowMate';
+            builder: (context, dashboard, auth, _) {
+              final data = dashboard.data;
+              final isLoading = dashboard.isLoading &&
+                  dashboard.status != DashboardLoadStatus.loaded;
+              final userName = _displayName(auth);
 
               return RefreshIndicator(
                 onRefresh: _refresh,
@@ -79,86 +78,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
-                          FadeInSlide(
-                            delayMs: 0,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: DashboardGreetingHeader(
-                                    userName: userName,
-                                    productivityScore: data.productivityScore,
-                                  ),
-                                ),
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 4),
-                                  child: NotificationBell(),
-                                ),
-                              ],
-                            ),
+                          _Header(userName: userName, score: data.productivityScore),
+                          const SizedBox(height: 14),
+                          DashboardTodaySummary(
+                            taskCount: data.dueTodayCount +
+                                data.overdueCount +
+                                data.completedTodayCount,
+                            meetingCount: data.meetingsTodayCount,
+                            focusMinutes: data.focusTodayMinutes,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 22),
+                          _SectionTitle(
+                            text: LocaleService.tr('LỊCH HÔM NAY',
+                                en: 'TODAY'),
+                          ),
+                          const SizedBox(height: 10),
                           if (isLoading)
-                            const Column(
-                              children: [
-                                ShimmerLoading(
-                                  width: double.infinity,
-                                  height: 130,
-                                  borderRadius: 24,
-                                ),
-                                SizedBox(height: 16),
-                                ShimmerLoading(
-                                  width: double.infinity,
-                                  height: 100,
-                                  borderRadius: 20,
-                                ),
-                              ],
+                            const ShimmerLoading(
+                              width: double.infinity,
+                              height: 240,
+                              borderRadius: 18,
                             )
-                          else ...[
-                            FadeInSlide(
-                              delayMs: 80,
-                              child: DashboardProductivityCard(
-                                score: data.productivityScore,
-                                weeklyTrendPercent:
-                                    data.weeklyTrendPercent,
-                              ),
+                          else
+                            DashboardTodayTimeline(
+                              items: data.todayTimeline,
+                              onTapTask: (_) =>
+                                  widget.onTabSelect?.call(_tabTasks),
+                              onTapEvent: (_) =>
+                                  widget.onTabSelect?.call(_tabTasks),
                             ),
-                            const SizedBox(height: 24),
-                            FadeInSlide(
-                              delayMs: 140,
-                              child: DashboardTodayTasksSection(
-                                dueToday: data.dueTodayCount,
-                                overdue: data.overdueCount,
-                                completed: data.completedTodayCount,
-                                onTap: () => widget.onTabSelect?.call(1),
-                              ),
+                          const SizedBox(height: 24),
+                          _SectionTitle(
+                            text: LocaleService.tr('DỰ ÁN GẦN ĐÂY',
+                                en: 'RECENT PROJECTS'),
+                          ),
+                          const SizedBox(height: 10),
+                          if (isLoading)
+                            const ShimmerLoading(
+                              width: double.infinity,
+                              height: 130,
+                              borderRadius: 18,
+                            )
+                          else
+                            DashboardRecentProjectsSection(
+                              projects: data.recentProjects,
+                              onViewAll: () =>
+                                  widget.onTabSelect?.call(_tabProjects),
                             ),
-                            const SizedBox(height: 24),
-                            FadeInSlide(
-                              delayMs: 200,
-                              child: DashboardFocusStatsSection(
-                                todayMinutes: data.focusTodayMinutes,
-                                weeklyMinutes: data.focusWeeklyMinutes,
-                                onTap: () => widget.onTabSelect?.call(3),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            FadeInSlide(
-                              delayMs: 260,
-                              child: DashboardUpcomingEventsSection(
-                                events: data.upcomingEvents,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            FadeInSlide(
-                              delayMs: 320,
-                              child: DashboardRecentProjectsSection(
-                                projects: data.recentProjects,
-                                onViewAll: () =>
-                                    widget.onTabSelect?.call(2),
-                              ),
-                            ),
-                          ],
                         ]),
                       ),
                     ),
@@ -169,6 +135,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
+    );
+  }
+
+  String _displayName(AuthProvider auth) {
+    final fullName = auth.currentUser?['name']?.toString().trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+    if (auth.username.isNotEmpty) return auth.username;
+    return 'FlowMate';
+  }
+}
+
+class _Header extends StatelessWidget {
+  final String userName;
+  final int score;
+
+  const _Header({required this.userName, required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: DashboardGreetingHeader(
+            userName: userName,
+            productivityScore: score,
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 4),
+          child: NotificationBell(),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+
+  const _SectionTitle({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeService.isDarkMode.value;
+    final captionColor = ThemeService.getCaptionColor(isDark);
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: captionColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.6,
+        ),
+      ),
     );
   }
 }

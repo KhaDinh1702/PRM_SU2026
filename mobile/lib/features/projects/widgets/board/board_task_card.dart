@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../../../tasks/models/task_model.dart';
 import '../../utils/project_board_utils.dart';
@@ -179,13 +180,13 @@ class BoardTaskCard extends StatelessWidget {
         alignment: Alignment.centerLeft,
         color: BoardPalette.statusColor(BoardColumn.completed),
         icon: Icons.check_rounded,
-        label: 'Complete',
+        label: LocaleService.tr('Hoàn tất', en: 'Complete'),
       ),
-      secondaryBackground: const _SwipeBackground(
+      secondaryBackground: _SwipeBackground(
         alignment: Alignment.centerRight,
-        color: Color(0xFF06B6D4),
+        color: const Color(0xFF06B6D4),
         icon: Icons.arrow_forward_rounded,
-        label: 'Next',
+        label: LocaleService.tr('Tiếp', en: 'Next'),
       ),
       child: card,
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/locale_service.dart';
+
 /// Type of project supported by the backend. The backend persists these as
 /// capitalised English strings ([apiValue]) — keep the enum and the API value
 /// in sync if you add a new type.
@@ -83,6 +85,36 @@ class ProjectTypeMeta {
         return study;
       case ProjectType.work:
         return work;
+    }
+  }
+
+  /// Localized version of [label]. Use this in UI; [label] stays English so
+  /// it can serve as a stable identifier in tests and storage.
+  String get localizedLabel {
+    switch (type) {
+      case ProjectType.personal:
+        return LocaleService.tr('Cá nhân', en: 'Personal');
+      case ProjectType.team:
+        return LocaleService.tr('Nhóm', en: 'Team');
+      case ProjectType.study:
+        return LocaleService.tr('Học tập', en: 'Study');
+      case ProjectType.work:
+        return LocaleService.tr('Công việc', en: 'Work');
+    }
+  }
+
+  /// Localized version of [description].
+  String get localizedDescription {
+    switch (type) {
+      case ProjectType.personal:
+        return LocaleService.tr('Riêng cho bạn', en: 'Just for you');
+      case ProjectType.team:
+        return LocaleService.tr('Làm cùng đồng đội', en: 'Work with others');
+      case ProjectType.study:
+        return LocaleService.tr('Học tập & môn học',
+            en: 'Coursework & learning');
+      case ProjectType.work:
+        return LocaleService.tr('Dự án công việc', en: 'Business projects');
     }
   }
 }

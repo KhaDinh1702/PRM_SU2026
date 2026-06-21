@@ -36,7 +36,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'TEAM COLLABORATION',
+                            LocaleService.tr('CỘNG TÁC NHÓM',
+                                en: 'TEAM COLLABORATION'),
                             style: TextStyle(
                               color: captionColor,
                               fontSize: 10,
@@ -46,7 +47,8 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Team Projects',
+                            LocaleService.tr('Dự án nhóm',
+                                en: 'Team Projects'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -63,7 +65,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
                     PremiumButton.icon(
                       onPressed: _showCreateProjectDialog,
                       icon: Icons.add,
-                      label: 'New',
+                      label: LocaleService.tr('Mới', en: 'New'),
                       backgroundColor: themeColor,
                     ),
                   ],
@@ -194,13 +196,13 @@ extension _ProjectScreenBuild on _ProjectScreenState {
   String _sectionTitleForTab(String tab) {
     switch (tab) {
       case 'Mine':
-        return 'My Projects';
+        return LocaleService.tr('Dự án của tôi', en: 'My Projects');
       case 'Shared':
-        return 'Shared With Me';
+        return LocaleService.tr('Chia sẻ với tôi', en: 'Shared With Me');
       case 'Archived':
-        return 'Archived';
+        return LocaleService.tr('Đã lưu trữ', en: 'Archived');
       default:
-        return 'All Projects';
+        return LocaleService.tr('Tất cả dự án', en: 'All Projects');
     }
   }
 
@@ -247,7 +249,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
             PremiumButton.icon(
               onPressed: _loadProjects,
               icon: Icons.refresh_rounded,
-              label: 'Retry',
+              label: LocaleService.tr('Thử lại', en: 'Retry'),
               backgroundColor: themeColor,
             ),
           ],
@@ -273,7 +275,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
               const Text('📁', style: TextStyle(fontSize: 48)),
               const SizedBox(height: 14),
               Text(
-                'No projects yet',
+                LocaleService.tr('Chưa có dự án nào', en: 'No projects yet'),
                 style: TextStyle(
                   color: textColor,
                   fontSize: 17,
@@ -282,7 +284,10 @@ extension _ProjectScreenBuild on _ProjectScreenState {
               ),
               const SizedBox(height: 6),
               Text(
-                'Create your first project to start tracking work, milestones and collaborators.',
+                LocaleService.tr(
+                  'Tạo dự án đầu tiên để bắt đầu theo dõi công việc, milestone và thành viên.',
+                  en: 'Create your first project to start tracking work, milestones and collaborators.',
+                ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: captionColor,
@@ -294,7 +299,7 @@ extension _ProjectScreenBuild on _ProjectScreenState {
               PremiumButton.icon(
                 onPressed: _showCreateProjectDialog,
                 icon: Icons.add_rounded,
-                label: 'Create project',
+                label: LocaleService.tr('Tạo dự án', en: 'Create project'),
                 backgroundColor: themeColor,
               ),
             ],
@@ -314,13 +319,16 @@ extension _ProjectScreenBuild on _ProjectScreenState {
             const Text('🔍', style: TextStyle(fontSize: 40)),
             const SizedBox(height: 12),
             Text(
-              'No projects match your filters',
+              LocaleService.tr(
+                'Không có dự án nào khớp bộ lọc',
+                en: 'No projects match your filters',
+              ),
               style: TextStyle(color: captionColor, fontSize: 14),
             ),
             const SizedBox(height: 14),
             TextButton(
               onPressed: _clearProjectFilters,
-              child: const Text('Clear filters'),
+              child: Text(LocaleService.tr('Xoá bộ lọc', en: 'Clear filters')),
             ),
           ],
         ),

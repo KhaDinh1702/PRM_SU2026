@@ -1,3 +1,4 @@
+import '../../../services/locale_service.dart';
 import '../../tasks/models/task_model.dart';
 
 /// Mobile Kanban columns mapped to backend task statuses.
@@ -16,16 +17,18 @@ class ProjectBoardUtils {
     BoardColumn.completed,
   ];
 
+  /// Localized label for [column], used by the board UI. The English keys
+  /// above remain stable identifiers for tests / persistence.
   static String labelFor(BoardColumn column) {
     switch (column) {
       case BoardColumn.todo:
-        return todoLabel;
+        return LocaleService.tr('Cần làm', en: todoLabel);
       case BoardColumn.inProgress:
-        return inProgressLabel;
+        return LocaleService.tr('Đang làm', en: inProgressLabel);
       case BoardColumn.review:
-        return reviewLabel;
+        return LocaleService.tr('Kiểm tra', en: reviewLabel);
       case BoardColumn.completed:
-        return completedLabel;
+        return LocaleService.tr('Hoàn tất', en: completedLabel);
     }
   }
 

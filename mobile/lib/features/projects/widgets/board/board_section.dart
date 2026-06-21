@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 import '../project_shared.dart';
 
@@ -39,7 +40,8 @@ class BoardSection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(AppSizes.paddingM),
               child: Text(
-                'No tasks in this column.',
+                LocaleService.tr('Cột này chưa có task.',
+                    en: 'No tasks in this column.'),
                 style: TextStyle(
                   color: captionColor,
                   fontSize: AppSizes.fontS + 1,

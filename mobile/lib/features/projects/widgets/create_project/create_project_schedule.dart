@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../services/theme_service.dart';
+import '../../../../services/locale_service.dart';
 import '../../providers/project_create_provider.dart';
 import 'section_header.dart';
 
@@ -22,10 +23,13 @@ class CreateProjectScheduleSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CreateProjectSectionHeader(
+        CreateProjectSectionHeader(
           icon: Icons.event_rounded,
-          title: 'Schedule',
-          subtitle: 'Optional deadline to keep things on track.',
+          title: LocaleService.tr('Lịch trình', en: 'Schedule'),
+          subtitle: LocaleService.tr(
+            'Deadline tuỳ chọn để giữ tiến độ.',
+            en: 'Optional deadline to keep things on track.',
+          ),
         ),
         InkWell(
           borderRadius: BorderRadius.circular(AppSizes.radiusM),
@@ -56,7 +60,8 @@ class CreateProjectScheduleSection extends StatelessWidget {
                 Expanded(
                   child: Text(
                     deadline == null
-                        ? 'No deadline'
+                        ? LocaleService.tr('Chưa đặt deadline',
+                            en: 'No deadline')
                         : _formatDate(deadline),
                     style: TextStyle(
                       color: deadline == null ? captionColor : textColor,
@@ -105,7 +110,7 @@ class CreateProjectScheduleSection extends StatelessWidget {
       initialDate: initial.isBefore(firstDate) ? firstDate : initial,
       firstDate: firstDate,
       lastDate: DateTime(now.year + 5),
-      helpText: 'Project deadline',
+      helpText: LocaleService.tr('Deadline dự án', en: 'Project deadline'),
     );
     if (picked != null) {
       provider.setDeadline(picked);

@@ -1,3 +1,13 @@
+/// Lenient int parsing — accepts `int`, `double`, numeric `String` or
+/// `null`. The backend sometimes returns counts as doubles (e.g. `45.0`)
+/// which made the previous `as int?` cast throw a runtime TypeError.
+int _safeInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return int.tryParse(value.toString()) ?? 0;
+}
+
 class DailyStat {
   final String date;
   final int focusMinutes;
@@ -12,8 +22,8 @@ class DailyStat {
   factory DailyStat.fromJson(Map<String, dynamic> json) {
     return DailyStat(
       date: json['date']?.toString() ?? '',
-      focusMinutes: json['focusMinutes'] as int? ?? 0,
-      completedTasks: json['completedTasks'] as int? ?? 0,
+      focusMinutes: _safeInt(json['focusMinutes']),
+      completedTasks: _safeInt(json['completedTasks']),
     );
   }
 }
@@ -40,11 +50,11 @@ class AnalyticsReport {
     final daily = json['dailyStats'] as List<dynamic>? ?? [];
 
     return AnalyticsReport(
-      totalTasks: summary['totalTasksCreated'] as int? ?? 0,
-      completedTasks: summary['completedTasksCount'] as int? ?? 0,
-      completionRate: summary['completionRatePercentage'] as int? ?? 0,
-      totalFocusMinutes: summary['totalFocusTimeMinutes'] as int? ?? 0,
-      totalFocusSessions: summary['totalFocusSessionsCount'] as int? ?? 0,
+      totalTasks: _safeInt(summary['totalTasksCreated']),
+      completedTasks: _safeInt(summary['completedTasksCount']),
+      completionRate: _safeInt(summary['completionRatePercentage']),
+      totalFocusMinutes: _safeInt(summary['totalFocusTimeMinutes']),
+      totalFocusSessions: _safeInt(summary['totalFocusSessionsCount']),
       dailyStats: daily
           .whereType<Map<String, dynamic>>()
           .map(DailyStat.fromJson)

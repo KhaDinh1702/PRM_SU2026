@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../services/theme_service.dart';
+import '../../../../services/locale_service.dart';
 import '../../models/project_create_draft.dart';
 import '../../providers/project_create_provider.dart';
 import 'section_header.dart';
@@ -38,24 +39,44 @@ class _CreateProjectBasicsSectionState
     super.dispose();
   }
 
+  /// Push [draftValue] into [controller] only when it differs from what's
+  /// currently in the field. Keeps the cursor where the user put it as long
+  /// as the user is the source of the change.
+  void _syncFromDraft(TextEditingController controller, String draftValue) {
+    if (controller.text == draftValue) return;
+    controller.value = TextEditingValue(
+      text: draftValue,
+      selection: TextSelection.collapsed(offset: draftValue.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProjectCreateProvider>();
     final validation = provider.validation;
     final nameError = _nameTouched ? validation.nameError : null;
 
+    // Sync controllers when the draft changes from outside (e.g. user picks
+    // a template) — but don't clobber what they're actively typing.
+    _syncFromDraft(_nameController, provider.draft.name);
+    _syncFromDraft(_descController, provider.draft.description);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const CreateProjectSectionHeader(
+        CreateProjectSectionHeader(
           icon: Icons.edit_note_rounded,
-          title: 'Basics',
-          subtitle: 'Give your project a name and short description.',
+          title: LocaleService.tr('Thông tin chung', en: 'Basics'),
+          subtitle: LocaleService.tr(
+            'Đặt tên và mô tả ngắn cho dự án.',
+            en: 'Give your project a name and short description.',
+          ),
         ),
         _LabelledField(
           controller: _nameController,
-          label: 'Project name',
-          hint: 'e.g. Capstone Sprint 1',
+          label: LocaleService.tr('Tên dự án', en: 'Project name'),
+          hint: LocaleService.tr('VD: Sprint 1 đồ án tốt nghiệp',
+              en: 'e.g. Capstone Sprint 1'),
           icon: Icons.folder_rounded,
           maxLength: ProjectCreateDraft.nameMaxLength,
           errorText: nameError,
@@ -68,8 +89,11 @@ class _CreateProjectBasicsSectionState
         const SizedBox(height: AppSizes.paddingM - 4),
         _LabelledField(
           controller: _descController,
-          label: 'Description',
-          hint: 'Optional — what is this project about?',
+          label: LocaleService.tr('Mô tả', en: 'Description'),
+          hint: LocaleService.tr(
+            'Tuỳ chọn — dự án này về cái gì?',
+            en: 'Optional — what is this project about?',
+          ),
           icon: Icons.description_outlined,
           maxLength: ProjectCreateDraft.descriptionMaxLength,
           maxLines: 3,

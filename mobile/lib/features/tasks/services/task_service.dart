@@ -53,7 +53,10 @@ class TaskService {
   }
 
   /// Tạo task cá nhân mới
-  Future<void> createTask({
+  /// Creates a personal task and returns the new task's `_id`. Returning the
+  /// id lets the caller attach side-state (e.g. a [RecurrenceRule]) keyed
+  /// on the task right after creation.
+  Future<String> createTask({
     required String title,
     String description = '',
     String priority = 'Medium',
@@ -80,6 +83,13 @@ class TaskService {
     if (response.statusCode != 201) {
       throw Exception('Không thể tạo task');
     }
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map) {
+        return (body['_id'] ?? body['id'] ?? '').toString();
+      }
+    } catch (_) {}
+    return '';
   }
 
   /// Cập nhật trạng thái task (toggle hoàn thành / mở lại)

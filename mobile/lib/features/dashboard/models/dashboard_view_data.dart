@@ -1,6 +1,7 @@
 import '../../calendar/models/calendar_item.dart';
 import '../../projects/models/project_model.dart';
 import 'dashboard_summary.dart';
+import 'today_item.dart';
 
 /// Aggregated dashboard state for the redesigned home screen.
 class DashboardViewData {
@@ -15,6 +16,13 @@ class DashboardViewData {
   final List<CalendarItem> upcomingEvents;
   final List<ProjectModel> recentProjects;
 
+  /// Tasks + events for today, time-sorted. Drives the unified Today
+  /// timeline on the home screen.
+  final List<TodayItem> todayTimeline;
+
+  /// Number of meetings/events scheduled for today (subset of [todayTimeline]).
+  final int meetingsTodayCount;
+
   const DashboardViewData({
     required this.summary,
     required this.productivityScore,
@@ -26,6 +34,8 @@ class DashboardViewData {
     required this.focusWeeklyMinutes,
     required this.upcomingEvents,
     required this.recentProjects,
+    required this.todayTimeline,
+    required this.meetingsTodayCount,
   });
 
   static const DashboardViewData empty = DashboardViewData(
@@ -39,5 +49,7 @@ class DashboardViewData {
     focusWeeklyMinutes: 0,
     upcomingEvents: [],
     recentProjects: [],
+    todayTimeline: [],
+    meetingsTodayCount: 0,
   );
 }

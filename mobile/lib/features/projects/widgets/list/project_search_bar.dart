@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 
 /// Thanh tìm kiếm project với nút filter.
@@ -37,7 +38,8 @@ class ProjectSearchBar extends StatelessWidget {
               onChanged: onChanged,
               style: TextStyle(color: textColor, fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Search projects...',
+                hintText: LocaleService.tr('Tìm dự án...',
+                    en: 'Search projects...'),
                 hintStyle: TextStyle(color: captionColor),
                 prefixIcon:
                     Icon(Icons.search_rounded, color: captionColor, size: 20),
