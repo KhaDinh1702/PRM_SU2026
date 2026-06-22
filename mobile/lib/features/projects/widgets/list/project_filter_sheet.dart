@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../../services/locale_service.dart';
 import '../../../../services/theme_service.dart';
 
-/// Bottom sheet lọc project theo role, type và sort.
+/// Bottom sheet lọc project theo status, loại dự án và sắp xếp.
+/// Vai trò (Owner/Manager/Member) đã được phủ bởi quick chips
+/// Mine/Shared ở header màn Projects nên không xuất hiện ở đây nữa.
 class ProjectFilterBottomSheet extends StatelessWidget {
-  final String roleFilter;
   final String typeFilter;
   final String statusFilter;
   final String sortBy;
-  final List<String> roleOptions;
   final List<String> typeOptions;
   final List<String> statusOptions;
   final List<String> sortOptions;
-  final ValueChanged<String> onRoleChanged;
   final ValueChanged<String> onTypeChanged;
   final ValueChanged<String> onStatusChanged;
   final ValueChanged<String> onSortChanged;
@@ -20,15 +19,12 @@ class ProjectFilterBottomSheet extends StatelessWidget {
 
   const ProjectFilterBottomSheet({
     super.key,
-    required this.roleFilter,
     required this.typeFilter,
     required this.statusFilter,
     required this.sortBy,
-    required this.roleOptions,
     required this.typeOptions,
     required this.statusOptions,
     required this.sortOptions,
-    required this.onRoleChanged,
     required this.onTypeChanged,
     required this.onStatusChanged,
     required this.onSortChanged,
@@ -88,13 +84,6 @@ class ProjectFilterBottomSheet extends StatelessWidget {
               options: statusOptions,
               selected: statusFilter,
               onChanged: onStatusChanged,
-            ),
-            const SizedBox(height: 16),
-            _FilterGroup(
-              title: LocaleService.tr('Vai trò', en: 'Role'),
-              options: roleOptions,
-              selected: roleFilter,
-              onChanged: onRoleChanged,
             ),
             const SizedBox(height: 16),
             _FilterGroup(

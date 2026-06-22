@@ -3,17 +3,14 @@ part of project_screen;
 extension _ProjectScreenHelpers on _ProjectScreenState {
 
   /// Primary tabs. "Mine" = projects this user owns or manages; "Shared" =
-  /// projects this user is just a member of; "Archived" = inactive states
-  /// (On Hold or Completed). "All" stays as the catch-all default.
+  /// projects this user is just a member of. "All" stays as the catch-all
+  /// default. (Status — Active / On Hold / Completed — lives in the filter
+  /// sheet instead so it doesn't double up with role here.)
   List<String> get _projectFilterOptions => const [
         'All',
         'Mine',
         'Shared',
-        'Archived',
       ];
-
-  List<String> get _roleFilterOptions =>
-      const ['All', 'Owner', 'Manager', 'Member'];
 
   List<String> get _typeFilterOptions =>
       const ['All', 'Personal', 'Team', 'Study', 'Work'];
@@ -34,9 +31,6 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
           !description.contains(query)) {
         return false;
       }
-      if (_roleFilter != 'All' && projectData.role != _roleFilter) {
-        return false;
-      }
       if (_typeFilter != 'All' && projectData.type != _typeFilter) {
         return false;
       }
@@ -53,12 +47,6 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
           break;
         case 'Shared':
           if (projectData.role != 'Member') return false;
-          break;
-        case 'Archived':
-          if (projectData.stateLabel != 'On Hold' &&
-              projectData.stateLabel != 'Completed') {
-            return false;
-          }
           break;
       }
       return true;
@@ -105,6 +93,89 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
     return filtered;
   }
 
+  /// Build the grouped sections for the project list. Empty buckets are
+  /// dropped so the UI doesn't render "0 projects" rows. Order is fixed
+  /// per axis so users see the same layout each time. Returns an empty
+  /// list when [_groupBy] is `'None'` — callers fall back to a flat list.
+  List<ProjectGroupSection> get _groupedSections {
+    if (_groupBy == 'None') return const [];
+    final visible = _visibleProjects;
+
+    if (_groupBy == 'Status') {
+      const order = ['Active', 'On Hold', 'Completed'];
+      const labelsVi = {
+        'Active': 'Đang hoạt động',
+        'On Hold': 'Tạm dừng',
+        'Completed': 'Đã hoàn thành',
+      };
+      const icons = {
+        'Active': Icons.play_circle_fill_rounded,
+        'On Hold': Icons.pause_circle_filled_rounded,
+        'Completed': Icons.check_circle_rounded,
+      };
+      const tints = {
+        'Active': Color(0xFF06B6D4),
+        'On Hold': Color(0xFFF59E0B),
+        'Completed': Color(0xFF10B981),
+      };
+      final buckets = <String, List<ProjectModel>>{
+        for (final s in order) s: <ProjectModel>[],
+      };
+      for (final p in visible) {
+        buckets[p.stateLabel]?.add(p);
+      }
+      return [
+        for (final key in order)
+          if (buckets[key]!.isNotEmpty)
+            ProjectGroupSection(
+              key: key,
+              label: LocaleService.tr(labelsVi[key]!, en: key),
+              icon: icons[key]!,
+              tint: tints[key]!,
+              items: buckets[key]!,
+            ),
+      ];
+    }
+
+    // Default: group by Type
+    const order = ['Personal', 'Team', 'Work', 'Study'];
+    const labelsVi = {
+      'Personal': 'Cá nhân',
+      'Team': 'Nhóm',
+      'Work': 'Công việc',
+      'Study': 'Học tập',
+    };
+    const icons = {
+      'Personal': Icons.person_rounded,
+      'Team': Icons.groups_rounded,
+      'Work': Icons.work_outline_rounded,
+      'Study': Icons.school_outlined,
+    };
+    const tints = {
+      'Personal': Color(0xFF8B5CF6),
+      'Team': Color(0xFF06B6D4),
+      'Work': Color(0xFF0EA5E9),
+      'Study': Color(0xFFEC4899),
+    };
+    final buckets = <String, List<ProjectModel>>{
+      for (final t in order) t: <ProjectModel>[],
+    };
+    for (final p in visible) {
+      buckets[p.type]?.add(p);
+    }
+    return [
+      for (final key in order)
+        if (buckets[key]!.isNotEmpty)
+          ProjectGroupSection(
+            key: key,
+            label: LocaleService.tr(labelsVi[key]!, en: key),
+            icon: icons[key]!,
+            tint: tints[key]!,
+            items: buckets[key]!,
+          ),
+    ];
+  }
+
   List<ProjectModel> get _attentionProjects {
     final items = _projects
         .where((projectData) => projectData.needsAttention)
@@ -122,7 +193,6 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
       _projectSearchController.clear();
       _projectSearchQuery = '';
       _projectTab = 'All';
-      _roleFilter = 'All';
       _typeFilter = 'All';
       _statusFilter = 'All';
       _sortBy = 'Recent';
@@ -138,18 +208,12 @@ extension _ProjectScreenHelpers on _ProjectScreenState {
         return StatefulBuilder(
           builder: (context, modalSetState) {
             return ProjectFilterBottomSheet(
-              roleFilter: _roleFilter,
               typeFilter: _typeFilter,
               statusFilter: _statusFilter,
               sortBy: _sortBy,
-              roleOptions: _roleFilterOptions,
               typeOptions: _typeFilterOptions,
               statusOptions: _statusFilterOptions,
               sortOptions: _sortOptions,
-              onRoleChanged: (value) {
-                _updateProjectState(() => _roleFilter = value);
-                modalSetState(() {});
-              },
               onTypeChanged: (value) {
                 _updateProjectState(() => _typeFilter = value);
                 modalSetState(() {});

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,20 +7,17 @@ import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 import '../models/checklist_item.dart';
-import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
 import '../models/task_tag.dart';
 import '../providers/task_provider.dart';
 import '../services/checklist_service.dart';
 import '../services/recurrence_service.dart';
 import '../services/tag_service.dart';
-import '../widgets/due_date_picker.dart';
-import '../widgets/priority_picker.dart';
-import '../widgets/recurrence_picker.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_detail_sheet.dart';
 import '../widgets/task_empty_state.dart';
 import '../widgets/task_filter_sheet.dart';
+import '../widgets/task_form_dialog.dart';
 import '../widgets/task_summary_bar.dart';
 
 class TaskScreen extends StatefulWidget {
@@ -93,18 +88,6 @@ class _TaskScreenState extends State<TaskScreen> {
   String _sortBy = 'recent';
 
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
-  String _taskPriority = 'Medium';
-
-  /// In-progress recurrence rule for the Create Task dialog. Cleared after
-  /// each successful submit.
-  RecurrenceRule? _draftRecurrence;
-
-  /// In-progress due date/time for the Create Task dialog. Defaults are
-  /// computed at submit time based on the active tab when the user leaves
-  /// this `null`.
-  DateTime? _draftDueDate;
 
   /// Cache of task IDs that have an attached recurrence rule. Populated
   /// after each `loadTasks`, drives the small "Repeat" badge on task cards.
@@ -115,6 +98,14 @@ class _TaskScreenState extends State<TaskScreen> {
 
   /// Per-task assigned tags. Drives the tag chip strip on each card.
   Map<String, List<TaskTag>> _taskTags = const {};
+
+  /// Tag catalog (the user's full library of tags). Loaded once + on demand
+  /// from `TagService` to populate the filter sheet.
+  List<TaskTag> _tagCatalog = const [];
+
+  /// Active tag filter — when non-empty, only tasks with at least one of
+  /// these tag ids show up.
+  Set<String> _tagFilterIds = const {};
 
   final RecurrenceService _recurrenceService = const RecurrenceService();
   final ChecklistService _checklistService = const ChecklistService();
@@ -131,8 +122,6 @@ class _TaskScreenState extends State<TaskScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _titleController.dispose();
-    _descController.dispose();
     super.dispose();
   }
 
@@ -150,14 +139,14 @@ class _TaskScreenState extends State<TaskScreen> {
   }
 
   /// Refreshes everything the screen caches alongside the task list:
-  /// recurrence flag, checklist progress, attached tags.
+  /// recurrence flag, checklist progress, attached tags, tag catalog.
   Future<void> _refreshSideState() async {
     if (!mounted) return;
     final tasks = context.read<TaskProvider>().tasks
         .where((t) => t.id.isNotEmpty)
         .toList(growable: false);
 
-    final results = await Future.wait(
+    final perTaskResults = await Future.wait(
       tasks.map((t) async {
         final rule = await _recurrenceService.loadRule(t.id);
         final progress = await _checklistService.loadProgress(t.id);
@@ -165,62 +154,90 @@ class _TaskScreenState extends State<TaskScreen> {
         return (id: t.id, rule: rule, progress: progress, tags: tags);
       }),
     );
+    final catalog = await _tagService.loadCatalog();
 
     if (!mounted) return;
     setState(() {
       _recurringTaskIds = {
-        for (final entry in results)
+        for (final entry in perTaskResults)
           if (entry.rule != null) entry.id,
       };
       _checklistProgress = {
-        for (final entry in results)
+        for (final entry in perTaskResults)
           if (entry.progress.hasItems) entry.id: entry.progress,
       };
       _taskTags = {
-        for (final entry in results)
+        for (final entry in perTaskResults)
           if (entry.tags.isNotEmpty) entry.id: entry.tags,
       };
+      _tagCatalog = catalog;
+      // Drop selected tag ids that no longer exist in the catalog.
+      _tagFilterIds = _tagFilterIds
+          .where((id) => catalog.any((t) => t.id == id))
+          .toSet();
     });
   }
 
-  Future<void> _createTask() async {
-    final title = _titleController.text.trim();
-    if (title.isEmpty) return;
+  /// Persistence callback handed to [TaskFormDialog]. Returns true when the
+  /// dialog should close, false to keep it open so the user can retry.
+  Future<bool> _handleTaskFormSubmit(
+    TaskFormResult result, {
+    String? editingTaskId,
+  }) async {
+    final isEditing = editingTaskId != null && editingTaskId.isNotEmpty;
+    final dueDate = result.dueDate ??
+        (_selectedTab == 'Upcoming'
+            ? DateTime.now().add(const Duration(days: 1))
+            : DateTime.now());
 
     try {
-      final dueDate = _draftDueDate ??
-          (_selectedTab == 'Upcoming'
-              ? DateTime.now().add(const Duration(days: 1))
-              : DateTime.now());
-      final newId = await context.read<TaskProvider>().createTask(
-            title: title,
-            description: _descController.text.trim(),
-            priority: _taskPriority,
-            dueDate: dueDate,
-          );
-      if (_draftRecurrence != null && newId.isNotEmpty) {
-        await _recurrenceService.saveRule(newId, _draftRecurrence!);
-      }
-      _titleController.clear();
-      _descController.clear();
-      _taskPriority = 'Medium';
-      _draftRecurrence = null;
-      _draftDueDate = null;
-      if (mounted) {
-        Navigator.pop(context);
-        _showSnack(
-          LocaleService.tr('Đã tạo task', en: 'Task added successfully'),
-          _accent,
+      final provider = context.read<TaskProvider>();
+      if (isEditing) {
+        await provider.updateTask(
+          taskId: editingTaskId,
+          title: result.title,
+          description: result.description,
+          priority: result.priority,
+          dueDate: dueDate,
         );
-        await _refreshSideState();
+        if (result.recurrence == null) {
+          await _recurrenceService.deleteRule(editingTaskId);
+        } else {
+          await _recurrenceService.saveRule(editingTaskId, result.recurrence!);
+        }
+      } else {
+        final newId = await provider.createTask(
+          title: result.title,
+          description: result.description,
+          priority: result.priority,
+          dueDate: dueDate,
+        );
+        if (result.recurrence != null && newId.isNotEmpty) {
+          await _recurrenceService.saveRule(newId, result.recurrence!);
+        }
       }
+
+      if (!mounted) return true;
+      _showSnack(
+        isEditing
+            ? LocaleService.tr('Đã cập nhật task', en: 'Task updated')
+            : LocaleService.tr('Đã tạo task', en: 'Task added successfully'),
+        _accent,
+      );
+      await _refreshSideState();
+      return true;
     } catch (_) {
       if (mounted) {
         _showSnack(
-          LocaleService.tr('Không thể tạo task', en: 'Could not create task'),
+          isEditing
+              ? LocaleService.tr('Không thể cập nhật task',
+                  en: 'Could not update task')
+              : LocaleService.tr('Không thể tạo task',
+                  en: 'Could not create task'),
           Colors.redAccent,
         );
       }
+      return false;
     }
   }
 
@@ -291,7 +308,14 @@ class _TaskScreenState extends State<TaskScreen> {
   }
 
   Future<void> _openTaskDetail(TaskModel task) async {
-    final result = await TaskDetailSheet.show(context, task: task);
+    final result = await TaskDetailSheet.show(
+      context,
+      task: task,
+      onEdit: () {
+        Navigator.pop(context);
+        _showTaskDialog(edit: task);
+      },
+    );
     if (!mounted) return;
     // Always refresh side state — the sheet may be dismissed by swipe
     // (returns null) but still have mutated checklist/tags through saves.
@@ -336,114 +360,20 @@ class _TaskScreenState extends State<TaskScreen> {
 
   // --- Dialogs ---
 
-  void _showCreateTaskDialog() {
-    // Start each dialog from a clean draft so leftover values from a
-    // cancelled previous open don't surprise the user.
-    _draftDueDate = null;
-    _draftRecurrence = null;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final isDark = ThemeService.isDarkMode.value;
-            final dialogBg = ThemeService.getDialogBackgroundColor(isDark);
-            final textColor = ThemeService.getTextColor(isDark);
-            final captionColor = ThemeService.getCaptionColor(isDark);
-
-            return BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: AlertDialog(
-                backgroundColor: dialogBg.withValues(alpha: 0.94),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  side: BorderSide(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.08),
-                  ),
-                ),
-                title: Text(
-                  LocaleService.tr('TẠO TASK CÁ NHÂN',
-                      en: 'CREATE PERSONAL TASK'),
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PremiumInputField(
-                      controller: _titleController,
-                      label: LocaleService.tr('Tên task *', en: 'Task title *'),
-                      hintText: LocaleService.tr('Nhập tên task...',
-                          en: 'Enter title...'),
-                      prefixIcon: Icons.check_circle_outline_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    PremiumInputField(
-                      controller: _descController,
-                      label: LocaleService.tr('Mô tả ngắn',
-                          en: 'Short description'),
-                      hintText: LocaleService.tr('Chi tiết...',
-                          en: 'Enter details...'),
-                      prefixIcon: Icons.notes_rounded,
-                    ),
-                    const SizedBox(height: 14),
-                    DueDatePickerTile(
-                      value: _draftDueDate,
-                      onChanged: (value) =>
-                          setDialogState(() => _draftDueDate = value),
-                    ),
-                    const SizedBox(height: 10),
-                    PriorityPickerTile(
-                      value: _taskPriority,
-                      onChanged: (value) =>
-                          setDialogState(() => _taskPriority = value),
-                    ),
-                    const SizedBox(height: 10),
-                    RecurrencePickerTile(
-                      rule: _draftRecurrence,
-                      onChanged: (next) =>
-                          setDialogState(() => _draftRecurrence = next),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      LocaleService.tr(
-                        'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
-                        en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
-                      ),
-                      style: TextStyle(color: captionColor, fontSize: 11),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      LocaleService.tr('Huỷ', en: 'Cancel'),
-                      style: TextStyle(
-                          color: captionColor, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  PremiumButton(
-                    onPressed: _createTask,
-                    backgroundColor: _accent,
-                    child: Text(
-                      LocaleService.tr('Tạo', en: 'Create'),
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+  Future<void> _showTaskDialog({TaskModel? edit}) async {
+    // For edit mode, pre-load the recurrence rule so the form's recurrence
+    // picker shows the existing value.
+    final initialRecurrence =
+        edit == null ? null : await _recurrenceService.loadRule(edit.id);
+    if (!mounted) return;
+    final editingId = edit?.id;
+    await TaskFormDialog.show(
+      context,
+      accent: _accent,
+      initial: edit,
+      initialRecurrence: initialRecurrence,
+      onSubmit: (result) =>
+          _handleTaskFormSubmit(result, editingTaskId: editingId),
     );
   }
 
@@ -454,6 +384,8 @@ class _TaskScreenState extends State<TaskScreen> {
       statusFilter: _statusFilter,
       priorityFilter: _priorityFilter,
       sortBy: _sortBy,
+      selectedTagIds: _tagFilterIds,
+      availableTags: _tagCatalog,
     );
     if (result != null && mounted) {
       setState(() {
@@ -461,6 +393,7 @@ class _TaskScreenState extends State<TaskScreen> {
         _statusFilter = result.status;
         _priorityFilter = result.priority;
         _sortBy = result.sort;
+        _tagFilterIds = result.tagIds;
       });
       _loadTasks();
     }
@@ -484,6 +417,14 @@ class _TaskScreenState extends State<TaskScreen> {
     final weekEnd = today.add(const Duration(days: 7));
 
     for (final task in _tasks) {
+      // Tag filter is applied here (client-side) because tag assignments
+      // live in SharedPreferences, not the backend.
+      if (_tagFilterIds.isNotEmpty) {
+        final attached =
+            (_taskTags[task.id] ?? const []).map((t) => t.id).toSet();
+        if (attached.intersection(_tagFilterIds).isEmpty) continue;
+      }
+
       final status = task.status;
       final due = task.effectiveDueDateTime;
 
@@ -587,7 +528,7 @@ class _TaskScreenState extends State<TaskScreen> {
                       totalCount: _tasks.length,
                       projectCount: projectCount,
                       overdueCount: overdueCount,
-                      onAddTask: _showCreateTaskDialog,
+                      onAddTask: () => _showTaskDialog(),
                     ),
                     const SizedBox(height: 16),
                     // Search bar
@@ -675,7 +616,7 @@ class _TaskScreenState extends State<TaskScreen> {
                               ? TaskEmptyState(
                                   textColor: textColor,
                                   captionColor: captionColor,
-                                  onAddTask: _showCreateTaskDialog,
+                                  onAddTask: () => _showTaskDialog(),
                                 )
                               : RefreshIndicator(
                                   color: _accent,

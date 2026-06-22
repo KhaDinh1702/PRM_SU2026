@@ -144,66 +144,53 @@ extension _ProjectScreenBuild on _ProjectScreenState {
       return _buildNoMatchEmpty(captionColor: captionColor);
     }
 
+    final sections = _groupedSections;
+    final attentionItems = _attentionProjects;
+
     return RefreshIndicator(
       onRefresh: _loadProjects,
       color: themeColor,
       child: ListView(
         physics: const BouncingScrollPhysics(),
         children: [
+          if (attentionItems.isNotEmpty && _projectTab == 'All')
+            ProjectAttentionBlock(
+              projects: attentionItems,
+              onProjectTap: _showProjectDetails,
+            ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _sectionTitleForTab(_projectTab),
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  '${visibleProjectModels.length}/${_projects.length}',
-                  style: TextStyle(
-                    color: captionColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ProjectGroupByBar(
+              groupBy: _groupBy,
+              totalVisible: visibleProjectModels.length,
+              totalProjects: _projects.length,
+              onChanged: (value) =>
+                  _updateProjectState(() => _groupBy = value),
             ),
           ),
-          ...visibleProjectModels.asMap().entries.map((entry) {
-            final project = entry.value;
-            return FadeInSlide(
-              delayMs: entry.key * 50,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: ProjectCardV2(
-                  project: project,
-                  onTap: () => _showProjectDetails(project),
+          if (sections.isNotEmpty)
+            ProjectSectionList(
+              sections: sections,
+              onProjectTap: _showProjectDetails,
+            )
+          else
+            ...visibleProjectModels.asMap().entries.map((entry) {
+              final project = entry.value;
+              return FadeInSlide(
+                delayMs: entry.key * 50,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: ProjectCardV2(
+                    project: project,
+                    onTap: () => _showProjectDetails(project),
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
           const SizedBox(height: 24),
         ],
       ),
     );
-  }
-
-  String _sectionTitleForTab(String tab) {
-    switch (tab) {
-      case 'Mine':
-        return LocaleService.tr('Dự án của tôi', en: 'My Projects');
-      case 'Shared':
-        return LocaleService.tr('Chia sẻ với tôi', en: 'Shared With Me');
-      case 'Archived':
-        return LocaleService.tr('Đã lưu trữ', en: 'Archived');
-      default:
-        return LocaleService.tr('Tất cả dự án', en: 'All Projects');
-    }
   }
 
   Widget _buildSkeletonList() {
