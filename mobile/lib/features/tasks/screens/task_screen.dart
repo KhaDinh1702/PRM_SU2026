@@ -8,13 +8,19 @@ import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../models/checklist_item.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
+import '../models/task_tag.dart';
 import '../providers/task_provider.dart';
+import '../services/checklist_service.dart';
 import '../services/recurrence_service.dart';
+import '../services/tag_service.dart';
+import '../widgets/due_date_picker.dart';
 import '../widgets/priority_picker.dart';
 import '../widgets/recurrence_picker.dart';
 import '../widgets/task_card.dart';
+import '../widgets/task_detail_sheet.dart';
 import '../widgets/task_empty_state.dart';
 import '../widgets/task_filter_sheet.dart';
 import '../widgets/task_summary_bar.dart';
@@ -95,11 +101,24 @@ class _TaskScreenState extends State<TaskScreen> {
   /// each successful submit.
   RecurrenceRule? _draftRecurrence;
 
+  /// In-progress due date/time for the Create Task dialog. Defaults are
+  /// computed at submit time based on the active tab when the user leaves
+  /// this `null`.
+  DateTime? _draftDueDate;
+
   /// Cache of task IDs that have an attached recurrence rule. Populated
   /// after each `loadTasks`, drives the small "Repeat" badge on task cards.
   Set<String> _recurringTaskIds = const {};
 
+  /// Per-task checklist progress (done/total). Drives the subtask badge.
+  Map<String, ChecklistProgress> _checklistProgress = const {};
+
+  /// Per-task assigned tags. Drives the tag chip strip on each card.
+  Map<String, List<TaskTag>> _taskTags = const {};
+
   final RecurrenceService _recurrenceService = const RecurrenceService();
+  final ChecklistService _checklistService = const ChecklistService();
+  final TagService _tagService = const TagService();
 
   @override
   void initState() {
@@ -127,27 +146,39 @@ class _TaskScreenState extends State<TaskScreen> {
       priorityFilter: _priorityFilter,
       searchQuery: _searchController.text.trim(),
     );
-    await _refreshRecurringIds();
+    await _refreshSideState();
   }
 
-  /// Reads recurrence rules for every loaded task in parallel and caches
-  /// which ones are recurring. Drives the "↻" badge.
-  Future<void> _refreshRecurringIds() async {
+  /// Refreshes everything the screen caches alongside the task list:
+  /// recurrence flag, checklist progress, attached tags.
+  Future<void> _refreshSideState() async {
     if (!mounted) return;
-    final tasks = context.read<TaskProvider>().tasks;
+    final tasks = context.read<TaskProvider>().tasks
+        .where((t) => t.id.isNotEmpty)
+        .toList(growable: false);
+
     final results = await Future.wait(
-      tasks
-          .where((t) => t.id.isNotEmpty)
-          .map((t) async => (
-                id: t.id,
-                rule: await _recurrenceService.loadRule(t.id),
-              )),
+      tasks.map((t) async {
+        final rule = await _recurrenceService.loadRule(t.id);
+        final progress = await _checklistService.loadProgress(t.id);
+        final tags = await _tagService.loadAssignedTags(t.id);
+        return (id: t.id, rule: rule, progress: progress, tags: tags);
+      }),
     );
+
     if (!mounted) return;
     setState(() {
       _recurringTaskIds = {
         for (final entry in results)
           if (entry.rule != null) entry.id,
+      };
+      _checklistProgress = {
+        for (final entry in results)
+          if (entry.progress.hasItems) entry.id: entry.progress,
+      };
+      _taskTags = {
+        for (final entry in results)
+          if (entry.tags.isNotEmpty) entry.id: entry.tags,
       };
     });
   }
@@ -157,13 +188,15 @@ class _TaskScreenState extends State<TaskScreen> {
     if (title.isEmpty) return;
 
     try {
+      final dueDate = _draftDueDate ??
+          (_selectedTab == 'Upcoming'
+              ? DateTime.now().add(const Duration(days: 1))
+              : DateTime.now());
       final newId = await context.read<TaskProvider>().createTask(
             title: title,
             description: _descController.text.trim(),
             priority: _taskPriority,
-            dueDate: _selectedTab == 'Upcoming'
-                ? DateTime.now().add(const Duration(days: 1))
-                : DateTime.now(),
+            dueDate: dueDate,
           );
       if (_draftRecurrence != null && newId.isNotEmpty) {
         await _recurrenceService.saveRule(newId, _draftRecurrence!);
@@ -172,13 +205,14 @@ class _TaskScreenState extends State<TaskScreen> {
       _descController.clear();
       _taskPriority = 'Medium';
       _draftRecurrence = null;
+      _draftDueDate = null;
       if (mounted) {
         Navigator.pop(context);
         _showSnack(
           LocaleService.tr('Đã tạo task', en: 'Task added successfully'),
           _accent,
         );
-        await _refreshRecurringIds();
+        await _refreshSideState();
       }
     } catch (_) {
       if (mounted) {
@@ -253,7 +287,19 @@ class _TaskScreenState extends State<TaskScreen> {
         newTaskId: newId,
       );
     }
-    if (mounted) await _refreshRecurringIds();
+    if (mounted) await _refreshSideState();
+  }
+
+  Future<void> _openTaskDetail(TaskModel task) async {
+    final result = await TaskDetailSheet.show(context, task: task);
+    if (!mounted) return;
+    // Always refresh side state — the sheet may be dismissed by swipe
+    // (returns null) but still have mutated checklist/tags through saves.
+    await _refreshSideState();
+    if (result?.allSubtasksDone == true &&
+        task.status != TaskStatus.completed) {
+      await _toggleTaskComplete(task);
+    }
   }
 
   Future<void> _deleteTask(TaskModel task) async {
@@ -291,6 +337,10 @@ class _TaskScreenState extends State<TaskScreen> {
   // --- Dialogs ---
 
   void _showCreateTaskDialog() {
+    // Start each dialog from a clean draft so leftover values from a
+    // cancelled previous open don't surprise the user.
+    _draftDueDate = null;
+    _draftRecurrence = null;
     showDialog(
       context: context,
       builder: (context) {
@@ -343,6 +393,12 @@ class _TaskScreenState extends State<TaskScreen> {
                       prefixIcon: Icons.notes_rounded,
                     ),
                     const SizedBox(height: 14),
+                    DueDatePickerTile(
+                      value: _draftDueDate,
+                      onChanged: (value) =>
+                          setDialogState(() => _draftDueDate = value),
+                    ),
+                    const SizedBox(height: 10),
                     PriorityPickerTile(
                       value: _taskPriority,
                       onChanged: (value) =>
@@ -650,6 +706,13 @@ class _TaskScreenState extends State<TaskScreen> {
                                             captionColor: captionColor,
                                             isRecurring:
                                                 _recurringTaskIds.contains(task.id),
+                                            checklistProgress:
+                                                _checklistProgress[task.id] ??
+                                                    ChecklistProgress.empty,
+                                            tags: _taskTags[task.id] ??
+                                                const [],
+                                            onOpen: () =>
+                                                _openTaskDetail(task),
                                             onToggle: () =>
                                                 _toggleTaskComplete(task),
                                             onDelete: task.source == TaskSource.personal
