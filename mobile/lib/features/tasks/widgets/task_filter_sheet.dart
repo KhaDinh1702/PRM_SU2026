@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../models/task_tag.dart';
 
 /// Group chip filter cho một nhóm options (Source, Status, Priority, Sort).
 class TaskFilterGroup extends StatelessWidget {
@@ -87,6 +88,8 @@ Future<TaskFilterResult?> showTaskFilterSheet(
   required String statusFilter,
   required String priorityFilter,
   required String sortBy,
+  required Set<String> selectedTagIds,
+  required List<TaskTag> availableTags,
 }) {
   return showModalBottomSheet<TaskFilterResult>(
     context: context,
@@ -97,6 +100,8 @@ Future<TaskFilterResult?> showTaskFilterSheet(
       initialStatus: statusFilter,
       initialPriority: priorityFilter,
       initialSort: sortBy,
+      initialTagIds: selectedTagIds,
+      availableTags: availableTags,
     ),
   );
 }
@@ -107,12 +112,14 @@ class TaskFilterResult {
   final String status;
   final String priority;
   final String sort;
+  final Set<String> tagIds;
 
   const TaskFilterResult({
     required this.source,
     required this.status,
     required this.priority,
     required this.sort,
+    this.tagIds = const {},
   });
 }
 
@@ -121,12 +128,16 @@ class _TaskFilterSheet extends StatefulWidget {
   final String initialStatus;
   final String initialPriority;
   final String initialSort;
+  final Set<String> initialTagIds;
+  final List<TaskTag> availableTags;
 
   const _TaskFilterSheet({
     required this.initialSource,
     required this.initialStatus,
     required this.initialPriority,
     required this.initialSort,
+    required this.initialTagIds,
+    required this.availableTags,
   });
 
   @override
@@ -138,6 +149,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
   late String _status;
   late String _priority;
   late String _sort;
+  late Set<String> _tagIds;
 
   static const Color _accent = AppColors.taskAccent;
 
@@ -148,6 +160,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
     _status = widget.initialStatus;
     _priority = widget.initialPriority;
     _sort = widget.initialSort;
+    _tagIds = {...widget.initialTagIds};
   }
 
   @override
@@ -221,6 +234,19 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
             options: const ['recent', 'deadline', 'priority'],
             onChanged: (v) => setState(() => _sort = v),
           ),
+          if (widget.availableTags.isNotEmpty)
+            _TagMultiSelectGroup(
+              title: LocaleService.tr('Nhãn', en: 'Tags'),
+              tags: widget.availableTags,
+              selectedIds: _tagIds,
+              onToggle: (id) => setState(() {
+                if (_tagIds.contains(id)) {
+                  _tagIds.remove(id);
+                } else {
+                  _tagIds = {..._tagIds, id};
+                }
+              }),
+            ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -233,6 +259,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                       status: 'All',
                       priority: 'All',
                       sort: 'recent',
+                      tagIds: {},
                     ),
                   ),
                   child: Text(
@@ -254,6 +281,7 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
                       status: _status,
                       priority: _priority,
                       sort: _sort,
+                      tagIds: _tagIds,
                     ),
                   ),
                   backgroundColor: _accent,
@@ -269,6 +297,113 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Multi-select chip group for tags. Each chip toggles in/out of the
+/// selected set independently — unlike [TaskFilterGroup] which picks one.
+class _TagMultiSelectGroup extends StatelessWidget {
+  final String title;
+  final List<TaskTag> tags;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggle;
+
+  const _TagMultiSelectGroup({
+    required this.title,
+    required this.tags,
+    required this.selectedIds,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeService.isDarkMode.value;
+    final subTextColor = ThemeService.getSubTextColor(isDark);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: subTextColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tag in tags)
+                _TagFilterChip(
+                  tag: tag,
+                  selected: selectedIds.contains(tag.id),
+                  onTap: () => onToggle(tag.id),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TagFilterChip extends StatelessWidget {
+  final TaskTag tag;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TagFilterChip({
+    required this.tag,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : tag.color;
+    final bg =
+        selected ? tag.color : tag.color.withValues(alpha: 0.14);
+    final border =
+        selected ? tag.color : tag.color.withValues(alpha: 0.45);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                '#${tag.name}',
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -92,6 +92,38 @@ class TaskService {
     return '';
   }
 
+  /// Full task edit — updates title / description / priority / dueDate
+  /// in one PUT request. Status is updated via [updateTaskStatus] which
+  /// only carries the status field.
+  Future<void> updateTask({
+    required String taskId,
+    required String title,
+    String description = '',
+    String priority = 'Medium',
+    DateTime? dueDate,
+  }) async {
+    final token = await AuthService.getToken();
+    final response = await http
+        .put(
+          Uri.parse('${AuthService.apiBaseUrl}/tasks/$taskId'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'title': title,
+            'description': description,
+            'priority': priority,
+            if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      throw Exception('Không thể cập nhật task');
+    }
+  }
+
   /// Cập nhật trạng thái task (toggle hoàn thành / mở lại)
   Future<void> updateTaskStatus({
     required String taskId,

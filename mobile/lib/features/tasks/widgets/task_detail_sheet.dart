@@ -9,6 +9,9 @@ import '../models/task_model.dart';
 import '../models/task_tag.dart';
 import '../services/checklist_service.dart';
 import '../services/tag_service.dart';
+import 'create_tag_dialog.dart';
+import 'task_checklist_section.dart';
+import 'task_tags_section.dart';
 
 /// Result emitted when the [TaskDetailSheet] closes.
 class TaskDetailResult {
@@ -35,9 +38,15 @@ class TaskDetailSheet extends StatefulWidget {
   final ChecklistService checklistService;
   final TagService tagService;
 
+  /// When the user taps the Edit button. The caller is expected to open the
+  /// edit dialog and refresh the task list — the sheet just pops first so
+  /// the dialog can take focus.
+  final VoidCallback? onEdit;
+
   const TaskDetailSheet({
     super.key,
     required this.task,
+    this.onEdit,
     this.checklistService = const ChecklistService(),
     this.tagService = const TagService(),
   });
@@ -45,12 +54,13 @@ class TaskDetailSheet extends StatefulWidget {
   static Future<TaskDetailResult?> show(
     BuildContext context, {
     required TaskModel task,
+    VoidCallback? onEdit,
   }) {
     return showModalBottomSheet<TaskDetailResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TaskDetailSheet(task: task),
+      builder: (_) => TaskDetailSheet(task: task, onEdit: onEdit),
     );
   }
 
@@ -166,7 +176,7 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
   }
 
   Future<void> _createTagFlow() async {
-    final tag = await _CreateTagDialog.show(context);
+    final tag = await CreateTagDialog.show(context);
     if (tag == null) return;
     final created = await widget.tagService.createTag(
       name: tag.name,
@@ -215,9 +225,31 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Title(task: widget.task, textColor: textColor),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _Title(
+                                  task: widget.task,
+                                  textColor: textColor,
+                                ),
+                              ),
+                              if (widget.onEdit != null)
+                                IconButton(
+                                  tooltip: LocaleService.tr('Sửa task',
+                                      en: 'Edit task'),
+                                  splashRadius: 22,
+                                  icon: Icon(
+                                    Icons.edit_outlined,
+                                    color: textColor,
+                                    size: 20,
+                                  ),
+                                  onPressed: widget.onEdit,
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 14),
-                          _ChecklistSection(
+                          TaskChecklistSection(
                             loading: _loading,
                             items: _items,
                             controller: _addItemController,
@@ -226,7 +258,7 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                             onRemove: _removeItem,
                           ),
                           const SizedBox(height: 22),
-                          _TagsSection(
+                          TaskTagsSection(
                             loading: _loading,
                             catalog: _catalog,
                             attachedIds: _attachedTagIds,
@@ -342,341 +374,6 @@ class _Title extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String label;
-  final String? counter;
-
-  const _SectionTitle({required this.label, this.counter});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final captionColor = ThemeService.getCaptionColor(isDark);
-    final textColor = ThemeService.getTextColor(isDark);
-    return Row(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-          ),
-        ),
-        if (counter != null) ...[
-          const SizedBox(width: 6),
-          Text(
-            counter!,
-            style: TextStyle(
-              color: captionColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _ChecklistSection extends StatelessWidget {
-  final bool loading;
-  final List<ChecklistItem> items;
-  final TextEditingController controller;
-  final Future<void> Function() onAdd;
-  final Future<void> Function(ChecklistItem) onToggle;
-  final Future<void> Function(ChecklistItem) onRemove;
-
-  const _ChecklistSection({
-    required this.loading,
-    required this.items,
-    required this.controller,
-    required this.onAdd,
-    required this.onToggle,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final captionColor = ThemeService.getCaptionColor(isDark);
-    final textColor = ThemeService.getTextColor(isDark);
-    final done = items.where((i) => i.isDone).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionTitle(
-          label: LocaleService.tr('CÁC BƯỚC', en: 'SUBTASKS'),
-          counter: items.isEmpty ? null : '$done/${items.length}',
-        ),
-        const SizedBox(height: 8),
-        if (loading)
-          const SizedBox(
-            height: 28,
-            child: Center(
-              child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            ),
-          )
-        else
-          for (final item in items)
-            _ChecklistRow(
-              item: item,
-              onToggle: () => onToggle(item),
-              onRemove: () => onRemove(item),
-            ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                onSubmitted: (_) => onAdd(),
-                style: TextStyle(color: textColor, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: LocaleService.tr('Thêm bước...', en: 'Add a step...'),
-                  hintStyle: TextStyle(color: captionColor),
-                  isDense: true,
-                  filled: true,
-                  fillColor: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded),
-              style: IconButton.styleFrom(
-                backgroundColor: const Color(0xFF06B6D4),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ChecklistRow extends StatelessWidget {
-  final ChecklistItem item;
-  final VoidCallback onToggle;
-  final VoidCallback onRemove;
-
-  const _ChecklistRow({
-    required this.item,
-    required this.onToggle,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final textColor = ThemeService.getTextColor(isDark);
-    final captionColor = ThemeService.getCaptionColor(isDark);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onToggle,
-            splashRadius: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(
-              item.isDone
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: item.isDone
-                  ? const Color(0xFF10B981)
-                  : captionColor,
-              size: 22,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              item.text,
-              style: TextStyle(
-                color: item.isDone ? captionColor : textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                decoration:
-                    item.isDone ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: onRemove,
-            splashRadius: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(Icons.close_rounded, color: captionColor, size: 18),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TagsSection extends StatelessWidget {
-  final bool loading;
-  final List<TaskTag> catalog;
-  final Set<String> attachedIds;
-  final Future<void> Function(TaskTag) onToggle;
-  final Future<void> Function() onCreate;
-
-  const _TagsSection({
-    required this.loading,
-    required this.catalog,
-    required this.attachedIds,
-    required this.onToggle,
-    required this.onCreate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final captionColor = ThemeService.getCaptionColor(isDark);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _SectionTitle(label: LocaleService.tr('NHÃN', en: 'TAGS')),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: onCreate,
-              icon: const Icon(Icons.add_rounded, size: 16),
-              label: Text(LocaleService.tr('Tạo nhãn', en: 'New tag')),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF06B6D4),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        if (loading)
-          const SizedBox(height: 28)
-        else if (catalog.isEmpty)
-          Text(
-            LocaleService.tr(
-              'Bạn chưa có nhãn nào. Tạo nhãn đầu tiên để phân loại task.',
-              en: "You haven't created any tags yet. Create one to start categorising tasks.",
-            ),
-            style: TextStyle(
-              color: captionColor,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          )
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tag in catalog)
-                _TagChip(
-                  tag: tag,
-                  selected: attachedIds.contains(tag.id),
-                  onTap: () => onToggle(tag),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  final TaskTag tag;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TagChip({
-    required this.tag,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = selected ? Colors.white : tag.color;
-    final bg = selected
-        ? tag.color
-        : tag.color.withValues(alpha: 0.14);
-    final border = selected
-        ? tag.color
-        : tag.color.withValues(alpha: 0.45);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-              ] else ...[
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    color: tag.color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-              Text(
-                tag.name,
-                style: TextStyle(
-                  color: fg,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CloseBar extends StatelessWidget {
   final VoidCallback onClose;
   const _CloseBar({required this.onClose});
@@ -711,135 +408,6 @@ class _CloseBar extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// --- Create tag dialog ---
-
-class _CreateTagDialog extends StatefulWidget {
-  static Future<TaskTag?> show(BuildContext context) {
-    return showDialog<TaskTag>(
-      context: context,
-      builder: (_) => const _CreateTagDialog(),
-    );
-  }
-
-  const _CreateTagDialog();
-
-  @override
-  State<_CreateTagDialog> createState() => _CreateTagDialogState();
-}
-
-class _CreateTagDialogState extends State<_CreateTagDialog> {
-  final TextEditingController _controller = TextEditingController();
-  int _selectedColor = TaskTag.paletteColors.first;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = ThemeService.isDarkMode.value;
-    final textColor = ThemeService.getTextColor(isDark);
-    return AlertDialog(
-      title: Text(LocaleService.tr('Tạo nhãn mới', en: 'New tag')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            style: TextStyle(color: textColor),
-            decoration: InputDecoration(
-              hintText: LocaleService.tr('VD: urgent, research...',
-                  en: 'e.g. urgent, research...'),
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            textCapitalization: TextCapitalization.none,
-            maxLength: 24,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final c in TaskTag.paletteColors)
-                _ColorSwatch(
-                  color: Color(c),
-                  selected: _selectedColor == c,
-                  onTap: () => setState(() => _selectedColor = c),
-                ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(LocaleService.tr('Huỷ', en: 'Cancel')),
-        ),
-        FilledButton(
-          onPressed: () {
-            final name = _controller.text.trim();
-            if (name.isEmpty) return;
-            Navigator.of(context).pop(TaskTag(
-              id: '',
-              name: name,
-              colorValue: _selectedColor,
-            ));
-          },
-          child: Text(LocaleService.tr('Tạo', en: 'Create')),
-        ),
-      ],
-    );
-  }
-}
-
-class _ColorSwatch extends StatelessWidget {
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ColorSwatch({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? Colors.white : Colors.transparent,
-            width: 3,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.5),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
-        ),
-        child: selected
-            ? const Icon(Icons.check_rounded,
-                color: Colors.white, size: 16)
-            : null,
       ),
     );
   }

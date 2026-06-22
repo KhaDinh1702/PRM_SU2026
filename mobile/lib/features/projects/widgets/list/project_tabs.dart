@@ -24,8 +24,6 @@ class ProjectTabs extends StatelessWidget {
         return LocaleService.tr('Của tôi', en: 'Mine');
       case 'Shared':
         return LocaleService.tr('Chia sẻ', en: 'Shared');
-      case 'Archived':
-        return LocaleService.tr('Lưu trữ', en: 'Archived');
       default:
         return key;
     }

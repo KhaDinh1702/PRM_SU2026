@@ -118,6 +118,24 @@ class TaskProvider extends ChangeNotifier {
     return id;
   }
 
+  // --- Edit full task (title / description / priority / dueDate) ---
+  Future<void> updateTask({
+    required String taskId,
+    required String title,
+    String description = '',
+    String priority = 'Medium',
+    DateTime? dueDate,
+  }) async {
+    await _service.updateTask(
+      taskId: taskId,
+      title: title,
+      description: description,
+      priority: priority,
+      dueDate: dueDate,
+    );
+    await loadTasks(silent: true);
+  }
+
   // --- Cập nhật trạng thái task với optimistic update ---
   Future<void> updateTaskStatus({
     required String taskId,
