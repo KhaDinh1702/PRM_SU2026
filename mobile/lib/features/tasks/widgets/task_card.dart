@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
+import '../models/checklist_item.dart';
 import '../models/task_model.dart';
+import '../models/task_tag.dart';
 
 /// Badge màu hiển thị nhãn nhỏ gọn (status, priority, source, reminder).
 class TaskBadge extends StatelessWidget {
@@ -43,10 +45,18 @@ class TaskInboxCard extends StatelessWidget {
   final Color captionColor;
   final VoidCallback onToggle;
   final VoidCallback? onDelete;
+  final VoidCallback? onOpen;
 
   /// When `true`, shows a small "Repeat" badge so the user knows this task
   /// auto-creates the next instance on completion.
   final bool isRecurring;
+
+  /// Checklist progress for this task. When non-empty, a small "3/5" badge
+  /// renders alongside the other meta badges.
+  final ChecklistProgress checklistProgress;
+
+  /// Tags currently attached to this task. Rendered as a colored chip row.
+  final List<TaskTag> tags;
 
   const TaskInboxCard({
     super.key,
@@ -56,7 +66,10 @@ class TaskInboxCard extends StatelessWidget {
     required this.captionColor,
     required this.onToggle,
     required this.onDelete,
+    this.onOpen,
     this.isRecurring = false,
+    this.checklistProgress = ChecklistProgress.empty,
+    this.tags = const [],
   });
 
   @override
@@ -93,7 +106,10 @@ class TaskInboxCard extends StatelessWidget {
       child: GlassCard(
         borderRadius: 22,
         padding: EdgeInsets.zero,
-        child: IntrinsicHeight(
+        child: InkWell(
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(22),
+          child: IntrinsicHeight(
           child: Row(
             children: [
               // Thanh màu trạng thái bên trái
@@ -217,6 +233,18 @@ class TaskInboxCard extends StatelessWidget {
                                         LocaleService.tr('Lặp', en: 'Repeat'),
                                     color: const Color(0xFF06B6D4),
                                   ),
+                                if (checklistProgress.hasItems)
+                                  TaskBadge(
+                                    label: '◰ ${checklistProgress.label}',
+                                    color: checklistProgress.isComplete
+                                        ? AppColors.success
+                                        : AppColors.taskAccent,
+                                  ),
+                                for (final tag in tags)
+                                  TaskBadge(
+                                    label: '#${tag.name}',
+                                    color: tag.color,
+                                  ),
                               ],
                             ),
                           ],
@@ -238,6 +266,7 @@ class TaskInboxCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
