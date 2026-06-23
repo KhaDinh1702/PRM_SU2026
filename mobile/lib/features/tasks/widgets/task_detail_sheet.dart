@@ -43,10 +43,15 @@ class TaskDetailSheet extends StatefulWidget {
   /// the dialog can take focus.
   final VoidCallback? onEdit;
 
+  /// When the user taps "Start focus". The caller should pop the sheet
+  /// and push the Focus screen with this task pre-selected.
+  final VoidCallback? onStartFocus;
+
   const TaskDetailSheet({
     super.key,
     required this.task,
     this.onEdit,
+    this.onStartFocus,
     this.checklistService = const ChecklistService(),
     this.tagService = const TagService(),
   });
@@ -55,12 +60,17 @@ class TaskDetailSheet extends StatefulWidget {
     BuildContext context, {
     required TaskModel task,
     VoidCallback? onEdit,
+    VoidCallback? onStartFocus,
   }) {
     return showModalBottomSheet<TaskDetailResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TaskDetailSheet(task: task, onEdit: onEdit),
+      builder: (_) => TaskDetailSheet(
+        task: task,
+        onEdit: onEdit,
+        onStartFocus: onStartFocus,
+      ),
     );
   }
 
@@ -249,6 +259,10 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                             ],
                           ),
                           const SizedBox(height: 14),
+                          if (widget.onStartFocus != null) ...[
+                            _StartFocusButton(onTap: widget.onStartFocus!),
+                            const SizedBox(height: 16),
+                          ],
                           TaskChecklistSection(
                             loading: _loading,
                             items: _items,
@@ -408,6 +422,38 @@ class _CloseBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Prominent "Start focus" CTA shown in the task detail sheet. Tapping
+/// pops the sheet via the supplied callback so the host screen can push
+/// the Focus screen with this task pre-selected.
+class _StartFocusButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _StartFocusButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF06B6D4);
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.center_focus_strong_rounded, size: 18),
+        label: Text(
+          LocaleService.tr('Bắt đầu focus', en: 'Start focus'),
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
       ),
     );
   }

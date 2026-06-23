@@ -6,6 +6,9 @@ import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../../focus/models/focus_session.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../../focus/screens/focus_screen.dart';
 import '../models/checklist_item.dart';
 import '../models/task_model.dart';
 import '../models/task_tag.dart';
@@ -315,6 +318,10 @@ class _TaskScreenState extends State<TaskScreen> {
         Navigator.pop(context);
         _showTaskDialog(edit: task);
       },
+      onStartFocus: () {
+        Navigator.pop(context);
+        _openFocusForTask(task);
+      },
     );
     if (!mounted) return;
     // Always refresh side state — the sheet may be dismissed by swipe
@@ -344,6 +351,39 @@ class _TaskScreenState extends State<TaskScreen> {
         );
       }
     }
+  }
+
+  /// Push the Focus screen on top of the navigator with this task
+  /// pre-selected. Used by the "Start focus" action inside the task
+  /// detail sheet.
+  void _openFocusForTask(TaskModel task) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FocusScreen(
+          initialTaskId: task.id,
+          initialTaskTitle: task.title,
+        ),
+      ),
+    );
+  }
+
+  /// Minutes the user has spent focusing on [taskId] since local midnight.
+  /// Reads from the active [FocusProvider] history — note this only
+  /// updates when the provider notifies, so the card refreshes naturally
+  /// when a focus session ends.
+  int _focusMinutesTodayFor(String taskId) {
+    if (taskId.isEmpty) return 0;
+    final history = context.watch<FocusProvider>().history;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    int seconds = 0;
+    for (final s in history) {
+      if (s.taskId != taskId) continue;
+      if (s.mode.isBreak) continue;
+      if (s.startedAt.isBefore(todayStart)) continue;
+      seconds += s.durationSeconds;
+    }
+    return (seconds / 60).round();
   }
 
   void _showSnack(String message, Color color) {
@@ -652,6 +692,8 @@ class _TaskScreenState extends State<TaskScreen> {
                                                     ChecklistProgress.empty,
                                             tags: _taskTags[task.id] ??
                                                 const [],
+                                            focusMinutesToday:
+                                                _focusMinutesTodayFor(task.id),
                                             onOpen: () =>
                                                 _openTaskDetail(task),
                                             onToggle: () =>

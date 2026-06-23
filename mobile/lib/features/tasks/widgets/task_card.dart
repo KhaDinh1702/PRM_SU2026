@@ -58,6 +58,11 @@ class TaskInboxCard extends StatelessWidget {
   /// Tags currently attached to this task. Rendered as a colored chip row.
   final List<TaskTag> tags;
 
+  /// Minutes the user has spent focusing on this task today. When > 0
+  /// a small badge renders so the user can see at-a-glance which tasks
+  /// have already had time invested today.
+  final int focusMinutesToday;
+
   const TaskInboxCard({
     super.key,
     required this.task,
@@ -70,6 +75,7 @@ class TaskInboxCard extends StatelessWidget {
     this.isRecurring = false,
     this.checklistProgress = ChecklistProgress.empty,
     this.tags = const [],
+    this.focusMinutesToday = 0,
   });
 
   @override
@@ -239,6 +245,11 @@ class TaskInboxCard extends StatelessWidget {
                                     color: checklistProgress.isComplete
                                         ? AppColors.success
                                         : AppColors.taskAccent,
+                                  ),
+                                if (focusMinutesToday > 0)
+                                  TaskBadge(
+                                    label: '◉ ${focusMinutesToday}m',
+                                    color: const Color(0xFF06B6D4),
                                   ),
                                 for (final tag in tags)
                                   TaskBadge(

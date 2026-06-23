@@ -16,7 +16,8 @@ import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/dashboard/providers/dashboard_provider.dart';
 import 'features/tasks/screens/task_screen.dart';
 import 'features/tasks/providers/task_provider.dart';
-import 'features/timer/screens/timer_screen.dart';
+import 'features/focus/providers/focus_provider.dart';
+import 'features/focus/screens/focus_screen.dart';
 import 'features/projects/screens/project_screen.dart';
 import 'features/projects/providers/project_provider.dart';
 import 'features/notifications/providers/notification_provider.dart';
@@ -34,6 +35,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ProjectProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => FocusProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
       ],
       child: MyApp(isLoggedIn: loggedIn),
@@ -124,7 +126,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       }),
       const TaskScreen(),
       const ProjectScreen(),
-      TimerScreen(onLogout: _handleLogout),
+      const FocusScreen(),
       ProfileScreen(onLogout: _handleLogout),
     ];
     _startEventCheckTimer();
