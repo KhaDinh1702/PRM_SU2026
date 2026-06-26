@@ -61,6 +61,7 @@ class TaskService {
     String description = '',
     String priority = 'Medium',
     DateTime? dueDate,
+    TaskLocation? location,
   }) async {
     final token = await AuthService.getToken();
     final response = await http
@@ -76,6 +77,7 @@ class TaskService {
             'priority': priority,
             'status': 'Pending',
             if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+            if (location != null) 'location': location.toJson(),
           }),
         )
         .timeout(const Duration(seconds: 15));
@@ -101,6 +103,7 @@ class TaskService {
     String description = '',
     String priority = 'Medium',
     DateTime? dueDate,
+    TaskLocation? location,
   }) async {
     final token = await AuthService.getToken();
     final response = await http
@@ -115,6 +118,7 @@ class TaskService {
             'description': description,
             'priority': priority,
             if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+            'location': location?.toJson(),
           }),
         )
         .timeout(const Duration(seconds: 15));

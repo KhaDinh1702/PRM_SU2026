@@ -107,12 +107,14 @@ class TaskProvider extends ChangeNotifier {
     String description = '',
     String priority = 'Medium',
     DateTime? dueDate,
+    TaskLocation? location,
   }) async {
     final id = await _service.createTask(
       title: title,
       description: description,
       priority: priority,
       dueDate: dueDate,
+      location: location,
     );
     await loadTasks(silent: true);
     return id;
@@ -125,6 +127,7 @@ class TaskProvider extends ChangeNotifier {
     String description = '',
     String priority = 'Medium',
     DateTime? dueDate,
+    TaskLocation? location,
   }) async {
     await _service.updateTask(
       taskId: taskId,
@@ -132,6 +135,7 @@ class TaskProvider extends ChangeNotifier {
       description: description,
       priority: priority,
       dueDate: dueDate,
+      location: location,
     );
     await loadTasks(silent: true);
   }

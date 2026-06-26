@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../../navigation/services/navigation_route_service.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
 import 'due_date_picker.dart';
@@ -18,6 +19,7 @@ class TaskFormResult {
   final String priority;
   final DateTime? dueDate;
   final RecurrenceRule? recurrence;
+  final TaskLocation? location;
 
   const TaskFormResult({
     required this.title,
@@ -25,6 +27,7 @@ class TaskFormResult {
     required this.priority,
     required this.dueDate,
     required this.recurrence,
+    this.location,
   });
 }
 
@@ -71,9 +74,17 @@ class TaskFormDialog extends StatefulWidget {
 class _TaskFormDialogState extends State<TaskFormDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descController;
+  late final TextEditingController _placeController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _latController;
+  late final TextEditingController _lngController;
+  final _navigationService = const NavigationRouteService();
   late String _priority;
   DateTime? _dueDate;
   RecurrenceRule? _recurrence;
+  bool _locationEnabled = false;
+  bool _resolvingLocation = false;
+  String? _locationError;
   bool _submitting = false;
 
   bool get _isEditing => widget.initial != null;
@@ -84,21 +95,45 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
     final initial = widget.initial;
     _titleController = TextEditingController(text: initial?.title ?? '');
     _descController = TextEditingController(text: initial?.description ?? '');
+    _placeController =
+        TextEditingController(text: initial?.location?.placeName ?? '');
+    _addressController =
+        TextEditingController(text: initial?.location?.address ?? '');
+    _latController = TextEditingController(
+      text: initial?.location == null
+          ? ''
+          : initial!.location!.latitude.toStringAsFixed(6),
+    );
+    _lngController = TextEditingController(
+      text: initial?.location == null
+          ? ''
+          : initial!.location!.longitude.toStringAsFixed(6),
+    );
     _priority = initial?.priorityLabel ?? 'Medium';
     _dueDate = initial?.effectiveDueDateTime;
     _recurrence = widget.initialRecurrence;
+    _locationEnabled = initial?.hasLocation == true;
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _placeController.dispose();
+    _addressController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSubmit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty || _submitting) return;
+    final location = _buildLocation();
+    if (_locationError != null) {
+      setState(() {});
+      return;
+    }
     setState(() => _submitting = true);
     final ok = await widget.onSubmit(TaskFormResult(
       title: title,
@@ -106,12 +141,72 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
       priority: _priority,
       dueDate: _dueDate,
       recurrence: _recurrence,
+      location: location,
     ));
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
     } else {
       setState(() => _submitting = false);
+    }
+  }
+
+  TaskLocation? _buildLocation() {
+    _locationError = null;
+    if (!_locationEnabled) return null;
+
+    final latitude = double.tryParse(_latController.text.trim());
+    final longitude = double.tryParse(_lngController.text.trim());
+    if (latitude == null ||
+        longitude == null ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180) {
+      _locationError = LocaleService.tr(
+        'Toa do khong hop le',
+        en: 'Invalid coordinates',
+      );
+      return null;
+    }
+
+    return TaskLocation(
+      placeName: _placeController.text.trim(),
+      address: _addressController.text.trim(),
+      latitude: latitude,
+      longitude: longitude,
+      reminderRadiusMeters: 100,
+    );
+  }
+
+  Future<void> _resolveAddress() async {
+    final address = _addressController.text.trim();
+    if (address.isEmpty || _resolvingLocation) return;
+    setState(() {
+      _resolvingLocation = true;
+      _locationError = null;
+    });
+    try {
+      final location = await _navigationService.geocodeAddress(address);
+      if (!mounted) return;
+      setState(() {
+        if (_placeController.text.trim().isEmpty) {
+          _placeController.text = location.placeName;
+        }
+        _addressController.text = location.address;
+        _latController.text = location.latitude.toStringAsFixed(6);
+        _lngController.text = location.longitude.toStringAsFixed(6);
+        _resolvingLocation = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _locationError = LocaleService.tr(
+          'Khong tim thay dia chi nay',
+          en: 'Could not find this address',
+        );
+        _resolvingLocation = false;
+      });
     }
   }
 
@@ -146,9 +241,12 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             letterSpacing: 1.2,
           ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
             PremiumInputField(
               controller: _titleController,
               label: LocaleService.tr('Tên task *', en: 'Task title *'),
@@ -181,6 +279,23 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
               onChanged: (next) => setState(() => _recurrence = next),
             ),
             const SizedBox(height: 10),
+            _LocationFields(
+              enabled: _locationEnabled,
+              placeController: _placeController,
+              addressController: _addressController,
+              latController: _latController,
+              lngController: _lngController,
+              errorText: _locationError,
+              resolving: _resolvingLocation,
+              onResolveAddress: _resolveAddress,
+              onEnabledChanged: (value) {
+                setState(() {
+                  _locationEnabled = value;
+                  _locationError = null;
+                });
+              },
+            ),
+            const SizedBox(height: 10),
             if (!_isEditing)
               Text(
                 LocaleService.tr(
@@ -189,7 +304,9 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                 ),
                 style: TextStyle(color: captionColor, fontSize: 11),
               ),
-          ],
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -211,6 +328,153 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                   color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationFields extends StatelessWidget {
+  final bool enabled;
+  final TextEditingController placeController;
+  final TextEditingController addressController;
+  final TextEditingController latController;
+  final TextEditingController lngController;
+  final String? errorText;
+  final bool resolving;
+  final VoidCallback onResolveAddress;
+  final ValueChanged<bool> onEnabledChanged;
+
+  const _LocationFields({
+    required this.enabled,
+    required this.placeController,
+    required this.addressController,
+    required this.latController,
+    required this.lngController,
+    required this.errorText,
+    required this.resolving,
+    required this.onResolveAddress,
+    required this.onEnabledChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeService.isDarkMode.value;
+    final borderColor = ThemeService.getBorderColor(isDark);
+    final textColor = ThemeService.getTextColor(isDark);
+    final captionColor = ThemeService.getCaptionColor(isDark);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: isDark ? 0.025 : 0.45),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          SwitchListTile.adaptive(
+            value: enabled,
+            onChanged: onEnabledChanged,
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            activeThumbColor: const Color(0xFF06B6D4),
+            secondary: Icon(
+              Icons.location_on_outlined,
+              color: enabled ? const Color(0xFF06B6D4) : captionColor,
+            ),
+            title: Text(
+              LocaleService.tr('Gan dia diem', en: 'Attach location'),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          if (enabled) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                children: [
+                  PremiumInputField(
+                    controller: placeController,
+                    label: LocaleService.tr('Ten dia diem', en: 'Place name'),
+                    hintText: 'WinMart Nguyen Trai',
+                    prefixIcon: Icons.storefront_outlined,
+                  ),
+                  const SizedBox(height: 10),
+                  PremiumInputField(
+                    controller: addressController,
+                    label: LocaleService.tr('Dia chi', en: 'Address'),
+                    hintText: 'Nguyen Trai, Thanh Xuan',
+                    prefixIcon: Icons.map_outlined,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: resolving ? null : onResolveAddress,
+                      icon: resolving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.travel_explore_rounded, size: 18),
+                      label: Text(
+                        LocaleService.tr('Lay toa do', en: 'Find coordinates'),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PremiumInputField(
+                          controller: latController,
+                          label: 'Latitude',
+                          hintText: '10.762622',
+                          prefixIcon: Icons.my_location_rounded,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: PremiumInputField(
+                          controller: lngController,
+                          label: 'Longitude',
+                          hintText: '106.660172',
+                          prefixIcon: Icons.explore_outlined,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        errorText!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

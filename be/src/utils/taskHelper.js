@@ -1,10 +1,29 @@
-/**
- * Cập nhật các trường dữ liệu của Task dựa trên quyền chỉnh sửa.
- * @param {Object} task - Mongoose document đại diện cho Task cần sửa
- * @param {Object} updates - Các trường cần cập nhật gửi từ request body
- * @param {Boolean} canEditFields - Quyền hạn chỉnh sửa đầy đủ (Owner, Manager, hoặc Creator)
- * @returns {Object} task document sau khi cập nhật các trường
- */
+const normalizeTaskLocation = (location) => {
+    if (!location || typeof location !== 'object') {
+        return {
+            placeName: '',
+            address: '',
+            latitude: null,
+            longitude: null,
+            reminderRadiusMeters: 100
+        };
+    }
+
+    const latitude = Number(location.latitude);
+    const longitude = Number(location.longitude);
+    const reminderRadiusMeters = Number(location.reminderRadiusMeters);
+
+    return {
+        placeName: location.placeName ? String(location.placeName).trim() : '',
+        address: location.address ? String(location.address).trim() : '',
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+        reminderRadiusMeters: Number.isFinite(reminderRadiusMeters)
+            ? Math.max(25, Math.round(reminderRadiusMeters))
+            : 100
+    };
+};
+
 const updateTaskFields = (task, updates, canEditFields) => {
     const {
         title,
@@ -19,22 +38,20 @@ const updateTaskFields = (task, updates, canEditFields) => {
         dueTime,
         reminderType,
         reminderOffset,
-        notificationEnabled
+        notificationEnabled,
+        location
     } = updates;
 
-    // Bất kỳ ai được gán task hoặc có quyền chỉnh sửa đều được cập nhật status
     if (status !== undefined) {
         task.status = status;
         task.completedAt = status === 'Completed' ? new Date() : null;
     }
 
-    // Các trường chi tiết khác chỉ được sửa nếu có quyền canEditFields
     if (canEditFields) {
         if (title !== undefined) task.title = title;
         if (description !== undefined) task.description = description;
         if (priority !== undefined) task.priority = priority;
-        
-        // Đồng bộ deadline và dueDate
+
         if (deadline !== undefined) {
             task.deadline = deadline;
             task.dueDate = deadline;
@@ -43,7 +60,7 @@ const updateTaskFields = (task, updates, canEditFields) => {
             task.dueDate = dueDate;
             task.deadline = dueDate;
         }
-        
+
         if (startDate !== undefined) task.startDate = startDate;
         if (dueTime !== undefined) task.dueTime = dueTime;
         if (reminderType !== undefined) task.reminderType = reminderType || 'none';
@@ -52,14 +69,16 @@ const updateTaskFields = (task, updates, canEditFields) => {
             task.notificationEnabled = Boolean(notificationEnabled && task.reminderType !== 'none');
         }
         if (label !== undefined) task.label = label;
+        if (location !== undefined) task.location = normalizeTaskLocation(location);
         if (assignedTo !== undefined) {
             task.assignedTo = assignedTo;
-            task.user = assignedTo; // Trường user giữ để map logic cá nhân hóa ở schema
+            task.user = assignedTo;
         }
     }
     return task;
 };
 
 module.exports = {
-    updateTaskFields
+    updateTaskFields,
+    normalizeTaskLocation
 };

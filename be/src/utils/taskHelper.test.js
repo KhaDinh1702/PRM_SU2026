@@ -17,6 +17,7 @@ describe('taskHelper - updateTaskFields', () => {
             reminderOffset: null,
             notificationEnabled: false,
             label: '',
+            location: null,
             assignedTo: null,
             user: null
         };
@@ -62,5 +63,25 @@ describe('taskHelper - updateTaskFields', () => {
         expect(updated.dueDate).toEqual(testDate);
         expect(updated.reminderType).toBe('at_time');
         expect(updated.notificationEnabled).toBe(true);
+    });
+
+    test('Cap nhat location neu canEditFields = true', () => {
+        const updated = updateTaskFields(mockTask, {
+            location: {
+                placeName: 'Thu vien',
+                address: 'Nguyen Trai',
+                latitude: '10.762622',
+                longitude: '106.660172',
+                reminderRadiusMeters: '150'
+            }
+        }, true);
+
+        expect(updated.location).toEqual({
+            placeName: 'Thu vien',
+            address: 'Nguyen Trai',
+            latitude: 10.762622,
+            longitude: 106.660172,
+            reminderRadiusMeters: 150
+        });
     });
 });

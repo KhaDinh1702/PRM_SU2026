@@ -19,6 +19,7 @@ const focusRoutes = require('./routes/focusRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const navigationRoutes = require('./routes/navigationRoutes');
 const Message = require('./models/Message');
 
 const app = express();
@@ -83,6 +84,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/focus-sessions', focusRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/navigation', navigationRoutes);
 app.use('/api/projects/:projectId/messages', chatRoutes);
 
 // Basic Route

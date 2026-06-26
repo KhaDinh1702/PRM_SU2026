@@ -9,6 +9,7 @@ import '../../../services/theme_service.dart';
 import '../../focus/models/focus_session.dart';
 import '../../focus/providers/focus_provider.dart';
 import '../../focus/screens/focus_screen.dart';
+import '../../navigation/screens/task_navigation_screen.dart';
 import '../models/checklist_item.dart';
 import '../models/task_model.dart';
 import '../models/task_tag.dart';
@@ -202,6 +203,7 @@ class _TaskScreenState extends State<TaskScreen> {
           description: result.description,
           priority: result.priority,
           dueDate: dueDate,
+          location: result.location,
         );
         if (result.recurrence == null) {
           await _recurrenceService.deleteRule(editingTaskId);
@@ -214,6 +216,7 @@ class _TaskScreenState extends State<TaskScreen> {
           description: result.description,
           priority: result.priority,
           dueDate: dueDate,
+          location: result.location,
         );
         if (result.recurrence != null && newId.isNotEmpty) {
           await _recurrenceService.saveRule(newId, result.recurrence!);
@@ -300,6 +303,7 @@ class _TaskScreenState extends State<TaskScreen> {
           description: completedTask.description,
           priority: completedTask.priorityLabel,
           dueDate: nextDue,
+          location: completedTask.location,
         );
     if (newId.isNotEmpty) {
       await _recurrenceService.transferRule(
@@ -322,6 +326,12 @@ class _TaskScreenState extends State<TaskScreen> {
         Navigator.pop(context);
         _openFocusForTask(task);
       },
+      onNavigate: task.hasLocation
+          ? () {
+              Navigator.pop(context);
+              _openNavigationForTask(task);
+            }
+          : null,
     );
     if (!mounted) return;
     // Always refresh side state — the sheet may be dismissed by swipe
@@ -365,6 +375,17 @@ class _TaskScreenState extends State<TaskScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openNavigationForTask(TaskModel task) async {
+    final completed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskNavigationScreen(task: task),
+      ),
+    );
+    if (completed == true && mounted) {
+      await _loadTasks();
+    }
   }
 
   /// Minutes the user has spent focusing on [taskId] since local midnight.

@@ -80,6 +80,30 @@ const taskSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    location: {
+        placeName: {
+            type: String,
+            trim: true,
+            default: ''
+        },
+        address: {
+            type: String,
+            trim: true,
+            default: ''
+        },
+        latitude: {
+            type: Number,
+            default: null
+        },
+        longitude: {
+            type: Number,
+            default: null
+        },
+        reminderRadiusMeters: {
+            type: Number,
+            default: 100
+        }
+    },
     completedAt: {
         type: Date
     },
@@ -99,5 +123,6 @@ taskSchema.index({ project: 1, assignedTo: 1, status: 1 });
 taskSchema.index({ assignedTo: 1, deadline: 1, status: 1 });
 taskSchema.index({ createdBy: 1, deadline: 1, status: 1 });
 taskSchema.index({ sourceType: 1, deadline: 1 });
+taskSchema.index({ user: 1, 'location.latitude': 1, 'location.longitude': 1 });
 
 module.exports = mongoose.model('Task', taskSchema);
