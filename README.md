@@ -87,33 +87,9 @@ npm start
 
 ---
 
-### 2. Environment Variables
-
-Create a `.env` file inside the `be/` directory with the following variables:
-
-```env
-PORT=5000
-MONGODB_URI=<your-mongodb-atlas-connection-string>
-NODE_ENV=development
-JWT_SECRET=<your-jwt-secret-key>
-EMAIL_USER=<your-email-address-for-smtp>
-EMAIL_PASS=<your-email-app-password>
-```
-
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: `5000`) |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `NODE_ENV` | Environment mode (`development` / `production` / `test`) |
-| `JWT_SECRET` | Secret key for signing JWT tokens |
-| `EMAIL_USER` | SMTP email address (for OTP / notifications) |
-| `EMAIL_PASS` | SMTP email app password |
-
-> ⚠️ **Never commit your `.env` file.** It is already listed in `.gitignore`.
-
 ---
 
-### 3. Mobile (Flutter) Setup
+### 2. Mobile (Flutter) Setup
 
 ```bash
 # Navigate to mobile directory
@@ -208,8 +184,6 @@ flutter run
 | `GET/PUT /api/notifications/*` | Notification management |
 | `GET /api/analytics/*` | Productivity analytics |
 | `GET /api/health` | Health check endpoint |
-
-> 📖 Full interactive API documentation is available at `/api-docs` (Swagger UI).
 
 ---
 
