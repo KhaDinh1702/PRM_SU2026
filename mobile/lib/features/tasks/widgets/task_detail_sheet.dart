@@ -47,11 +47,14 @@ class TaskDetailSheet extends StatefulWidget {
   /// and push the Focus screen with this task pre-selected.
   final VoidCallback? onStartFocus;
 
+  final VoidCallback? onNavigate;
+
   const TaskDetailSheet({
     super.key,
     required this.task,
     this.onEdit,
     this.onStartFocus,
+    this.onNavigate,
     this.checklistService = const ChecklistService(),
     this.tagService = const TagService(),
   });
@@ -61,6 +64,7 @@ class TaskDetailSheet extends StatefulWidget {
     required TaskModel task,
     VoidCallback? onEdit,
     VoidCallback? onStartFocus,
+    VoidCallback? onNavigate,
   }) {
     return showModalBottomSheet<TaskDetailResult>(
       context: context,
@@ -70,6 +74,7 @@ class TaskDetailSheet extends StatefulWidget {
         task: task,
         onEdit: onEdit,
         onStartFocus: onStartFocus,
+        onNavigate: onNavigate,
       ),
     );
   }
@@ -263,6 +268,11 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                             _StartFocusButton(onTap: widget.onStartFocus!),
                             const SizedBox(height: 16),
                           ],
+                          if (widget.task.hasLocation &&
+                              widget.onNavigate != null) ...[
+                            _NavigateButton(onTap: widget.onNavigate!),
+                            const SizedBox(height: 16),
+                          ],
                           TaskChecklistSection(
                             loading: _loading,
                             items: _items,
@@ -296,6 +306,35 @@ class _TaskDetailSheetState extends State<TaskDetailSheet> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavigateButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _NavigateButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF22C55E);
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.near_me_rounded, size: 18),
+        label: Text(
+          LocaleService.tr('Chi duong', en: 'Navigate'),
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),

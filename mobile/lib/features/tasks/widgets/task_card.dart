@@ -233,6 +233,14 @@ class TaskInboxCard extends StatelessWidget {
                                     label: reminderLabelStr,
                                     color: AppColors.timerFocus,
                                   ),
+                                if (task.hasLocation)
+                                  TaskBadge(
+                                    label: LocaleService.tr(
+                                      'Dia diem',
+                                      en: 'Location',
+                                    ),
+                                    color: const Color(0xFF06B6D4),
+                                  ),
                                 if (isRecurring)
                                   TaskBadge(
                                     label:

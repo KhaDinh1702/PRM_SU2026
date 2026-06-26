@@ -1,5 +1,6 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const { normalizeTaskLocation } = require('../utils/taskHelper');
 
 const getId = (value) => {
     if (!value) return '';
@@ -177,7 +178,8 @@ exports.createTask = async (req, res) => {
             dueTime,
             reminderType,
             reminderOffset,
-            notificationEnabled
+            notificationEnabled,
+            location
         } = req.body;
 
         if (!title) {
@@ -213,6 +215,7 @@ exports.createTask = async (req, res) => {
             reminderType: reminderType || 'none',
             reminderOffset: reminderOffset ?? null,
             notificationEnabled: Boolean(notificationEnabled && (reminderType || 'none') !== 'none'),
+            location: normalizeTaskLocation(location),
             completedAt: status === 'Completed' ? new Date() : null,
             user: assignedTo || req.user.id
         });

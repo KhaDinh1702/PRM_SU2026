@@ -10,6 +10,56 @@ enum TaskPriority { low, medium, high, urgent }
 /// Enum nguồn gốc task
 enum TaskSource { personal, project, schedule }
 
+class TaskLocation {
+  final String placeName;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final int reminderRadiusMeters;
+
+  const TaskLocation({
+    required this.placeName,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    this.reminderRadiusMeters = 100,
+  });
+
+  factory TaskLocation.fromJson(Map<String, dynamic> json) {
+    return TaskLocation(
+      placeName: json['placeName']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      latitude: _parseDouble(json['latitude']),
+      longitude: _parseDouble(json['longitude']),
+      reminderRadiusMeters:
+          int.tryParse(json['reminderRadiusMeters']?.toString() ?? '') ?? 100,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'placeName': placeName,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'reminderRadiusMeters': reminderRadiusMeters,
+    };
+  }
+
+  bool get isValid => latitude != 0 && longitude != 0;
+
+  String get displayName {
+    if (placeName.trim().isNotEmpty) return placeName.trim();
+    if (address.trim().isNotEmpty) return address.trim();
+    return '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
 /// Model đại diện cho một Task — thay thế cho Map<String, dynamic>
 class TaskModel {
   final String id;
@@ -25,6 +75,7 @@ class TaskModel {
   final String? reminderType;
   final Map<String, dynamic>? project;
   final Map<String, dynamic>? assignedTo;
+  final TaskLocation? location;
 
   const TaskModel({
     required this.id,
@@ -40,6 +91,7 @@ class TaskModel {
     this.reminderType,
     this.project,
     this.assignedTo,
+    this.location,
   });
 
   /// Parse từ JSON response của backend
@@ -66,6 +118,9 @@ class TaskModel {
       assignedTo: rawAssignee is Map
           ? Map<String, dynamic>.from(rawAssignee)
           : null,
+      location: json['location'] is Map
+          ? TaskLocation.fromJson(Map<String, dynamic>.from(json['location']))
+          : null,
     );
   }
 
@@ -86,6 +141,7 @@ class TaskModel {
       if (reminderType != null) 'reminderType': reminderType,
       if (project != null) 'project': project,
       if (assignedTo != null) 'assignedTo': assignedTo,
+      if (location != null) 'location': location!.toJson(),
     };
   }
 
@@ -104,6 +160,7 @@ class TaskModel {
     String? reminderType,
     Map<String, dynamic>? project,
     Map<String, dynamic>? assignedTo,
+    TaskLocation? location,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -119,6 +176,7 @@ class TaskModel {
       reminderType: reminderType ?? this.reminderType,
       project: project ?? this.project,
       assignedTo: assignedTo ?? this.assignedTo,
+      location: location ?? this.location,
     );
   }
 
@@ -226,6 +284,8 @@ class TaskModel {
   }
 
   /// Màu theo priority
+  bool get hasLocation => location?.isValid == true;
+
   Color get priorityColor => AppColors.priorityColor(priority.name);
 
   /// Màu theo source
