@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../../navigation/screens/location_picker_screen.dart';
 import '../../navigation/services/navigation_route_service.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
@@ -210,6 +211,43 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
     }
   }
 
+  Future<void> _pickLocationOnMap() async {
+    final currentDraft = _draftLocationOrNull();
+    final picked = await Navigator.of(context).push<TaskLocation>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLocation: currentDraft),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _locationEnabled = true;
+      _locationError = null;
+      _placeController.text = picked.placeName;
+      _addressController.text = picked.address;
+      _latController.text = picked.latitude.toStringAsFixed(6);
+      _lngController.text = picked.longitude.toStringAsFixed(6);
+    });
+  }
+
+  TaskLocation? _draftLocationOrNull() {
+    final latitude = double.tryParse(_latController.text.trim());
+    final longitude = double.tryParse(_lngController.text.trim());
+    if (latitude == null ||
+        longitude == null ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180) {
+      return null;
+    }
+    return TaskLocation(
+      placeName: _placeController.text.trim(),
+      address: _addressController.text.trim(),
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeService.isDarkMode.value;
@@ -247,63 +285,64 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-            PremiumInputField(
-              controller: _titleController,
-              label: LocaleService.tr('Tên task *', en: 'Task title *'),
-              hintText:
-                  LocaleService.tr('Nhập tên task...', en: 'Enter title...'),
-              prefixIcon: Icons.check_circle_outline_rounded,
-            ),
-            const SizedBox(height: 14),
-            PremiumInputField(
-              controller: _descController,
-              label:
-                  LocaleService.tr('Mô tả ngắn', en: 'Short description'),
-              hintText:
-                  LocaleService.tr('Chi tiết...', en: 'Enter details...'),
-              prefixIcon: Icons.notes_rounded,
-            ),
-            const SizedBox(height: 14),
-            DueDatePickerTile(
-              value: _dueDate,
-              onChanged: (value) => setState(() => _dueDate = value),
-            ),
-            const SizedBox(height: 10),
-            PriorityPickerTile(
-              value: _priority,
-              onChanged: (value) => setState(() => _priority = value),
-            ),
-            const SizedBox(height: 10),
-            RecurrencePickerTile(
-              rule: _recurrence,
-              onChanged: (next) => setState(() => _recurrence = next),
-            ),
-            const SizedBox(height: 10),
-            _LocationFields(
-              enabled: _locationEnabled,
-              placeController: _placeController,
-              addressController: _addressController,
-              latController: _latController,
-              lngController: _lngController,
-              errorText: _locationError,
-              resolving: _resolvingLocation,
-              onResolveAddress: _resolveAddress,
-              onEnabledChanged: (value) {
-                setState(() {
-                  _locationEnabled = value;
-                  _locationError = null;
-                });
-              },
-            ),
-            const SizedBox(height: 10),
-            if (!_isEditing)
-              Text(
-                LocaleService.tr(
-                  'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
-                  en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
+                PremiumInputField(
+                  controller: _titleController,
+                  label: LocaleService.tr('Tên task *', en: 'Task title *'),
+                  hintText: LocaleService.tr('Nhập tên task...',
+                      en: 'Enter title...'),
+                  prefixIcon: Icons.check_circle_outline_rounded,
                 ),
-                style: TextStyle(color: captionColor, fontSize: 11),
-              ),
+                const SizedBox(height: 14),
+                PremiumInputField(
+                  controller: _descController,
+                  label:
+                      LocaleService.tr('Mô tả ngắn', en: 'Short description'),
+                  hintText:
+                      LocaleService.tr('Chi tiết...', en: 'Enter details...'),
+                  prefixIcon: Icons.notes_rounded,
+                ),
+                const SizedBox(height: 14),
+                DueDatePickerTile(
+                  value: _dueDate,
+                  onChanged: (value) => setState(() => _dueDate = value),
+                ),
+                const SizedBox(height: 10),
+                PriorityPickerTile(
+                  value: _priority,
+                  onChanged: (value) => setState(() => _priority = value),
+                ),
+                const SizedBox(height: 10),
+                RecurrencePickerTile(
+                  rule: _recurrence,
+                  onChanged: (next) => setState(() => _recurrence = next),
+                ),
+                const SizedBox(height: 10),
+                _LocationFields(
+                  enabled: _locationEnabled,
+                  placeController: _placeController,
+                  addressController: _addressController,
+                  latController: _latController,
+                  lngController: _lngController,
+                  errorText: _locationError,
+                  resolving: _resolvingLocation,
+                  onPickMap: _pickLocationOnMap,
+                  onResolveAddress: _resolveAddress,
+                  onEnabledChanged: (value) {
+                    setState(() {
+                      _locationEnabled = value;
+                      _locationError = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                if (!_isEditing)
+                  Text(
+                    LocaleService.tr(
+                      'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
+                      en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
+                    ),
+                    style: TextStyle(color: captionColor, fontSize: 11),
+                  ),
               ],
             ),
           ),
@@ -313,8 +352,8 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             onPressed: _submitting ? null : () => Navigator.pop(context),
             child: Text(
               LocaleService.tr('Huỷ', en: 'Cancel'),
-              style: TextStyle(
-                  color: captionColor, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(color: captionColor, fontWeight: FontWeight.bold),
             ),
           ),
           PremiumButton(
@@ -342,6 +381,7 @@ class _LocationFields extends StatelessWidget {
   final TextEditingController lngController;
   final String? errorText;
   final bool resolving;
+  final VoidCallback onPickMap;
   final VoidCallback onResolveAddress;
   final ValueChanged<bool> onEnabledChanged;
 
@@ -353,6 +393,7 @@ class _LocationFields extends StatelessWidget {
     required this.lngController,
     required this.errorText,
     required this.resolving,
+    required this.onPickMap,
     required this.onResolveAddress,
     required this.onEnabledChanged,
   });
@@ -363,6 +404,8 @@ class _LocationFields extends StatelessWidget {
     final borderColor = ThemeService.getBorderColor(isDark);
     final textColor = ThemeService.getTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
+    final hasCoordinates = double.tryParse(latController.text.trim()) != null &&
+        double.tryParse(lngController.text.trim()) != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -396,6 +439,23 @@ class _LocationFields extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Column(
                 children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onPickMap,
+                      icon: const Icon(Icons.map_rounded, size: 18),
+                      label: Text(
+                        LocaleService.tr('Chon tren ban do', en: 'Pick on map'),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   PremiumInputField(
                     controller: placeController,
                     label: LocaleService.tr('Ten dia diem', en: 'Place name'),
@@ -409,49 +469,70 @@ class _LocationFields extends StatelessWidget {
                     hintText: 'Nguyen Trai, Thanh Xuan',
                     prefixIcon: Icons.map_outlined,
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: resolving ? null : onResolveAddress,
-                      icon: resolving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.travel_explore_rounded, size: 18),
-                      label: Text(
-                        LocaleService.tr('Lay toa do', en: 'Find coordinates'),
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
-                        child: PremiumInputField(
-                          controller: latController,
-                          label: 'Latitude',
-                          hintText: '10.762622',
-                          prefixIcon: Icons.my_location_rounded,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
-                          ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: hasCoordinates
+                              ? Row(
+                                  key: const ValueKey('location-selected'),
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: Color(0xFF22C55E),
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        LocaleService.tr(
+                                          'Da chon dia diem',
+                                          en: 'Location selected',
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF22C55E),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  LocaleService.tr(
+                                    'Chon tren ban do hoac tim bang dia chi.',
+                                    en: 'Pick on map or search by address.',
+                                  ),
+                                  key: const ValueKey('location-empty'),
+                                  style: TextStyle(
+                                    color: captionColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: PremiumInputField(
-                          controller: lngController,
-                          label: 'Longitude',
-                          hintText: '106.660172',
-                          prefixIcon: Icons.explore_outlined,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: resolving ? null : onResolveAddress,
+                        icon: resolving
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.travel_explore_rounded,
+                                size: 16),
+                        label: Text(
+                          LocaleService.tr('Tim dia chi', en: 'Use address'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),

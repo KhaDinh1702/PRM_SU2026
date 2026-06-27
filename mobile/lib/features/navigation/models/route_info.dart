@@ -1,4 +1,4 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 class RouteInfo {
   final int distanceMeters;
@@ -13,7 +13,8 @@ class RouteInfo {
 
   factory RouteInfo.fromJson(Map<String, dynamic> json) {
     return RouteInfo(
-      distanceMeters: int.tryParse(json['distanceMeters']?.toString() ?? '') ?? 0,
+      distanceMeters:
+          int.tryParse(json['distanceMeters']?.toString() ?? '') ?? 0,
       duration: _parseDuration(json['duration']?.toString()),
       points: decodePolyline(json['polyline']?.toString() ?? ''),
     );

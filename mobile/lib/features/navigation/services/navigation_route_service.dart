@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 import '../../../services/auth_service.dart';
 import '../../tasks/models/task_model.dart';
@@ -62,6 +62,31 @@ class NavigationRouteService {
     if (response.statusCode != 200) {
       final message = body is Map ? body['error']?.toString() : null;
       throw Exception(message ?? 'Could not find this address');
+    }
+
+    return TaskLocation.fromJson(Map<String, dynamic>.from(body as Map));
+  }
+
+  Future<TaskLocation> reverseGeocode(LatLng point) async {
+    final token = await AuthService.getToken();
+    final response = await http
+        .post(
+          Uri.parse('${AuthService.apiBaseUrl}/navigation/reverse-geocode'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'latitude': point.latitude,
+            'longitude': point.longitude,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final body = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      final message = body is Map ? body['error']?.toString() : null;
+      throw Exception(message ?? 'Could not read this location');
     }
 
     return TaskLocation.fromJson(Map<String, dynamic>.from(body as Map));

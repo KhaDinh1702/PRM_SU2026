@@ -4,13 +4,13 @@ import 'package:prm_app/features/tasks/models/recurrence_rule.dart';
 void main() {
   group('RecurrenceRule.nextOccurrence — daily', () {
     test('every day adds 1 day', () {
-      final rule = const RecurrenceRule(pattern: RecurrencePattern.daily);
+      const rule = RecurrenceRule(pattern: RecurrencePattern.daily);
       final next = rule.nextOccurrence(DateTime(2026, 6, 20));
       expect(next, DateTime(2026, 6, 21));
     });
 
     test('every 3 days adds 3 days', () {
-      final rule = const RecurrenceRule(
+      const rule = RecurrenceRule(
         pattern: RecurrencePattern.daily,
         interval: 3,
       );
@@ -39,7 +39,7 @@ void main() {
 
     test('with Mon/Wed/Fri, finds the next listed day', () {
       // 2026-06-20 is a Saturday → next Mon should be 2026-06-22.
-      final rule = const RecurrenceRule(
+      const rule = RecurrenceRule(
         pattern: RecurrencePattern.weekly,
         weekdays: {1, 3, 5}, // Mon, Wed, Fri
       );
@@ -50,7 +50,7 @@ void main() {
 
     test('from Wed picks up Fri when both are listed', () {
       // 2026-06-24 is a Wednesday.
-      final rule = const RecurrenceRule(
+      const rule = RecurrenceRule(
         pattern: RecurrencePattern.weekly,
         weekdays: {3, 5},
       );
@@ -62,7 +62,7 @@ void main() {
 
   group('RecurrenceRule.nextOccurrence — monthly', () {
     test('every month bumps to the same day next month', () {
-      final rule = const RecurrenceRule(pattern: RecurrencePattern.monthly);
+      const rule = RecurrenceRule(pattern: RecurrencePattern.monthly);
       final next = rule.nextOccurrence(DateTime(2026, 6, 20));
       expect(next, DateTime(2026, 7, 20));
     });
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('every 2 months', () {
-      final rule = const RecurrenceRule(
+      const rule = RecurrenceRule(
         pattern: RecurrencePattern.monthly,
         interval: 2,
       );
