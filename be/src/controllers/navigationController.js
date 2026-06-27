@@ -9,7 +9,7 @@ const VIETNAM_BOUNDS = {
     high: { latitude: 23.39, longitude: 109.46 }
 };
 const APP_USER_AGENT = 'FlowMate-Student-Project/1.0';
-const googleMapsEnabled = () => process.env.ENABLE_GOOGLE_MAPS === 'true';
+const googleMapsEnabled = () => process.env.ENABLE_GOOGLE_MAPS !== 'false';
 
 const toWaypoint = (point) => {
     const latitude = Number(point?.latitude);

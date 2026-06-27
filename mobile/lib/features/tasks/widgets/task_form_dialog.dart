@@ -6,7 +6,6 @@ import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 import '../../navigation/screens/location_picker_screen.dart';
-import '../../navigation/services/navigation_route_service.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
 import 'due_date_picker.dart';
@@ -79,12 +78,10 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
   late final TextEditingController _addressController;
   late final TextEditingController _latController;
   late final TextEditingController _lngController;
-  final _navigationService = const NavigationRouteService();
   late String _priority;
   DateTime? _dueDate;
   RecurrenceRule? _recurrence;
   bool _locationEnabled = false;
-  bool _resolvingLocation = false;
   String? _locationError;
   bool _submitting = false;
 
@@ -178,37 +175,6 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
       longitude: longitude,
       reminderRadiusMeters: 100,
     );
-  }
-
-  Future<void> _resolveAddress() async {
-    final address = _addressController.text.trim();
-    if (address.isEmpty || _resolvingLocation) return;
-    setState(() {
-      _resolvingLocation = true;
-      _locationError = null;
-    });
-    try {
-      final location = await _navigationService.geocodeAddress(address);
-      if (!mounted) return;
-      setState(() {
-        if (_placeController.text.trim().isEmpty) {
-          _placeController.text = location.placeName;
-        }
-        _addressController.text = location.address;
-        _latController.text = location.latitude.toStringAsFixed(6);
-        _lngController.text = location.longitude.toStringAsFixed(6);
-        _resolvingLocation = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _locationError = LocaleService.tr(
-          'Khong tim thay dia chi nay',
-          en: 'Could not find this address',
-        );
-        _resolvingLocation = false;
-      });
-    }
   }
 
   Future<void> _pickLocationOnMap() async {
@@ -321,12 +287,8 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                   enabled: _locationEnabled,
                   placeController: _placeController,
                   addressController: _addressController,
-                  latController: _latController,
-                  lngController: _lngController,
                   errorText: _locationError,
-                  resolving: _resolvingLocation,
                   onPickMap: _pickLocationOnMap,
-                  onResolveAddress: _resolveAddress,
                   onEnabledChanged: (value) {
                     setState(() {
                       _locationEnabled = value;
@@ -377,24 +339,16 @@ class _LocationFields extends StatelessWidget {
   final bool enabled;
   final TextEditingController placeController;
   final TextEditingController addressController;
-  final TextEditingController latController;
-  final TextEditingController lngController;
   final String? errorText;
-  final bool resolving;
   final VoidCallback onPickMap;
-  final VoidCallback onResolveAddress;
   final ValueChanged<bool> onEnabledChanged;
 
   const _LocationFields({
     required this.enabled,
     required this.placeController,
     required this.addressController,
-    required this.latController,
-    required this.lngController,
     required this.errorText,
-    required this.resolving,
     required this.onPickMap,
-    required this.onResolveAddress,
     required this.onEnabledChanged,
   });
 
@@ -404,8 +358,6 @@ class _LocationFields extends StatelessWidget {
     final borderColor = ThemeService.getBorderColor(isDark);
     final textColor = ThemeService.getTextColor(isDark);
     final captionColor = ThemeService.getCaptionColor(isDark);
-    final hasCoordinates = double.tryParse(latController.text.trim()) != null &&
-        double.tryParse(lngController.text.trim()) != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -468,75 +420,6 @@ class _LocationFields extends StatelessWidget {
                     label: LocaleService.tr('Dia chi', en: 'Address'),
                     hintText: 'Nguyen Trai, Thanh Xuan',
                     prefixIcon: Icons.map_outlined,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: hasCoordinates
-                              ? Row(
-                                  key: const ValueKey('location-selected'),
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Color(0xFF22C55E),
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        LocaleService.tr(
-                                          'Da chon dia diem',
-                                          en: 'Location selected',
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF22C55E),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Text(
-                                  LocaleService.tr(
-                                    'Chon tren ban do hoac tim bang dia chi.',
-                                    en: 'Pick on map or search by address.',
-                                  ),
-                                  key: const ValueKey('location-empty'),
-                                  style: TextStyle(
-                                    color: captionColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton.icon(
-                        onPressed: resolving ? null : onResolveAddress,
-                        icon: resolving
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.travel_explore_rounded,
-                                size: 16),
-                        label: Text(
-                          LocaleService.tr('Tim dia chi', en: 'Use address'),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                   if (errorText != null) ...[
                     const SizedBox(height: 8),
