@@ -65,7 +65,7 @@ void main() {
 
   group('ProjectCreateDraft.hasInvitations', () {
     test('false for personal (non-collaborative) projects', () {
-      final draft = const ProjectCreateDraft(
+      const draft = ProjectCreateDraft(
         name: 'My Project',
         inviteEmails: ['alice@example.com'],
       );
@@ -73,7 +73,7 @@ void main() {
     });
 
     test('true when collaborative type has invites queued', () {
-      final draft = const ProjectCreateDraft(
+      const draft = ProjectCreateDraft(
         name: 'My Project',
         type: ProjectType.team,
         inviteEmails: ['alice@example.com'],

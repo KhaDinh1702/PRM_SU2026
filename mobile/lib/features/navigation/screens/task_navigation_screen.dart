@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../services/locale_service.dart';
@@ -30,7 +31,7 @@ class _TaskNavigationScreenState extends State<TaskNavigationScreen> {
   final _routeService = const NavigationRouteService();
   final _taskService = const TaskService();
 
-  GoogleMapController? _mapController;
+  final _mapController = MapController();
   StreamSubscription<LatLng>? _positionSub;
   LatLng? _current;
   RouteInfo? _route;
@@ -53,7 +54,6 @@ class _TaskNavigationScreenState extends State<TaskNavigationScreen> {
   @override
   void dispose() {
     _positionSub?.cancel();
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -113,7 +113,8 @@ class _TaskNavigationScreenState extends State<TaskNavigationScreen> {
     final complete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(LocaleService.tr('Da den gan dia diem', en: 'Arrived nearby')),
+        title:
+            Text(LocaleService.tr('Da den gan dia diem', en: 'Arrived nearby')),
         content: Text(
           LocaleService.tr(
             'Ban co muon danh dau task nay la hoan thanh khong?',
@@ -162,73 +163,72 @@ class _TaskNavigationScreenState extends State<TaskNavigationScreen> {
   }
 
   Future<void> _fitRouteBounds() async {
-    final controller = _mapController;
     final current = _current;
-    if (controller == null || current == null) return;
+    if (current == null) return;
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (current.latitude == _destination.latitude &&
         current.longitude == _destination.longitude) {
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: _destination, zoom: 16),
-        ),
-      );
+      _mapController.move(_destination, 16);
       return;
     }
-    final southWest = LatLng(
-      current.latitude < _destination.latitude
-          ? current.latitude
-          : _destination.latitude,
-      current.longitude < _destination.longitude
-          ? current.longitude
-          : _destination.longitude,
-    );
-    final northEast = LatLng(
-      current.latitude > _destination.latitude
-          ? current.latitude
-          : _destination.latitude,
-      current.longitude > _destination.longitude
-          ? current.longitude
-          : _destination.longitude,
-    );
-    await controller.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(southwest: southWest, northeast: northEast),
-        72,
+    final points = <LatLng>[
+      current,
+      _destination,
+      ...?_route?.points,
+    ];
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(points),
+        padding: const EdgeInsets.all(72),
       ),
     );
   }
 
-  Set<Marker> _markers() {
+  List<Marker> _markers() {
     final current = _current;
-    return {
+    return [
       if (current != null)
         Marker(
-          markerId: const MarkerId('current'),
-          position: current,
-          infoWindow: InfoWindow(title: LocaleService.tr('Vi tri cua ban', en: 'Your location')),
+          point: current,
+          width: 34,
+          height: 34,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF06B6D4),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+          ),
         ),
       Marker(
-        markerId: const MarkerId('destination'),
-        position: _destination,
-        infoWindow: InfoWindow(title: widget.task.location!.displayName),
+        point: _destination,
+        width: 46,
+        height: 46,
+        child: const Icon(
+          Icons.location_on_rounded,
+          color: Colors.redAccent,
+          size: 44,
+        ),
       ),
-    };
+    ];
   }
 
-  Set<Polyline> _polylines() {
+  List<Polyline> _polylines() {
     final route = _route;
-    if (route == null || route.points.isEmpty) return {};
-    return {
+    if (route == null || route.points.isEmpty) return const [];
+    return [
       Polyline(
-        polylineId: const PolylineId('route'),
         points: route.points,
         color: const Color(0xFF06B6D4),
-        width: 6,
-        startCap: Cap.roundCap,
-        endCap: Cap.roundCap,
+        strokeWidth: 6,
       ),
-    };
+    ];
   }
 
   @override
@@ -264,20 +264,21 @@ class _TaskNavigationScreenState extends State<TaskNavigationScreen> {
               },
             )
           else
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _current ?? _destination,
-                zoom: 14,
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _current ?? _destination,
+                initialZoom: 14,
+                onMapReady: _fitRouteBounds,
               ),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              compassEnabled: true,
-              markers: _markers(),
-              polylines: _polylines(),
-              onMapCreated: (controller) {
-                _mapController = controller;
-                _fitRouteBounds();
-              },
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.prm_app',
+                ),
+                PolylineLayer(polylines: _polylines()),
+                MarkerLayer(markers: _markers()),
+              ],
             ),
           if (!_loading && _error == null)
             Positioned(
@@ -456,7 +457,8 @@ class _NavigationError extends StatelessWidget {
             Icon(Icons.location_off_rounded, color: captionColor, size: 48),
             const SizedBox(height: 14),
             Text(
-              LocaleService.tr('Khong the tai tuyen duong', en: 'Could not load route'),
+              LocaleService.tr('Khong the tai tuyen duong',
+                  en: 'Could not load route'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: textColor,

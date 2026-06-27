@@ -56,7 +56,7 @@ void main() {
     });
 
     test('false when no deadline set', () {
-      final task = TaskModel(
+      const task = TaskModel(
         id: 't1',
         title: 'x',
         description: '',
@@ -117,7 +117,7 @@ void main() {
     });
 
     test('returns "No due date" when neither deadline nor dueDate set', () {
-      final task = TaskModel(
+      const task = TaskModel(
         id: 't1',
         title: 'x',
         description: '',
@@ -131,7 +131,7 @@ void main() {
 
   group('TaskModel.copyWith', () {
     test('replaces status without touching unchanged fields', () {
-      final original = TaskModel(
+      const original = TaskModel(
         id: 't1',
         title: 'Original',
         description: '',

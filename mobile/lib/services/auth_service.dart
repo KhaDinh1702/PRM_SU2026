@@ -4,7 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // Production API used by APK builds on real devices.
-  static const String apiBaseUrl = 'https://prm-tan.vercel.app/api';
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://prm-tan.vercel.app/api',
+  );
   static const String baseUrl = '$apiBaseUrl/auth';
   static const String localBaseUrl = apiBaseUrl;
   static const String tokenKey = 'jwt_token';

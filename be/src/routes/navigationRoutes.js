@@ -5,5 +5,6 @@ const auth = require('../middleware/auth');
 
 router.post('/route', auth, navigationController.computeRoute);
 router.post('/geocode', auth, navigationController.geocodeAddress);
+router.post('/reverse-geocode', auth, navigationController.reverseGeocode);
 
 module.exports = router;

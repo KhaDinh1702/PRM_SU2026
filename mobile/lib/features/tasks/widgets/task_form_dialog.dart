@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/premium_widgets.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
-import '../../navigation/services/navigation_route_service.dart';
+import '../../navigation/screens/location_picker_screen.dart';
 import '../models/recurrence_rule.dart';
 import '../models/task_model.dart';
 import 'due_date_picker.dart';
@@ -78,12 +78,10 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
   late final TextEditingController _addressController;
   late final TextEditingController _latController;
   late final TextEditingController _lngController;
-  final _navigationService = const NavigationRouteService();
   late String _priority;
   DateTime? _dueDate;
   RecurrenceRule? _recurrence;
   bool _locationEnabled = false;
-  bool _resolvingLocation = false;
   String? _locationError;
   bool _submitting = false;
 
@@ -179,35 +177,41 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
     );
   }
 
-  Future<void> _resolveAddress() async {
-    final address = _addressController.text.trim();
-    if (address.isEmpty || _resolvingLocation) return;
+  Future<void> _pickLocationOnMap() async {
+    final currentDraft = _draftLocationOrNull();
+    final picked = await Navigator.of(context).push<TaskLocation>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLocation: currentDraft),
+      ),
+    );
+    if (picked == null || !mounted) return;
     setState(() {
-      _resolvingLocation = true;
+      _locationEnabled = true;
       _locationError = null;
+      _placeController.text = picked.placeName;
+      _addressController.text = picked.address;
+      _latController.text = picked.latitude.toStringAsFixed(6);
+      _lngController.text = picked.longitude.toStringAsFixed(6);
     });
-    try {
-      final location = await _navigationService.geocodeAddress(address);
-      if (!mounted) return;
-      setState(() {
-        if (_placeController.text.trim().isEmpty) {
-          _placeController.text = location.placeName;
-        }
-        _addressController.text = location.address;
-        _latController.text = location.latitude.toStringAsFixed(6);
-        _lngController.text = location.longitude.toStringAsFixed(6);
-        _resolvingLocation = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _locationError = LocaleService.tr(
-          'Khong tim thay dia chi nay',
-          en: 'Could not find this address',
-        );
-        _resolvingLocation = false;
-      });
+  }
+
+  TaskLocation? _draftLocationOrNull() {
+    final latitude = double.tryParse(_latController.text.trim());
+    final longitude = double.tryParse(_lngController.text.trim());
+    if (latitude == null ||
+        longitude == null ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180) {
+      return null;
     }
+    return TaskLocation(
+      placeName: _placeController.text.trim(),
+      address: _addressController.text.trim(),
+      latitude: latitude,
+      longitude: longitude,
+    );
   }
 
   @override
@@ -247,63 +251,60 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-            PremiumInputField(
-              controller: _titleController,
-              label: LocaleService.tr('Tên task *', en: 'Task title *'),
-              hintText:
-                  LocaleService.tr('Nhập tên task...', en: 'Enter title...'),
-              prefixIcon: Icons.check_circle_outline_rounded,
-            ),
-            const SizedBox(height: 14),
-            PremiumInputField(
-              controller: _descController,
-              label:
-                  LocaleService.tr('Mô tả ngắn', en: 'Short description'),
-              hintText:
-                  LocaleService.tr('Chi tiết...', en: 'Enter details...'),
-              prefixIcon: Icons.notes_rounded,
-            ),
-            const SizedBox(height: 14),
-            DueDatePickerTile(
-              value: _dueDate,
-              onChanged: (value) => setState(() => _dueDate = value),
-            ),
-            const SizedBox(height: 10),
-            PriorityPickerTile(
-              value: _priority,
-              onChanged: (value) => setState(() => _priority = value),
-            ),
-            const SizedBox(height: 10),
-            RecurrencePickerTile(
-              rule: _recurrence,
-              onChanged: (next) => setState(() => _recurrence = next),
-            ),
-            const SizedBox(height: 10),
-            _LocationFields(
-              enabled: _locationEnabled,
-              placeController: _placeController,
-              addressController: _addressController,
-              latController: _latController,
-              lngController: _lngController,
-              errorText: _locationError,
-              resolving: _resolvingLocation,
-              onResolveAddress: _resolveAddress,
-              onEnabledChanged: (value) {
-                setState(() {
-                  _locationEnabled = value;
-                  _locationError = null;
-                });
-              },
-            ),
-            const SizedBox(height: 10),
-            if (!_isEditing)
-              Text(
-                LocaleService.tr(
-                  'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
-                  en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
+                PremiumInputField(
+                  controller: _titleController,
+                  label: LocaleService.tr('Tên task *', en: 'Task title *'),
+                  hintText: LocaleService.tr('Nhập tên task...',
+                      en: 'Enter title...'),
+                  prefixIcon: Icons.check_circle_outline_rounded,
                 ),
-                style: TextStyle(color: captionColor, fontSize: 11),
-              ),
+                const SizedBox(height: 14),
+                PremiumInputField(
+                  controller: _descController,
+                  label:
+                      LocaleService.tr('Mô tả ngắn', en: 'Short description'),
+                  hintText:
+                      LocaleService.tr('Chi tiết...', en: 'Enter details...'),
+                  prefixIcon: Icons.notes_rounded,
+                ),
+                const SizedBox(height: 14),
+                DueDatePickerTile(
+                  value: _dueDate,
+                  onChanged: (value) => setState(() => _dueDate = value),
+                ),
+                const SizedBox(height: 10),
+                PriorityPickerTile(
+                  value: _priority,
+                  onChanged: (value) => setState(() => _priority = value),
+                ),
+                const SizedBox(height: 10),
+                RecurrencePickerTile(
+                  rule: _recurrence,
+                  onChanged: (next) => setState(() => _recurrence = next),
+                ),
+                const SizedBox(height: 10),
+                _LocationFields(
+                  enabled: _locationEnabled,
+                  placeController: _placeController,
+                  addressController: _addressController,
+                  errorText: _locationError,
+                  onPickMap: _pickLocationOnMap,
+                  onEnabledChanged: (value) {
+                    setState(() {
+                      _locationEnabled = value;
+                      _locationError = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                if (!_isEditing)
+                  Text(
+                    LocaleService.tr(
+                      'Task dự án được giao trong màn Chi tiết dự án và tự động hiện ở đây.',
+                      en: 'Project tasks are assigned inside Project Detail and appear here automatically.',
+                    ),
+                    style: TextStyle(color: captionColor, fontSize: 11),
+                  ),
               ],
             ),
           ),
@@ -313,8 +314,8 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             onPressed: _submitting ? null : () => Navigator.pop(context),
             child: Text(
               LocaleService.tr('Huỷ', en: 'Cancel'),
-              style: TextStyle(
-                  color: captionColor, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(color: captionColor, fontWeight: FontWeight.bold),
             ),
           ),
           PremiumButton(
@@ -338,22 +339,16 @@ class _LocationFields extends StatelessWidget {
   final bool enabled;
   final TextEditingController placeController;
   final TextEditingController addressController;
-  final TextEditingController latController;
-  final TextEditingController lngController;
   final String? errorText;
-  final bool resolving;
-  final VoidCallback onResolveAddress;
+  final VoidCallback onPickMap;
   final ValueChanged<bool> onEnabledChanged;
 
   const _LocationFields({
     required this.enabled,
     required this.placeController,
     required this.addressController,
-    required this.latController,
-    required this.lngController,
     required this.errorText,
-    required this.resolving,
-    required this.onResolveAddress,
+    required this.onPickMap,
     required this.onEnabledChanged,
   });
 
@@ -396,6 +391,23 @@ class _LocationFields extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Column(
                 children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onPickMap,
+                      icon: const Icon(Icons.map_rounded, size: 18),
+                      label: Text(
+                        LocaleService.tr('Chon tren ban do', en: 'Pick on map'),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF06B6D4),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   PremiumInputField(
                     controller: placeController,
                     label: LocaleService.tr('Ten dia diem', en: 'Place name'),
@@ -408,54 +420,6 @@ class _LocationFields extends StatelessWidget {
                     label: LocaleService.tr('Dia chi', en: 'Address'),
                     hintText: 'Nguyen Trai, Thanh Xuan',
                     prefixIcon: Icons.map_outlined,
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: resolving ? null : onResolveAddress,
-                      icon: resolving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.travel_explore_rounded, size: 18),
-                      label: Text(
-                        LocaleService.tr('Lay toa do', en: 'Find coordinates'),
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: PremiumInputField(
-                          controller: latController,
-                          label: 'Latitude',
-                          hintText: '10.762622',
-                          prefixIcon: Icons.my_location_rounded,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: PremiumInputField(
-                          controller: lngController,
-                          label: 'Longitude',
-                          hintText: '106.660172',
-                          prefixIcon: Icons.explore_outlined,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                   if (errorText != null) ...[
                     const SizedBox(height: 8),
