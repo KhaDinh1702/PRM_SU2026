@@ -21,6 +21,8 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const navigationRoutes = require('./routes/navigationRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const Message = require('./models/Message');
 
 const app = express();
@@ -86,6 +88,8 @@ app.use('/api/focus-sessions', focusRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/navigation', navigationRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/projects/:projectId/messages', chatRoutes);
 
 // Basic Route
