@@ -12,6 +12,7 @@ import '../widgets/profile_inbox_section.dart';
 import '../widgets/profile_insights_section.dart';
 import '../widgets/profile_logout_button.dart';
 import '../widgets/profile_preferences_section.dart';
+import '../widgets/profile_subscription_card.dart';
 import '../widgets/profile_username_sheet.dart';
 
 /// Profile screen — slim orchestrator. UI is composed of the section
@@ -116,6 +117,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 24),
                             const ProfileInboxSection(),
+                            const SizedBox(height: 24),
+                            const ProfileSubscriptionCard(),
                             const SizedBox(height: 24),
                             const ProfilePreferencesSection(),
                             const SizedBox(height: 28),
