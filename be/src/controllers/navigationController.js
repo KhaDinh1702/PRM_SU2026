@@ -4,6 +4,7 @@ const PLACES_TEXT_SEARCH_ENDPOINT = 'https://places.googleapis.com/v1/places:sea
 const NOMINATIM_SEARCH_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
 const NOMINATIM_REVERSE_ENDPOINT = 'https://nominatim.openstreetmap.org/reverse';
 const OSRM_ROUTE_ENDPOINT = 'https://router.project-osrm.org/route/v1/driving';
+const { requirePro } = require('../utils/subscriptionAccess');
 const VIETNAM_BOUNDS = {
     low: { latitude: 8.18, longitude: 102.14 },
     high: { latitude: 23.39, longitude: 109.46 }
@@ -151,6 +152,12 @@ exports.computeRoute = async (req, res) => {
             });
         }
 
+        await requirePro(
+            req.user.id,
+            'directions',
+            'In-app directions are a Pro feature. Upgrade to use route navigation.'
+        );
+
         if (!apiKey || !googleMapsEnabled()) {
             const fallbackRoute = await computeOpenStreetMapRoute(origin, destination);
             if (fallbackRoute) return res.status(200).json(fallbackRoute);
@@ -200,6 +207,13 @@ exports.computeRoute = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in navigationController.computeRoute:', error);
+        if (error.code === 'PRO_REQUIRED') {
+            return res.status(error.status || 402).json({
+                error: error.message,
+                code: error.code,
+                feature: error.feature
+            });
+        }
         try {
             const origin = toWaypoint(req.body.origin);
             const destination = toWaypoint(req.body.destination);
@@ -219,6 +233,12 @@ exports.geocodeAddress = async (req, res) => {
         if (!address) {
             return res.status(400).json({ error: 'address is required.' });
         }
+
+        await requirePro(
+            req.user.id,
+            'location_search',
+            'Location search is a Pro feature. Upgrade to attach places to tasks.'
+        );
 
         if (apiKey && googleMapsEnabled()) {
             try {
@@ -261,7 +281,11 @@ exports.geocodeAddress = async (req, res) => {
         res.status(404).json({ error: 'No location found for this address.' });
     } catch (error) {
         console.error('Error in navigationController.geocodeAddress:', error);
-        res.status(error.status || 500).json({ error: error.message });
+        res.status(error.status || 500).json({
+            error: error.message,
+            code: error.code,
+            feature: error.feature
+        });
     }
 };
 
@@ -275,6 +299,12 @@ exports.reverseGeocode = async (req, res) => {
                 error: 'latitude and longitude are required.'
             });
         }
+
+        await requirePro(
+            req.user.id,
+            'location_picker',
+            'Map location picking is a Pro feature. Upgrade to attach places to tasks.'
+        );
 
         if (apiKey && googleMapsEnabled()) {
             const url = new URL(GEOCODE_ENDPOINT);
@@ -304,6 +334,10 @@ exports.reverseGeocode = async (req, res) => {
         res.status(404).json({ error: 'Could not reverse geocode location.' });
     } catch (error) {
         console.error('Error in navigationController.reverseGeocode:', error);
-        res.status(500).json({ error: error.message });
+        res.status(error.status || 500).json({
+            error: error.message,
+            code: error.code,
+            feature: error.feature
+        });
     }
 };

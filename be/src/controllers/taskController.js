@@ -1,6 +1,10 @@
 const Task = require('../models/Task');
 const Project = require('../models/Project');
 const { normalizeTaskLocation } = require('../utils/taskHelper');
+const {
+    getSubscriptionAccess,
+    hasLocationPayload
+} = require('../utils/subscriptionAccess');
 
 const getId = (value) => {
     if (!value) return '';
@@ -196,6 +200,32 @@ exports.createTask = async (req, res) => {
             });
         }
 
+        const access = await getSubscriptionAccess(req.user.id);
+        if (!access.isPro) {
+            if (hasLocationPayload(location)) {
+                return res.status(402).json({
+                    error: 'Location-based tasks are a Pro feature. Upgrade to attach places and use in-app directions.',
+                    code: 'PRO_REQUIRED',
+                    feature: 'task_location'
+                });
+            }
+
+            const taskCount = await Task.countDocuments({
+                user: req.user.id,
+                project: null,
+                scheduleId: null,
+                $or: [{ sourceType: 'personal' }, { sourceType: { $exists: false } }]
+            });
+
+            if (taskCount >= access.limits.personalTasks) {
+                return res.status(402).json({
+                    error: `Free plan is limited to ${access.limits.personalTasks} personal tasks. Upgrade to Pro for unlimited personal tasks.`,
+                    code: 'FREE_TASK_LIMIT_REACHED',
+                    limit: access.limits.personalTasks
+                });
+            }
+        }
+
         const task = new Task({
             title,
             description,
@@ -255,6 +285,15 @@ exports.updateTask = async (req, res) => {
         if (project !== undefined || sourceType !== undefined || scheduleId !== undefined) {
             return res.status(400).json({
                 error: 'Task source cannot be changed from the main Tasks endpoint. Use the Project or Schedule flow for source-specific changes.'
+            });
+        }
+
+        const access = await getSubscriptionAccess(req.user.id);
+        if (!access.isPro && hasLocationPayload(req.body.location)) {
+            return res.status(402).json({
+                error: 'Location-based tasks are a Pro feature. Upgrade to attach places and use in-app directions.',
+                code: 'PRO_REQUIRED',
+                feature: 'task_location'
             });
         }
 

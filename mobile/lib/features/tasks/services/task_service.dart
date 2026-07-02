@@ -8,6 +8,16 @@ import '../models/task_model.dart';
 class TaskService {
   const TaskService();
 
+  String _errorMessage(String body, String fallback) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map && decoded['error'] != null) {
+        return decoded['error'].toString();
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
   /// Lấy danh sách task theo bộ lọc
   Future<List<TaskModel>> getTasks({
     required String tab,
@@ -23,8 +33,7 @@ class TaskService {
       'sort': sortBy,
       if (sourceFilter != null && sourceFilter != 'All')
         'source': sourceFilter.toLowerCase(),
-      if (statusFilter != null && statusFilter != 'All')
-        'status': statusFilter,
+      if (statusFilter != null && statusFilter != 'All') 'status': statusFilter,
       if (priorityFilter != null && priorityFilter != 'All')
         'priority': priorityFilter,
       if (search != null && search.isNotEmpty) 'search': search,
@@ -83,7 +92,7 @@ class TaskService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 201) {
-      throw Exception('Không thể tạo task');
+      throw Exception(_errorMessage(response.body, 'Could not create task'));
     }
     try {
       final body = jsonDecode(response.body);
@@ -124,7 +133,7 @@ class TaskService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      throw Exception('Không thể cập nhật task');
+      throw Exception(_errorMessage(response.body, 'Could not update task'));
     }
   }
 
