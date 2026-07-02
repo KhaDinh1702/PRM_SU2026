@@ -3,6 +3,10 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { normalizeTaskLocation } = require('../utils/taskHelper');
+const {
+    getSubscriptionAccess,
+    hasLocationPayload
+} = require('../utils/subscriptionAccess');
 
 const getId = (value) => {
     if (!value) return '';
@@ -115,6 +119,24 @@ exports.createProject = async (req, res) => {
         const { name, description, deadline, type } = req.body;
         if (!name) {
             return res.status(400).json({ error: 'Tên dự án là bắt buộc' });
+        }
+
+        const access = await getSubscriptionAccess(req.user.id);
+        if (!access.isPro) {
+            const projectCount = await Project.countDocuments({
+                $or: [
+                    { owner: req.user.id },
+                    { members: req.user.id }
+                ]
+            });
+
+            if (projectCount >= access.limits.projects) {
+                return res.status(402).json({
+                    error: `Free plan is limited to ${access.limits.projects} projects. Upgrade to Pro for unlimited projects.`,
+                    code: 'FREE_PROJECT_LIMIT_REACHED',
+                    limit: access.limits.projects
+                });
+            }
         }
 
         const project = new Project({
@@ -441,6 +463,15 @@ exports.createProjectTask = async (req, res) => {
             return res.status(404).json({ error: 'Project not found or access denied' });
         }
 
+        const access = await getSubscriptionAccess(req.user.id);
+        if (!access.isPro && hasLocationPayload(location)) {
+            return res.status(402).json({
+                error: 'Location-based tasks are a Pro feature. Upgrade to attach places and use in-app directions.',
+                code: 'PRO_REQUIRED',
+                feature: 'task_location'
+            });
+        }
+
         const isManagerOrOwner = canManageProject(project, req.user.id);
         const allowMembers = project.allowMembersToCreateTasks ?? false;
 
@@ -550,6 +581,15 @@ exports.updateProjectTask = async (req, res) => {
 
         if (!manage && Object.keys(req.body).some(key => key !== 'status')) {
             return res.status(403).json({ error: 'Members can only update task status' });
+        }
+
+        const access = await getSubscriptionAccess(req.user.id);
+        if (!access.isPro && hasLocationPayload(req.body.location)) {
+            return res.status(402).json({
+                error: 'Location-based tasks are a Pro feature. Upgrade to attach places and use in-app directions.',
+                code: 'PRO_REQUIRED',
+                feature: 'task_location'
+            });
         }
 
         const previousAssignee = getId(task.assignedTo || task.user);

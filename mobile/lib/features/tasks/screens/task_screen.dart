@@ -132,13 +132,13 @@ class _TaskScreenState extends State<TaskScreen> {
   Future<void> _loadTasks() async {
     if (!mounted) return;
     await context.read<TaskProvider>().applyFilters(
-      tab: _selectedTab,
-      sortBy: _sortBy,
-      sourceFilter: _sourceFilter,
-      statusFilter: _statusFilter,
-      priorityFilter: _priorityFilter,
-      searchQuery: _searchController.text.trim(),
-    );
+          tab: _selectedTab,
+          sortBy: _sortBy,
+          sourceFilter: _sourceFilter,
+          statusFilter: _statusFilter,
+          priorityFilter: _priorityFilter,
+          searchQuery: _searchController.text.trim(),
+        );
     await _refreshSideState();
   }
 
@@ -146,7 +146,9 @@ class _TaskScreenState extends State<TaskScreen> {
   /// recurrence flag, checklist progress, attached tags, tag catalog.
   Future<void> _refreshSideState() async {
     if (!mounted) return;
-    final tasks = context.read<TaskProvider>().tasks
+    final tasks = context
+        .read<TaskProvider>()
+        .tasks
         .where((t) => t.id.isNotEmpty)
         .toList(growable: false);
 
@@ -176,9 +178,8 @@ class _TaskScreenState extends State<TaskScreen> {
       };
       _tagCatalog = catalog;
       // Drop selected tag ids that no longer exist in the catalog.
-      _tagFilterIds = _tagFilterIds
-          .where((id) => catalog.any((t) => t.id == id))
-          .toSet();
+      _tagFilterIds =
+          _tagFilterIds.where((id) => catalog.any((t) => t.id == id)).toSet();
     });
   }
 
@@ -232,14 +233,16 @@ class _TaskScreenState extends State<TaskScreen> {
       );
       await _refreshSideState();
       return true;
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        final fallback = isEditing
+            ? LocaleService.tr('Không thể cập nhật task',
+                en: 'Could not update task')
+            : LocaleService.tr('Không thể tạo task',
+                en: 'Could not create task');
+        final message = _cleanException(e, fallback);
         _showSnack(
-          isEditing
-              ? LocaleService.tr('Không thể cập nhật task',
-                  en: 'Could not update task')
-              : LocaleService.tr('Không thể tạo task',
-                  en: 'Could not create task'),
+          message,
           Colors.redAccent,
         );
       }
@@ -247,13 +250,17 @@ class _TaskScreenState extends State<TaskScreen> {
     }
   }
 
+  String _cleanException(Object error, String fallback) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    return message.isEmpty ? fallback : message;
+  }
+
   Future<void> _toggleTaskComplete(TaskModel task) async {
     final taskId = task.id;
     if (taskId.isEmpty) return;
 
     final wasCompleted = task.status == TaskStatus.completed;
-    final newStatus =
-        wasCompleted ? TaskStatus.pending : TaskStatus.completed;
+    final newStatus = wasCompleted ? TaskStatus.pending : TaskStatus.completed;
 
     try {
       await context.read<TaskProvider>().updateTaskStatus(
@@ -274,11 +281,12 @@ class _TaskScreenState extends State<TaskScreen> {
             : LocaleService.tr('Đã mở lại task', en: 'Task reopened'),
         newStatus == TaskStatus.completed ? AppColors.success : Colors.amber,
       );
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        final fallback = LocaleService.tr('Không thể cập nhật task',
+            en: 'Could not update task');
         _showSnack(
-          LocaleService.tr('Không thể cập nhật task',
-              en: 'Could not update task'),
+          _cleanException(e, fallback),
           Colors.redAccent,
         );
       }
@@ -706,20 +714,20 @@ class _TaskScreenState extends State<TaskScreen> {
                                             textColor: textColor,
                                             subTextColor: subTextColor,
                                             captionColor: captionColor,
-                                            isRecurring:
-                                                _recurringTaskIds.contains(task.id),
+                                            isRecurring: _recurringTaskIds
+                                                .contains(task.id),
                                             checklistProgress:
                                                 _checklistProgress[task.id] ??
                                                     ChecklistProgress.empty,
-                                            tags: _taskTags[task.id] ??
-                                                const [],
+                                            tags:
+                                                _taskTags[task.id] ?? const [],
                                             focusMinutesToday:
                                                 _focusMinutesTodayFor(task.id),
-                                            onOpen: () =>
-                                                _openTaskDetail(task),
+                                            onOpen: () => _openTaskDetail(task),
                                             onToggle: () =>
                                                 _toggleTaskComplete(task),
-                                            onDelete: task.source == TaskSource.personal
+                                            onDelete: task.source ==
+                                                    TaskSource.personal
                                                 ? () => _deleteTask(task)
                                                 : null,
                                           ),
