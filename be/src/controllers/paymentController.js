@@ -278,3 +278,10 @@ exports.listPlans = async (_req, res) => {
         }))
     });
 };
+
+exports.checkPayOSWebhook = async (_req, res) => {
+    res.status(200).json({
+        ok: true,
+        message: 'PayOS webhook endpoint is ready.'
+    });
+};
