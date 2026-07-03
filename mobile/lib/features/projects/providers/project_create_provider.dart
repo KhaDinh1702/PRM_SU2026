@@ -4,6 +4,7 @@ import '../models/project_create_draft.dart';
 import '../models/project_template.dart';
 import '../models/project_type.dart';
 import '../services/project_milestone_service.dart';
+import '../../subscriptions/services/subscription_service.dart';
 import 'project_provider.dart';
 
 /// Result returned by [ProjectCreateProvider.submit].
@@ -43,11 +44,19 @@ class ProjectCreateResult {
 /// [ProjectProvider] / `ProjectService`, so this class never touches `http`
 /// directly — it just orchestrates the multi-step submit flow.
 class ProjectCreateProvider extends ChangeNotifier {
-  final ProjectMilestoneService _milestoneService;
+  static const int _freeProjectLimit = 3;
+  static const String _freeProjectLimitMessage =
+      'Gói Free chỉ được tạo tối đa 3 dự án. Nâng cấp Pro để tạo không giới hạn.';
 
-  ProjectCreateProvider({ProjectMilestoneService? milestoneService})
-      : _milestoneService =
-            milestoneService ?? const ProjectMilestoneService();
+  final ProjectMilestoneService _milestoneService;
+  final SubscriptionService _subscriptionService;
+
+  ProjectCreateProvider({
+    ProjectMilestoneService? milestoneService,
+    SubscriptionService? subscriptionService,
+  })  : _milestoneService = milestoneService ?? const ProjectMilestoneService(),
+        _subscriptionService =
+            subscriptionService ?? const SubscriptionService();
 
   ProjectCreateDraft _draft = const ProjectCreateDraft();
   bool _isSubmitting = false;
@@ -145,6 +154,12 @@ class ProjectCreateProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final limitError = await _freeProjectLimitError(projects);
+      if (limitError != null) {
+        _submitError = limitError;
+        return ProjectCreateResult.failure(limitError);
+      }
+
       final projectId =
           await projects.createProject(payload: _draft.toCreatePayload());
 
@@ -222,6 +237,28 @@ class ProjectCreateProvider extends ChangeNotifier {
 
   String _humanizeError(Object e) {
     final raw = e.toString();
-    return raw.startsWith('Exception: ') ? raw.substring(11) : raw;
+    final message = raw.startsWith('Exception: ') ? raw.substring(11) : raw;
+    if (message.contains('FREE_PROJECT_LIMIT_REACHED') ||
+        message.contains('Free plan is limited to') &&
+            message.contains('projects')) {
+      return _freeProjectLimitMessage;
+    }
+    if (message.contains('TimeoutException')) {
+      return 'Kết nối tới máy chủ quá lâu. Vui lòng thử lại sau.';
+    }
+    return message;
+  }
+
+  Future<String?> _freeProjectLimitError(ProjectProvider projects) async {
+    if (projects.projectCount < _freeProjectLimit) return null;
+    try {
+      final subscription = await _subscriptionService.getMySubscription();
+      if (subscription.isPro) return null;
+    } catch (_) {
+      // If the local list already proves the Free quota is full, keep the user
+      // in the sheet instead of starting a create request that is likely to
+      // time out and show a raw networking error.
+    }
+    return _freeProjectLimitMessage;
   }
 }

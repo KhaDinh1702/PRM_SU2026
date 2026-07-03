@@ -210,8 +210,9 @@ class _SubmitBar extends StatelessWidget {
           else
             const Spacer(),
           TextButton(
-            onPressed:
-                provider.isSubmitting ? null : () => Navigator.of(context).pop(),
+            onPressed: provider.isSubmitting
+                ? null
+                : () => Navigator.of(context).pop(),
             child: Text(
               LocaleService.tr('Huỷ', en: 'Cancel'),
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -280,14 +281,6 @@ class _SubmitBar extends StatelessWidget {
         ),
       );
       navigator.pop(result.projectId);
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Could not create project'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 }
