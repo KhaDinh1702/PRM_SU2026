@@ -66,7 +66,7 @@ class ThemeService {
 
   // GitHub Theme Accent & Primary colors
   static Color getPrimaryColor(bool isDark) {
-    return isDark ? const Color(0xFF58A6FF) : const Color(0xFF0969DA);
+    return isDark ? const Color(0xFFA78BFA) : const Color(0xFF8B5CF6);
   }
 
   static Color getButtonColor(bool isDark) {
