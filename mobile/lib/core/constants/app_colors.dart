@@ -5,8 +5,8 @@ class AppColors {
   AppColors._();
 
   // --- Brand / Primary ---
-  static const Color primary = Color(0xFF0969DA); // GitHub Blue (light)
-  static const Color primaryDark = Color(0xFF58A6FF); // GitHub Blue (dark)
+  static const Color primary = Color(0xFF8B5CF6); // Purple (light)
+  static const Color primaryDark = Color(0xFFA78BFA); // Purple (dark)
 
   // --- Accent Colors ---
   static const Color taskAccent = Color(0xFF06B6D4); // Cyan — Tasks
