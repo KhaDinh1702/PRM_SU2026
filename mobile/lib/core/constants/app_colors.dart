@@ -41,6 +41,7 @@ class AppColors {
   static const Color notifMeeting = Color(0xFFF43F5E);
   static const Color notifProject = Color(0xFF06B6D4);
   static const Color notifInvitation = Colors.blue;
+  static const Color notifChat = Color(0xFF3B82F6);
   static const Color notifSystem = Color(0xFF8B5CF6);
 
   // --- GitHub Theme Surface ---

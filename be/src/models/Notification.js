@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['task', 'meeting', 'project', 'invitation', 'other'],
+        enum: ['task', 'meeting', 'project', 'invitation', 'chat', 'other'],
         default: 'other'
     },
     relatedId: {

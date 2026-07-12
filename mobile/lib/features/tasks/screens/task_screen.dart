@@ -25,7 +25,12 @@ import '../widgets/task_form_dialog.dart';
 import '../widgets/task_summary_bar.dart';
 
 class TaskScreen extends StatefulWidget {
-  const TaskScreen({super.key});
+  final String? initialTaskId;
+
+  const TaskScreen({
+    super.key,
+    this.initialTaskId,
+  });
 
   @override
   State<TaskScreen> createState() => _TaskScreenState();
@@ -110,6 +115,7 @@ class _TaskScreenState extends State<TaskScreen> {
   /// Active tag filter — when non-empty, only tasks with at least one of
   /// these tag ids show up.
   Set<String> _tagFilterIds = const {};
+  bool _hasOpenedLinkedTask = false;
 
   final RecurrenceService _recurrenceService = const RecurrenceService();
   final ChecklistService _checklistService = const ChecklistService();
@@ -140,6 +146,23 @@ class _TaskScreenState extends State<TaskScreen> {
           searchQuery: _searchController.text.trim(),
         );
     await _refreshSideState();
+    await _openLinkedTaskIfNeeded();
+  }
+
+  Future<void> _openLinkedTaskIfNeeded() async {
+    if (_hasOpenedLinkedTask || (widget.initialTaskId ?? '').isEmpty) {
+      return;
+    }
+
+    final taskId = widget.initialTaskId!;
+    final provider = context.read<TaskProvider>();
+    for (final task in provider.tasks) {
+      if (task.id == taskId) {
+        _hasOpenedLinkedTask = true;
+        await _openTaskDetail(task);
+        return;
+      }
+    }
   }
 
   /// Refreshes everything the screen caches alongside the task list:

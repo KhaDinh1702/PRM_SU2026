@@ -423,6 +423,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
 
             return DefaultTabController(
               length: 4,
+              initialIndex: widget.openChatTab ? 3 : 0,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(

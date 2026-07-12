@@ -13,7 +13,7 @@ import '../../../../services/locale_service.dart';
 // ⚙️ Cấu hình URL backend động:
 // Tự động phân tích từ AuthService.apiBaseUrl để hỗ trợ cả local và production.
 String get _backendBaseUrl {
-  const apiBase = AuthService.apiBaseUrl;
+  final apiBase = AuthService.apiBaseUrl;
   if (apiBase.endsWith('/api')) {
     return apiBase.substring(0, apiBase.length - 4);
   }

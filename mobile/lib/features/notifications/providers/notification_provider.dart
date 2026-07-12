@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../../services/auth_service.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
@@ -10,9 +13,15 @@ enum NotificationLoadStatus { initial, loading, loaded, error }
 /// - _isLoading, _notifications, _error setState() trong notifications_screen
 class NotificationProvider extends ChangeNotifier {
   final NotificationService _service;
+  io.Socket? _socket;
+  Timer? _pollTimer;
 
   NotificationProvider({NotificationService? service})
-      : _service = service ?? const NotificationService();
+      : _service = service ?? const NotificationService() {
+    _initSocket();
+    _startRefreshPolling();
+    loadNotifications(silent: true);
+  }
 
   List<NotificationModel> _notifications = [];
   NotificationLoadStatus _status = NotificationLoadStatus.initial;
@@ -47,9 +56,61 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _initSocket() async {
+    try {
+      final userData = await AuthService.getUserInfo();
+      final userId = (userData?['id'] ?? userData?['_id'] ?? '').toString();
+      if (userId.isEmpty) return;
+
+      // Build backend base URL (strip trailing /api if present)
+      String apiBase = AuthService.apiBaseUrl;
+      String baseUrl = apiBase.endsWith('/api') ? apiBase.substring(0, apiBase.length - 4) : apiBase;
+      if (baseUrl.contains('vercel.app')) return; // skip sockets on Vercel
+
+      _socket = io.io(
+        baseUrl,
+        io.OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .enableReconnection()
+            .setReconnectionAttempts(5)
+            .build(),
+      );
+
+      _socket!.connect();
+      _socket!.onConnect((_) {
+        _socket!.emit('joinUser', userId);
+      });
+
+      _socket!.on('userNotification', (_) {
+        triggerRefresh();
+      });
+      _socket!.on('userNotificationPlain', (_) {
+        triggerRefresh();
+      });
+    } catch (_) {
+      // ignore socket setup failures
+    }
+  }
+
+  void _startRefreshPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      loadNotifications(silent: true);
+    });
+  }
+
   /// Kích hoạt refresh im lặng (thay thế refreshTrigger.value++)
   /// Dùng sau khi EventCheckService phát hiện event mới.
   Future<void> triggerRefresh() => loadNotifications(silent: true);
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _socket?.disconnect();
+    _socket?.dispose();
+    super.dispose();
+  }
 
   /// Đánh dấu đọc một thông báo, cập nhật local state ngay lập tức
   Future<void> markAsRead(String notificationId) async {

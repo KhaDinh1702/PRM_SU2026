@@ -31,14 +31,17 @@ class NotificationDeepLink {
   }
 
   static Widget _targetFor(NotificationModel notification) {
+    final relatedId = notification.relatedItemId;
     switch (notification.type) {
       case NotificationType.invitation:
       case NotificationType.project:
-        return const ProjectScreen();
+        return ProjectScreen(initialProjectId: relatedId);
+      case NotificationType.chat:
+        return ProjectScreen(initialProjectId: relatedId, openChatTab: true);
       case NotificationType.task:
-        return const TaskScreen();
+        return TaskScreen(initialTaskId: relatedId);
       case NotificationType.meeting:
-        return const CalendarScreen();
+        return CalendarScreen(initialCalendarItemId: relatedId);
       case NotificationType.system:
         return const NotificationsScreen();
     }

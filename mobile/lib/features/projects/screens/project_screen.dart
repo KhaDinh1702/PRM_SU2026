@@ -41,7 +41,14 @@ part 'project_screen_dialogs.dart';
 part 'project_screen_build.dart';
 
 class ProjectScreen extends StatefulWidget {
-  const ProjectScreen({super.key});
+  final String? initialProjectId;
+  final bool openChatTab;
+
+  const ProjectScreen({
+    super.key,
+    this.initialProjectId,
+    this.openChatTab = false,
+  });
 
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
@@ -83,6 +90,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   final Set<String> _reviewTaskIds = {};
   List<ProjectMilestone> _projectMilestones = [];
   bool _milestonesLoading = false;
+  bool _hasOpenedLinkedProject = false;
 
   void _updateProjectState(VoidCallback update) {
     if (!mounted) return;
@@ -311,8 +319,28 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   Future<void> _loadProjects() async {
-    if (mounted) {
-      await context.read<ProjectProvider>().loadProjects();
+    if (!mounted) return;
+
+    await context.read<ProjectProvider>().loadProjects();
+
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openLinkedProjectIfNeeded();
+    });
+  }
+
+  void _openLinkedProjectIfNeeded() {
+    if (_hasOpenedLinkedProject || (widget.initialProjectId ?? '').isEmpty) {
+      return;
+    }
+
+    final provider = context.read<ProjectProvider>();
+    for (final project in provider.projects) {
+      if (project.project.id == widget.initialProjectId) {
+        _hasOpenedLinkedProject = true;
+        _showProjectDetails(project);
+        return;
+      }
     }
   }
 

@@ -111,6 +111,13 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} joined project room: ${projectId}`);
     });
 
+    socket.on('joinUser', (userId) => {
+        if (!userId) return;
+        const room = `user:${userId}`;
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined user room: ${room}`);
+    });
+
     socket.on('sendMessage', async (data) => {
         try {
             const { projectId, senderId, text } = data;
@@ -124,10 +131,63 @@ io.on('connection', (socket) => {
             await newMessage.save();
 
             // Populate sender info for the client
-            await newMessage.populate('sender', 'name email profile');
+            await newMessage.populate('sender', 'name email profile username');
 
             // Emit to everyone in the room
             io.to(projectId).emit('receiveMessage', newMessage);
+
+            // Create notifications for other project members (best-effort)
+            try {
+                const Project = require('./models/Project');
+                const Notification = require('./models/Notification');
+                const User = require('./models/User');
+
+                const project = await Project.findById(projectId);
+                if (project) {
+                    const senderUser = await User.findById(senderId);
+                    const userName = senderUser?.username || senderUser?.name || senderUser?.email?.split('@')[0] || 'Someone';
+
+                    const recipientIds = new Set();
+                    if (project.owner) recipientIds.add(project.owner.toString());
+                    if (project.members && Array.isArray(project.members)) {
+                        project.members.forEach(member => {
+                            if (member) recipientIds.add(member.toString());
+                        });
+                    }
+                    recipientIds.delete(senderId.toString());
+
+                    const notifications = Array.from(recipientIds).map(recipientId => ({
+                        title: `New message in ${project.name}`,
+                        message: `${userName}: ${text?.toString().trim() || ''}`,
+                        type: 'chat',
+                        user: recipientId,
+                        sender: senderId,
+                        relatedId: project._id,
+                        onModel: 'Project'
+                    }));
+
+                    if (notifications.length > 0) {
+                        const createdNotifications = await Notification.insertMany(notifications);
+                        createdNotifications.forEach(n => {
+                            try {
+                                io.to(`user:${n.user.toString()}`).emit('userNotification', n);
+                                io.to(`user:${n.user.toString()}`).emit('userNotificationPlain', {
+                                    id: n._id?.toString(),
+                                    user: n.user?.toString(),
+                                    message: n.message,
+                                    title: n.title,
+                                    relatedId: n.relatedId?.toString()
+                                });
+                                console.log(`Emitted notification ${n._id} to user:${n.user}`);
+                            } catch (emitErr) {
+                                console.error('Error emitting userNotification:', emitErr);
+                            }
+                        });
+                    }
+                }
+            } catch (notifError) {
+                console.error('Socket notification error:', notifError);
+            }
         } catch (error) {
             console.error('Error saving/sending message:', error);
         }
