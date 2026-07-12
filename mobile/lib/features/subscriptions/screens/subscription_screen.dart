@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../notifications/providers/notification_provider.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
 import '../models/subscription_status.dart';
@@ -18,7 +20,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final _service = const SubscriptionService();
   final _currency = NumberFormat.currency(locale: 'vi_VN', symbol: 'd');
   SubscriptionStatus _subscription = SubscriptionStatus.free;
-  int? _pendingOrderCode;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -27,7 +28,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _PlanDetails(
           id: 'pro_monthly',
           title: 'Pro Monthly',
-          price: _currency.format(29000),
+          price: _currency.format(5000),
           duration: LocaleService.tr('30 ngay', en: '30 days'),
           subtitle: LocaleService.tr(
             'Mo khoa tinh nang Pro trong 30 ngay',
@@ -126,11 +127,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     try {
       final checkout = await _service.createPayOSCheckout(plan);
       if (!mounted) return;
-      setState(() {
-        _pendingOrderCode = checkout.orderCode;
-        _busy = false;
-      });
-      final completed = await Navigator.of(context).push<bool>(
+      setState(() => _busy = false);
+      final payment = await Navigator.of(context).push<PaymentStatus>(
         MaterialPageRoute(
           builder: (_) => PayOSCheckoutScreen(
             checkoutUrl: checkout.checkoutUrl,
@@ -138,8 +136,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
         ),
       );
-      if (completed == true && mounted) {
-        await _checkPendingPayment();
+      if (!mounted) return;
+
+      if (payment == null) {
+        _showPaymentMessage('abandoned');
+        try {
+          await _service.reportAbandonedPayment(checkout.orderCode);
+        } catch (_) {
+          // The immediate snackbar still tells the user what happened.
+        }
+        if (!mounted) return;
+        await context.read<NotificationProvider>().triggerRefresh();
+      } else if (payment.status == 'paid') {
+        setState(() => _subscription = payment.subscription);
+        await context.read<NotificationProvider>().triggerRefresh();
+        if (!mounted) return;
+        _showPaymentMessage('paid');
+      } else {
+        _showPaymentMessage(payment.status);
+        await context.read<NotificationProvider>().triggerRefresh();
       }
     } catch (e) {
       if (!mounted) return;
@@ -149,37 +164,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  Future<void> _checkPendingPayment() async {
-    final orderCode = _pendingOrderCode;
-    if (orderCode == null || _busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final status = await _service.getPaymentStatus(orderCode);
-      if (!mounted) return;
-      setState(() {
-        _subscription = status.subscription;
-        if (status.status == 'paid') _pendingOrderCode = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status.status == 'paid'
-                ? LocaleService.tr('Thanh toan thanh cong',
-                    en: 'Payment confirmed')
-                : LocaleService.tr('Dang cho thanh toan',
-                    en: 'Payment is still pending'),
-          ),
+  void _showPaymentMessage(String status) {
+    final message = switch (status) {
+      'paid' => LocaleService.tr(
+          'Thanh toan thanh cong. Tai khoan da duoc nang cap Pro.',
+          en: 'Payment confirmed. Your account is now Pro.',
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = _cleanError(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+      'cancelled' => LocaleService.tr(
+          'Ban da huy thanh toan. Goi hien tai khong thay doi.',
+          en: 'Payment cancelled. Your current plan was not changed.',
+        ),
+      'expired' => LocaleService.tr(
+          'Link thanh toan da het han sau 15 phut.',
+          en: 'The payment link expired after 15 minutes.',
+        ),
+      'failed' => LocaleService.tr(
+          'Thanh toan khong thanh cong. Vui long thu lai.',
+          en: 'Payment failed. Please try again.',
+        ),
+      _ => LocaleService.tr(
+          'Thanh toan chua hoan tat. Link se het han sau 15 phut.',
+          en: 'Payment was not completed. The link expires after 15 minutes.',
+        ),
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String _cleanError(Object e) {
@@ -252,31 +262,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         _ErrorBox(error: _error!),
-                      ],
-                      if (_pendingOrderCode != null) ...[
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _busy ? null : _checkPendingPayment,
-                          icon: _busy
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.verified_rounded),
-                          label: Text(
-                            LocaleService.tr(
-                              'Toi da thanh toan',
-                              en: 'I have paid',
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
                       ],
                       const SizedBox(height: 20),
                       _FreePlanLimitsCard(

@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../../services/locale_service.dart';
 import '../../../services/theme_service.dart';
+import '../models/subscription_status.dart';
+import '../services/subscription_service.dart';
 
 class PayOSCheckoutScreen extends StatefulWidget {
   final String checkoutUrl;
@@ -20,8 +24,12 @@ class PayOSCheckoutScreen extends StatefulWidget {
 }
 
 class _PayOSCheckoutScreenState extends State<PayOSCheckoutScreen> {
+  final _service = const SubscriptionService();
   late final WebViewController _controller;
+  Timer? _statusTimer;
   int _progress = 0;
+  bool _checkingStatus = false;
+  bool _confirmingPayment = false;
   String? _error;
 
   @override
@@ -48,11 +56,17 @@ class _PayOSCheckoutScreenState extends State<PayOSCheckoutScreen> {
             final uri = Uri.tryParse(request.url);
             final path = uri?.path.toLowerCase() ?? '';
             if (path.contains('/payment/success')) {
-              Navigator.of(context).pop(true);
+              if (mounted) {
+                setState(() => _confirmingPayment = true);
+              }
+              unawaited(_checkPaymentStatus());
               return NavigationDecision.prevent;
             }
             if (path.contains('/payment/cancel')) {
-              Navigator.of(context).pop(false);
+              if (mounted) {
+                setState(() => _confirmingPayment = true);
+              }
+              unawaited(_checkPaymentStatus());
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
@@ -60,6 +74,41 @@ class _PayOSCheckoutScreenState extends State<PayOSCheckoutScreen> {
         ),
       )
       ..loadRequest(Uri.parse(widget.checkoutUrl));
+
+    _statusTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_checkPaymentStatus()),
+    );
+  }
+
+  Future<void> _checkPaymentStatus() async {
+    if (_checkingStatus || !mounted) return;
+    _checkingStatus = true;
+    try {
+      final status = await _service.getPaymentStatus(widget.orderCode);
+      if (!mounted) return;
+
+      if (status.status == 'paid') {
+        _statusTimer?.cancel();
+        Navigator.of(context).pop<PaymentStatus>(status);
+        return;
+      }
+
+      if ({'cancelled', 'expired', 'failed'}.contains(status.status)) {
+        _statusTimer?.cancel();
+        Navigator.of(context).pop<PaymentStatus>(status);
+      }
+    } catch (_) {
+      // A temporary status-check failure should not interrupt PayOS checkout.
+    } finally {
+      _checkingStatus = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
   }
 
   Widget _buildWebView() {
@@ -136,6 +185,8 @@ class _PayOSCheckoutScreenState extends State<PayOSCheckoutScreen> {
                           _controller.reload();
                         },
                       ),
+                    if (_confirmingPayment && _error == null)
+                      _ConfirmingPayment(primary: primary),
                   ],
                 ),
               ),
@@ -143,6 +194,56 @@ class _PayOSCheckoutScreenState extends State<PayOSCheckoutScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ConfirmingPayment extends StatelessWidget {
+  final Color primary;
+
+  const _ConfirmingPayment({required this.primary});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ThemeService.isDarkMode.value;
+    final textColor = ThemeService.getTextColor(isDark);
+    final subTextColor = ThemeService.getSubTextColor(isDark);
+
+    return ColoredBox(
+      color: ThemeService.getBackgroundColor(isDark),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: primary),
+              const SizedBox(height: 18),
+              Text(
+                LocaleService.tr(
+                  'Dang xac nhan thanh toan',
+                  en: 'Confirming payment',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                LocaleService.tr(
+                  'Tai khoan se tu dong nang cap sau khi PayOS xac nhan.',
+                  en: 'Your account will upgrade automatically once PayOS confirms.',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: subTextColor, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
