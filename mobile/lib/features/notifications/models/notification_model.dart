@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
 /// Enum loại thông báo
-enum NotificationType { task, meeting, project, invitation, system }
+enum NotificationType { task, meeting, project, invitation, chat, system }
 
 /// Enum trạng thái lời mời
 enum InvitationStatus { pending, accepted, rejected }
@@ -44,7 +44,9 @@ class NotificationModel {
           json['invitationStatus']?.toString()),
       relatedId: json['relatedId'] is Map
           ? Map<String, dynamic>.from(json['relatedId'] as Map)
-          : null,
+          : (json['relatedId'] != null
+              ? {'_id': json['relatedId'].toString()}
+              : null),
       sender: json['sender'] is Map
           ? Map<String, dynamic>.from(json['sender'] as Map)
           : null,
@@ -87,6 +89,12 @@ class NotificationModel {
         : sender!['email']?.toString() ?? 'Someone';
   }
 
+  /// ID resource liên quan (task/project/event) nếu backend cung cấp.
+  String get relatedItemId {
+    return relatedId?['_id']?.toString() ??
+        relatedId?['id']?.toString() ?? '';
+  }
+
   /// Màu theo type
   Color get typeColor {
     switch (type) {
@@ -98,6 +106,8 @@ class NotificationModel {
         return AppColors.notifProject;
       case NotificationType.invitation:
         return AppColors.notifInvitation;
+      case NotificationType.chat:
+        return AppColors.notifChat;
       case NotificationType.system:
         return AppColors.notifSystem;
     }
@@ -114,6 +124,8 @@ class NotificationModel {
         return Icons.dns_rounded;
       case NotificationType.invitation:
         return Icons.group_add_rounded;
+      case NotificationType.chat:
+        return Icons.chat_bubble_rounded;
       case NotificationType.system:
         return Icons.notifications_rounded;
     }
@@ -130,6 +142,8 @@ class NotificationModel {
         return 'Project';
       case NotificationType.invitation:
         return 'Invite';
+      case NotificationType.chat:
+        return 'Chat';
       case NotificationType.system:
         return 'System';
     }
@@ -147,6 +161,8 @@ class NotificationModel {
         return NotificationType.project;
       case 'invitation':
         return NotificationType.invitation;
+      case 'chat':
+        return NotificationType.chat;
       default:
         return NotificationType.system;
     }

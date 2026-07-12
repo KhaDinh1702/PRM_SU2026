@@ -12,7 +12,12 @@ import '../../../core/widgets/app_scaffold_background.dart';
 import '../../../core/widgets/premium_widgets.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final String? initialCalendarItemId;
+
+  const CalendarScreen({
+    super.key,
+    this.initialCalendarItemId,
+  });
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -28,6 +33,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
+  bool _hasOpenedLinkedItem = false;
   int _loadRequestId = 0;
   List<CalendarItem> _items = [];
   DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month);
@@ -71,12 +77,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _isLoading = false;
         _hasLoadedOnce = true;
       });
+      await _openLinkedItemIfNeeded();
     } catch (_) {
       if (!mounted || requestId != _loadRequestId) return;
       setState(() {
         _isLoading = false;
         _hasLoadedOnce = true;
       });
+    }
+  }
+
+  Future<void> _openLinkedItemIfNeeded() async {
+    if (_hasOpenedLinkedItem || (widget.initialCalendarItemId ?? '').isEmpty) {
+      return;
+    }
+
+    final itemId = widget.initialCalendarItemId!;
+    for (final item in _items) {
+      if (item.id == itemId) {
+        _hasOpenedLinkedItem = true;
+        _openItemDetail(item);
+        return;
+      }
     }
   }
 

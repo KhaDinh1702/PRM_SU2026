@@ -1,15 +1,31 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  // Production API used by APK builds on real devices.
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://prm-tan.vercel.app/api',
-  );
-  static const String baseUrl = '$apiBaseUrl/auth';
-  static const String localBaseUrl = apiBaseUrl;
+  // Prefer the local backend during development so the app can talk to the
+  // running server without an explicit --dart-define. Release builds still
+  // fall back to the production API.
+  static String get apiBaseUrl {
+    const envUrl = String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: '',
+    );
+    if (envUrl.isNotEmpty) return envUrl;
+
+    if (kDebugMode) {
+      if (kIsWeb) return 'http://localhost:5000/api';
+      if (Platform.isAndroid) return 'http://10.0.2.2:5000/api';
+      return 'http://localhost:5000/api';
+    }
+
+    return 'https://prm-tan.vercel.app/api';
+  }
+
+  static String get baseUrl => '$apiBaseUrl/auth';
+  static String get localBaseUrl => apiBaseUrl;
   static const String tokenKey = 'jwt_token';
   static const String userKey = 'user_info';
 

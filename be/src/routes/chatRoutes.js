@@ -4,6 +4,8 @@ const rateLimit = require('express-rate-limit');
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const Project = require('../models/Project');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 const chatMessagesLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -81,6 +83,54 @@ router.post('/', chatMessagesLimiter, auth, async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.to(projectId).emit('receiveMessage', newMessage);
+        }
+
+        // Tạo thông báo cho tất cả thành viên khác trong project
+        try {
+            const senderUser = await User.findById(req.user.id);
+            const userName = senderUser?.username || senderUser?.name || senderUser?.email?.split('@')[0] || 'Someone';
+
+            const recipientIds = new Set();
+            if (project.owner) recipientIds.add(project.owner.toString());
+            if (project.members && Array.isArray(project.members)) {
+                project.members.forEach(member => {
+                    if (member) recipientIds.add(member.toString());
+                });
+            }
+            recipientIds.delete(req.user.id.toString());
+
+            const notifications = Array.from(recipientIds).map(recipientId => ({
+                title: `New message in ${project.name}`,
+                message: `${userName}: ${text.trim()}`,
+                type: 'chat',
+                user: recipientId,
+                sender: req.user.id,
+                relatedId: project._id,
+                onModel: 'Project'
+            }));
+
+            if (notifications.length > 0) {
+                const createdNotifications = await Notification.insertMany(notifications);
+                if (io && createdNotifications.length > 0) {
+                    createdNotifications.forEach(n => {
+                        try {
+                            io.to(`user:${n.user.toString()}`).emit('userNotification', n);
+                            io.to(`user:${n.user.toString()}`).emit('userNotificationPlain', {
+                                id: n._id?.toString(),
+                                user: n.user?.toString(),
+                                message: n.message,
+                                title: n.title,
+                                relatedId: n.relatedId?.toString()
+                            });
+                            console.log(`ChatRoute: emitted notification ${n._id} to user:${n.user}`);
+                        } catch (e) {
+                            console.error('ChatRoute emit error:', e);
+                        }
+                    });
+                }
+            }
+        } catch (notifError) {
+            console.error('Chat notification error:', notifError);
         }
 
         res.status(201).json(newMessage);
