@@ -61,4 +61,18 @@ class SubscriptionService {
 
     return PaymentStatus.fromJson(Map<String, dynamic>.from(body as Map));
   }
+
+  Future<void> reportAbandonedPayment(int orderCode) async {
+    final token = await AuthService.getToken();
+    final response = await http.post(
+      Uri.parse('${AuthService.apiBaseUrl}/payments/$orderCode/abandon'),
+      headers: {'Authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      final message = body is Map ? body['error']?.toString() : null;
+      throw Exception(message ?? 'Could not update payment status');
+    }
+  }
 }

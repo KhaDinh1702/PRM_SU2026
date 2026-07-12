@@ -13,8 +13,14 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['task', 'meeting', 'project', 'invitation', 'chat', 'other'],
+        enum: ['task', 'meeting', 'project', 'invitation', 'chat', 'system', 'other'],
         default: 'other'
+    },
+    dedupeKey: {
+        type: String,
+        trim: true,
+        unique: true,
+        sparse: true
     },
     relatedId: {
         type: mongoose.Schema.Types.ObjectId,
