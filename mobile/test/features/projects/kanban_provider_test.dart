@@ -32,22 +32,21 @@ void main() {
         [
           task(id: '1', status: TaskStatus.pending),
           task(id: '2', status: TaskStatus.inProgress),
-          task(id: '3', status: TaskStatus.completed),
+          task(id: '3', status: TaskStatus.review),
+          task(id: '4', status: TaskStatus.completed),
         ],
-        {},
       );
 
       expect(grouped[BoardColumn.todo]!.length, 1);
       expect(grouped[BoardColumn.inProgress]!.length, 1);
       expect(grouped[BoardColumn.completed]!.length, 1);
-      expect(grouped[BoardColumn.review]!.length, 0);
+      expect(grouped[BoardColumn.review]!.length, 1);
     });
 
-    test('moves task to Review when reviewTaskIds contains its id', () {
+    test('keeps persisted Review tasks in the Review column', () {
       final provider = KanbanProvider();
       final grouped = provider.groupTasks(
-        [task(id: '1', status: TaskStatus.inProgress)],
-        {'1'},
+        [task(id: '1', status: TaskStatus.review)],
       );
       expect(grouped[BoardColumn.review]!.length, 1);
       expect(grouped[BoardColumn.inProgress]!.length, 0);
@@ -61,26 +60,21 @@ void main() {
           task(id: '2', title: 'Beta launch'),
           task(id: '3', title: 'Other', description: 'Touches the alpha plan'),
         ],
-        {},
       );
-      final all =
-          grouped.values.expand((list) => list).toList(growable: false);
+      final all = grouped.values.expand((list) => list).toList(growable: false);
       expect(all.length, 2);
     });
 
     test('priority filter keeps only matching tasks', () {
-      final provider = KanbanProvider()
-        ..setPriorityFilter(KanbanPriority.high);
+      final provider = KanbanProvider()..setPriorityFilter(KanbanPriority.high);
       final grouped = provider.groupTasks(
         [
           task(id: '1', priority: TaskPriority.high),
           task(id: '2', priority: TaskPriority.medium),
           task(id: '3', priority: TaskPriority.urgent), // also bucketed
         ],
-        {},
       );
-      final all =
-          grouped.values.expand((list) => list).toList(growable: false);
+      final all = grouped.values.expand((list) => list).toList(growable: false);
       expect(all.length, 2);
     });
 
@@ -92,10 +86,8 @@ void main() {
           task(id: '2', assignee: {'_id': 'u2', 'name': 'Bob'}),
           task(id: '3'), // no assignee
         ],
-        {},
       );
-      final all =
-          grouped.values.expand((list) => list).toList(growable: false);
+      final all = grouped.values.expand((list) => list).toList(growable: false);
       expect(all.length, 1);
     });
 
@@ -109,7 +101,6 @@ void main() {
           task(id: '3', priority: TaskPriority.medium),
           task(id: '4', priority: TaskPriority.high),
         ],
-        {},
       );
       final todo = grouped[BoardColumn.todo]!;
       expect(todo.map((t) => t.priority), [
@@ -129,11 +120,41 @@ void main() {
           task(id: '2', deadline: now.add(const Duration(days: 1))),
           task(id: '3', deadline: now.add(const Duration(days: 3))),
         ],
-        {},
       );
       final todo = grouped[BoardColumn.todo]!;
       expect(todo.first.id, '2');
       expect(todo.last.id, '1');
+    });
+  });
+
+  group('ProjectBoardUtils workflow', () {
+    test('advances through every Kanban column in order', () {
+      expect(
+        ProjectBoardUtils.nextColumn(BoardColumn.todo),
+        BoardColumn.inProgress,
+      );
+      expect(
+        ProjectBoardUtils.nextColumn(BoardColumn.inProgress),
+        BoardColumn.review,
+      );
+      expect(
+        ProjectBoardUtils.nextColumn(BoardColumn.review),
+        BoardColumn.completed,
+      );
+      expect(ProjectBoardUtils.nextColumn(BoardColumn.completed), isNull);
+    });
+
+    test('maps Review to the persisted API status', () {
+      expect(
+        ProjectBoardUtils.apiStatusForColumn(BoardColumn.review),
+        'Review',
+      );
+      expect(
+        ProjectBoardUtils.columnForTask(
+          task(status: TaskStatus.review),
+        ),
+        BoardColumn.review,
+      );
     });
   });
 

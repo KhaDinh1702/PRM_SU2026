@@ -98,9 +98,11 @@ class TaskInboxCard extends StatelessWidget {
         ? AppColors.error
         : (task.status == TaskStatus.completed
             ? AppColors.success
-            : (task.status == TaskStatus.inProgress
-                ? AppColors.taskAccent
-                : const Color(0xFF94A3B8)));
+            : task.status == TaskStatus.review
+                ? const Color(0xFFF59E0B)
+                : (task.status == TaskStatus.inProgress
+                    ? AppColors.taskAccent
+                    : const Color(0xFF94A3B8)));
 
     final metaParts = [
       dueTextStr,
@@ -116,179 +118,178 @@ class TaskInboxCard extends StatelessWidget {
           onTap: onOpen,
           borderRadius: BorderRadius.circular(22),
           child: IntrinsicHeight(
-          child: Row(
-            children: [
-              // Thanh màu trạng thái bên trái
-              Container(
-                width: 5,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(22),
+            child: Row(
+              children: [
+                // Thanh màu trạng thái bên trái
+                Container(
+                  width: 5,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(22),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Toggle complete button
-                      GestureDetector(
-                        onTap: onToggle,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: completed
-                                ? AppColors.success.withValues(alpha: 0.12)
-                                : Colors.transparent,
-                            border: Border.all(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Toggle complete button
+                        GestureDetector(
+                          onTap: onToggle,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
                               color: completed
-                                  ? AppColors.success
-                                  : captionColor.withValues(alpha: 0.45),
-                              width: 2,
-                            ),
-                          ),
-                          child: completed
-                              ? const Icon(
-                                  Icons.check_rounded,
-                                  color: AppColors.success,
-                                  size: 16,
-                                )
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                      decoration: completed
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                TaskBadge(
-                                  label: sourceLabelStr,
-                                  color: sourceColorStr,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              metaParts.join(' · '),
-                              style: TextStyle(
-                                color: subTextColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                  ? AppColors.success.withValues(alpha: 0.12)
+                                  : Colors.transparent,
+                              border: Border.all(
+                                color: completed
+                                    ? AppColors.success
+                                    : captionColor.withValues(alpha: 0.45),
+                                width: 2,
                               ),
                             ),
-                            if (description.isNotEmpty) ...[
+                            child: completed
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    color: AppColors.success,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                        decoration: completed
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TaskBadge(
+                                    label: sourceLabelStr,
+                                    color: sourceColorStr,
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 5),
                               Text(
-                                description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                metaParts.join(' · '),
                                 style: TextStyle(
-                                    color: captionColor, fontSize: 12),
+                                  color: subTextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (description.isNotEmpty) ...[
+                                const SizedBox(height: 5),
+                                Text(
+                                  description,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: captionColor, fontSize: 12),
+                                ),
+                              ],
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  TaskBadge(label: status, color: statusColor),
+                                  TaskBadge(
+                                    label: priority,
+                                    color: priorityColorStr,
+                                  ),
+                                  if (assigneeNameStr.isNotEmpty &&
+                                      sourceLabelStr == 'Project')
+                                    TaskBadge(
+                                      label: LocaleService.tr(
+                                          'Giao cho $assigneeNameStr',
+                                          en: 'Assigned to $assigneeNameStr'),
+                                      color: captionColor,
+                                    ),
+                                  if (reminderLabelStr.isNotEmpty)
+                                    TaskBadge(
+                                      label: reminderLabelStr,
+                                      color: AppColors.timerFocus,
+                                    ),
+                                  if (task.hasLocation)
+                                    TaskBadge(
+                                      label: LocaleService.tr(
+                                        'Dia diem',
+                                        en: 'Location',
+                                      ),
+                                      color: const Color(0xFF06B6D4),
+                                    ),
+                                  if (isRecurring)
+                                    TaskBadge(
+                                      label:
+                                          LocaleService.tr('Lặp', en: 'Repeat'),
+                                      color: const Color(0xFF06B6D4),
+                                    ),
+                                  if (checklistProgress.hasItems)
+                                    TaskBadge(
+                                      label: '◰ ${checklistProgress.label}',
+                                      color: checklistProgress.isComplete
+                                          ? AppColors.success
+                                          : AppColors.taskAccent,
+                                    ),
+                                  if (focusMinutesToday > 0)
+                                    TaskBadge(
+                                      label: '◉ ${focusMinutesToday}m',
+                                      color: const Color(0xFF06B6D4),
+                                    ),
+                                  for (final tag in tags)
+                                    TaskBadge(
+                                      label: '#${tag.name}',
+                                      color: tag.color,
+                                    ),
+                                ],
                               ),
                             ],
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                TaskBadge(label: status, color: statusColor),
-                                TaskBadge(
-                                  label: priority,
-                                  color: priorityColorStr,
-                                ),
-                                if (assigneeNameStr.isNotEmpty &&
-                                    sourceLabelStr == 'Project')
-                                  TaskBadge(
-                                    label: LocaleService.tr(
-                                        'Giao cho $assigneeNameStr',
-                                        en: 'Assigned to $assigneeNameStr'),
-                                    color: captionColor,
-                                  ),
-                                if (reminderLabelStr.isNotEmpty)
-                                  TaskBadge(
-                                    label: reminderLabelStr,
-                                    color: AppColors.timerFocus,
-                                  ),
-                                if (task.hasLocation)
-                                  TaskBadge(
-                                    label: LocaleService.tr(
-                                      'Dia diem',
-                                      en: 'Location',
-                                    ),
-                                    color: const Color(0xFF06B6D4),
-                                  ),
-                                if (isRecurring)
-                                  TaskBadge(
-                                    label:
-                                        LocaleService.tr('Lặp', en: 'Repeat'),
-                                    color: const Color(0xFF06B6D4),
-                                  ),
-                                if (checklistProgress.hasItems)
-                                  TaskBadge(
-                                    label: '◰ ${checklistProgress.label}',
-                                    color: checklistProgress.isComplete
-                                        ? AppColors.success
-                                        : AppColors.taskAccent,
-                                  ),
-                                if (focusMinutesToday > 0)
-                                  TaskBadge(
-                                    label: '◉ ${focusMinutesToday}m',
-                                    color: const Color(0xFF06B6D4),
-                                  ),
-                                for (final tag in tags)
-                                  TaskBadge(
-                                    label: '#${tag.name}',
-                                    color: tag.color,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (onDelete != null)
-                        IconButton(
-                          tooltip: 'Delete task',
-                          icon: Icon(
-                            Icons.delete_outline_rounded,
-                            color: Colors.redAccent.withValues(alpha: 0.85),
-                            size: 21,
                           ),
-                          onPressed: onDelete,
                         ),
-                    ],
+                        if (onDelete != null)
+                          IconButton(
+                            tooltip: 'Delete task',
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.redAccent.withValues(alpha: 0.85),
+                              size: 21,
+                            ),
+                            onPressed: onDelete,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
   }
 }
-

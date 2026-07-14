@@ -119,7 +119,6 @@ class KanbanProvider extends ChangeNotifier {
   /// dropped before grouping.
   Map<BoardColumn, List<TaskModel>> groupTasks(
     List<TaskModel> tasks,
-    Set<String> reviewTaskIds,
   ) {
     final grouped = <BoardColumn, List<TaskModel>>{
       for (final column in ProjectBoardUtils.columnOrder) column: [],
@@ -128,7 +127,7 @@ class KanbanProvider extends ChangeNotifier {
     final query = _query.trim().toLowerCase();
 
     for (final task in tasks) {
-      final column = ProjectBoardUtils.columnForTask(task, reviewTaskIds);
+      final column = ProjectBoardUtils.columnForTask(task);
 
       if (_statusFilter != null && _statusFilter != column) continue;
       if (!_matchesQuery(task, query)) continue;

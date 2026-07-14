@@ -22,13 +22,11 @@ import 'board_task_card.dart';
 /// to know about them.
 class BoardTab extends StatelessWidget {
   final List<TaskModel> tasks;
-  final Set<String> reviewTaskIds;
   final bool isLoading;
   final bool tasksLoaded;
   final String Function(Map<String, dynamic>? assignee) assigneeName;
   final bool Function(TaskModel task) canUpdateTask;
   final void Function(TaskModel task) onOpenTask;
-  final void Function(TaskModel task) onMarkComplete;
   final void Function(TaskModel task) onMoveToNextStatus;
   final VoidCallback onLoadTasks;
 
@@ -43,13 +41,11 @@ class BoardTab extends StatelessWidget {
   const BoardTab({
     super.key,
     required this.tasks,
-    required this.reviewTaskIds,
     required this.isLoading,
     required this.tasksLoaded,
     required this.assigneeName,
     required this.canUpdateTask,
     required this.onOpenTask,
-    required this.onMarkComplete,
     required this.onMoveToNextStatus,
     required this.onLoadTasks,
     this.onCreateTask,
@@ -62,14 +58,12 @@ class BoardTab extends StatelessWidget {
       create: (_) => KanbanProvider(),
       child: _BoardTabBody(
         tasks: tasks,
-        reviewTaskIds: reviewTaskIds,
         isLoading: isLoading,
         tasksLoaded: tasksLoaded,
         assigneeName: assigneeName,
         canUpdateTask: canUpdateTask,
         onOpenTask: onOpenTask,
         onLongPressTask: onLongPressTask ?? onOpenTask,
-        onMarkComplete: onMarkComplete,
         onMoveToNextStatus: onMoveToNextStatus,
         onLoadTasks: onLoadTasks,
         onCreateTask: onCreateTask,
@@ -80,28 +74,24 @@ class BoardTab extends StatelessWidget {
 
 class _BoardTabBody extends StatefulWidget {
   final List<TaskModel> tasks;
-  final Set<String> reviewTaskIds;
   final bool isLoading;
   final bool tasksLoaded;
   final String Function(Map<String, dynamic>? assignee) assigneeName;
   final bool Function(TaskModel task) canUpdateTask;
   final void Function(TaskModel task) onOpenTask;
   final void Function(TaskModel task) onLongPressTask;
-  final void Function(TaskModel task) onMarkComplete;
   final void Function(TaskModel task) onMoveToNextStatus;
   final VoidCallback onLoadTasks;
   final VoidCallback? onCreateTask;
 
   const _BoardTabBody({
     required this.tasks,
-    required this.reviewTaskIds,
     required this.isLoading,
     required this.tasksLoaded,
     required this.assigneeName,
     required this.canUpdateTask,
     required this.onOpenTask,
     required this.onLongPressTask,
-    required this.onMarkComplete,
     required this.onMoveToNextStatus,
     required this.onLoadTasks,
     required this.onCreateTask,
@@ -137,108 +127,102 @@ class _BoardTabBodyState extends State<_BoardTabBody> {
     }
 
     final provider = context.watch<KanbanProvider>();
-    final grouped = provider.groupTasks(widget.tasks, widget.reviewTaskIds);
-    final totalVisible = grouped.values.fold<int>(0, (sum, l) => sum + l.length);
+    final grouped = provider.groupTasks(widget.tasks);
+    final totalVisible =
+        grouped.values.fold<int>(0, (sum, l) => sum + l.length);
     final hasAnyTask = widget.tasks.isNotEmpty;
 
     return Column(
       children: [
         _BoardToolbar(
-              controller: _searchController,
-              onSearchChanged: provider.setQuery,
-              onClearSearch: () {
-                _searchController.clear();
-                provider.setQuery('');
-              },
-              onOpenFilter: () => BoardFilterSheet.show(
-                context,
-                provider: provider,
-                assignees: provider.assigneeOptions(
-                  widget.tasks,
-                  widget.assigneeName,
-                ),
-              ),
-              activeFilters: provider.activeFilterCount,
-              currentSort: provider.sort,
-              onSortChanged: provider.setSort,
+          controller: _searchController,
+          onSearchChanged: provider.setQuery,
+          onClearSearch: () {
+            _searchController.clear();
+            provider.setQuery('');
+          },
+          onOpenFilter: () => BoardFilterSheet.show(
+            context,
+            provider: provider,
+            assignees: provider.assigneeOptions(
+              widget.tasks,
+              widget.assigneeName,
             ),
-            Expanded(
-              child: !hasAnyTask
+          ),
+          activeFilters: provider.activeFilterCount,
+          currentSort: provider.sort,
+          onSortChanged: provider.setSort,
+        ),
+        Expanded(
+          child: !hasAnyTask
+              ? BoardEmptyState(
+                  title: LocaleService.tr('Dự án chưa có task nào',
+                      en: 'No tasks in this project'),
+                  subtitle: LocaleService.tr('Tạo task đầu tiên',
+                      en: 'Create your first task'),
+                  ctaLabel: widget.onCreateTask != null
+                      ? LocaleService.tr('Tạo task', en: 'Create Task')
+                      : null,
+                  onCta: widget.onCreateTask,
+                )
+              : totalVisible == 0
                   ? BoardEmptyState(
-                      title: LocaleService.tr(
-                          'Dự án chưa có task nào',
-                          en: 'No tasks in this project'),
+                      title: LocaleService.tr('Không khớp', en: 'No matches'),
                       subtitle: LocaleService.tr(
-                          'Tạo task đầu tiên',
-                          en: 'Create your first task'),
-                      ctaLabel: widget.onCreateTask != null
-                          ? LocaleService.tr('Tạo task', en: 'Create Task')
-                          : null,
-                      onCta: widget.onCreateTask,
+                          'Thử tìm khác hoặc xoá bộ lọc.',
+                          en: 'Try a different search or clear the filters.'),
+                      emoji: '🔍',
+                      ctaLabel:
+                          LocaleService.tr('Xoá bộ lọc', en: 'Clear filters'),
+                      onCta: () {
+                        _searchController.clear();
+                        provider.clearFilters();
+                      },
                     )
-                  : totalVisible == 0
-                      ? BoardEmptyState(
-                          title: LocaleService.tr('Không khớp',
-                              en: 'No matches'),
-                          subtitle: LocaleService.tr(
-                              'Thử tìm khác hoặc xoá bộ lọc.',
-                              en: 'Try a different search or clear the filters.'),
-                          emoji: '🔍',
-                          ctaLabel: LocaleService.tr('Xoá bộ lọc',
-                              en: 'Clear filters'),
-                          onCta: () {
-                            _searchController.clear();
-                            provider.clearFilters();
-                          },
-                        )
-                      : ListView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSizes.paddingM,
-                            AppSizes.paddingS + 4,
-                            AppSizes.paddingM,
-                            100,
-                          ),
-                          children: [
-                            for (final column
-                                in ProjectBoardUtils.columnOrder)
-                              BoardSection(
-                                title: ProjectBoardUtils.labelFor(column),
-                                count: grouped[column]!.length,
-                                color: BoardPalette.statusColor(column),
-                                isExpanded: provider.isExpanded(column),
-                                onToggle: () =>
-                                    provider.toggleExpanded(column),
-                                emptyState: BoardEmptyState(
-                                  title: LocaleService.tr(
-                                      'Cột này chưa có task',
-                                      en: 'No tasks in this column'),
-                                  subtitle: widget.onCreateTask != null
-                                      ? LocaleService.tr(
-                                          'Tạo task đầu tiên',
-                                          en: 'Create your first task')
-                                      : LocaleService.tr(
-                                          'Kéo task vào đây khi bắt đầu làm.',
-                                          en: 'Drag tasks here as you work.'),
-                                  ctaLabel: widget.onCreateTask != null
-                                      ? LocaleService.tr('Tạo task',
-                                          en: 'Create Task')
-                                      : null,
-                                  onCta: widget.onCreateTask,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSizes.paddingM,
-                                    vertical: AppSizes.paddingL,
-                                  ),
-                                ),
-                                children: grouped[column]!
-                                    .map(
-                                      (task) => _buildCard(task, column),
-                                    )
-                                    .toList(),
+                  : ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSizes.paddingM,
+                        AppSizes.paddingS + 4,
+                        AppSizes.paddingM,
+                        100,
+                      ),
+                      children: [
+                        for (final column in ProjectBoardUtils.columnOrder)
+                          BoardSection(
+                            title: ProjectBoardUtils.labelFor(column),
+                            count: grouped[column]!.length,
+                            color: BoardPalette.statusColor(column),
+                            isExpanded: provider.isExpanded(column),
+                            onToggle: () => provider.toggleExpanded(column),
+                            emptyState: BoardEmptyState(
+                              title: LocaleService.tr('Cột này chưa có task',
+                                  en: 'No tasks in this column'),
+                              subtitle: widget.onCreateTask != null
+                                  ? LocaleService.tr('Tạo task đầu tiên',
+                                      en: 'Create your first task')
+                                  : LocaleService.tr(
+                                      'Kéo task vào đây khi bắt đầu làm.',
+                                      en: 'Drag tasks here as you work.'),
+                              ctaLabel: widget.onCreateTask != null
+                                  ? LocaleService.tr('Tạo task',
+                                      en: 'Create Task')
+                                  : null,
+                              onCta: widget.onCreateTask,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSizes.paddingM,
+                                vertical: AppSizes.paddingL,
                               ),
-                          ],
-                        ),
-            ),
+                            ),
+                            children: grouped[column]!
+                                .map(
+                                  (task) => _buildCard(task, column),
+                                )
+                                .toList(),
+                          ),
+                      ],
+                    ),
+        ),
       ],
     );
   }
@@ -249,10 +233,9 @@ class _BoardTabBodyState extends State<_BoardTabBody> {
       task: task,
       column: column,
       assigneeName: widget.assigneeName(task.assignedTo),
-      canSwipe: canUpdate,
+      canSwipe: canUpdate && column != BoardColumn.completed,
       onTap: () => widget.onOpenTask(task),
       onLongPress: () => widget.onLongPressTask(task),
-      onSwipeComplete: canUpdate ? () => widget.onMarkComplete(task) : null,
       onSwipeAdvance: canUpdate ? () => widget.onMoveToNextStatus(task) : null,
     );
   }
@@ -334,18 +317,15 @@ class _BoardToolbar extends StatelessWidget {
                     horizontal: AppSizes.paddingM - 4,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusRound),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
                     borderSide: BorderSide(color: borderColor),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusRound),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
                     borderSide: BorderSide(color: borderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusRound),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusRound),
                     borderSide:
                         const BorderSide(color: BoardPalette.sort, width: 1.2),
                   ),

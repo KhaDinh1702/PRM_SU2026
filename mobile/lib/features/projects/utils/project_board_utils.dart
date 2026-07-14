@@ -32,17 +32,17 @@ class ProjectBoardUtils {
     }
   }
 
-  static BoardColumn columnForTask(
-    TaskModel task,
-    Set<String> reviewTaskIds,
-  ) {
-    if (task.status == TaskStatus.completed) return BoardColumn.completed;
-    if (task.status == TaskStatus.inProgress) {
-      return reviewTaskIds.contains(task.id)
-          ? BoardColumn.review
-          : BoardColumn.inProgress;
+  static BoardColumn columnForTask(TaskModel task) {
+    switch (task.status) {
+      case TaskStatus.pending:
+        return BoardColumn.todo;
+      case TaskStatus.inProgress:
+        return BoardColumn.inProgress;
+      case TaskStatus.review:
+        return BoardColumn.review;
+      case TaskStatus.completed:
+        return BoardColumn.completed;
     }
-    return BoardColumn.todo;
   }
 
   static String apiStatusForColumn(BoardColumn column) {
@@ -50,8 +50,9 @@ class ProjectBoardUtils {
       case BoardColumn.todo:
         return 'Pending';
       case BoardColumn.inProgress:
-      case BoardColumn.review:
         return 'In Progress';
+      case BoardColumn.review:
+        return 'Review';
       case BoardColumn.completed:
         return 'Completed';
     }
@@ -62,9 +63,6 @@ class ProjectBoardUtils {
     if (index < 0 || index >= columnOrder.length - 1) return null;
     return columnOrder[index + 1];
   }
-
-  static bool shouldMarkReview(BoardColumn column) =>
-      column == BoardColumn.review;
 
   static int priorityWeight(TaskPriority priority) {
     switch (priority) {
@@ -82,9 +80,8 @@ class ProjectBoardUtils {
   /// Picks the most important still-open task — used by the project overview
   /// "next task" surface.
   static TaskModel? pickNextTask(List<TaskModel> tasks) {
-    final open = tasks
-        .where((task) => task.status != TaskStatus.completed)
-        .toList();
+    final open =
+        tasks.where((task) => task.status != TaskStatus.completed).toList();
     if (open.isEmpty) return null;
 
     open.sort((a, b) {

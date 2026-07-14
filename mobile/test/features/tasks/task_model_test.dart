@@ -26,6 +26,17 @@ void main() {
       expect(task.priority, TaskPriority.low);
       expect(task.source, TaskSource.personal);
     });
+
+    test('parses and serializes the persisted Review status', () {
+      final task = TaskModel.fromJson({
+        '_id': 't-review',
+        'status': 'Review',
+      });
+
+      expect(task.status, TaskStatus.review);
+      expect(task.statusLabel, 'Review');
+      expect(task.toMap()['status'], 'Review');
+    });
   });
 
   group('TaskModel.isOverdue', () {

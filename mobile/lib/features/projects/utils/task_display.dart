@@ -15,6 +15,8 @@ Color taskStatusColor(TaskStatus status) {
       return AppColors.success;
     case TaskStatus.inProgress:
       return AppColors.taskAccent;
+    case TaskStatus.review:
+      return const Color(0xFFF59E0B);
     case TaskStatus.pending:
       return Colors.blueGrey;
   }

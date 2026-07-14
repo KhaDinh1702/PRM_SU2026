@@ -159,7 +159,7 @@ class ProjectNextTaskCard extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ),
-              if (taskModel.status != TaskStatus.inProgress &&
+              if (taskModel.status == TaskStatus.pending &&
                   onMarkInProgress != null) ...[
                 const SizedBox(width: 10),
                 Expanded(

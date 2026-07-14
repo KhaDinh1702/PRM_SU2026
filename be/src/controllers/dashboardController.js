@@ -19,7 +19,7 @@ exports.getSummary = async (req, res) => {
         // Home counts the same shared Task records used by Project Detail and Main Tasks.
         const pendingTasksCount = await Task.countDocuments({
             ...userTaskScope(userId),
-            status: { $in: ['Pending', 'In Progress'] }
+            status: { $in: ['Pending', 'In Progress', 'Review'] }
         });
         const completedTasksCount = await Task.countDocuments({
             ...userTaskScope(userId),

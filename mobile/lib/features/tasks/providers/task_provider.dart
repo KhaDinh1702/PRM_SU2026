@@ -154,9 +154,11 @@ class TaskProvider extends ChangeNotifier {
     // Map enum về string cho API
     final statusString = newStatus == TaskStatus.completed
         ? 'Completed'
-        : newStatus == TaskStatus.inProgress
-            ? 'In Progress'
-            : 'Pending';
+        : newStatus == TaskStatus.review
+            ? 'Review'
+            : newStatus == TaskStatus.inProgress
+                ? 'In Progress'
+                : 'Pending';
     try {
       await _service.updateTaskStatus(taskId: taskId, newStatus: statusString);
     } catch (e) {
