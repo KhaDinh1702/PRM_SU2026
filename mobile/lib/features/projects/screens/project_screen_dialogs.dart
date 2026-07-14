@@ -199,8 +199,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                 onTap: () => _pickTaskDueDate(context, setDialogState),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: ThemeService.isDarkMode.value
                         ? Colors.white.withValues(alpha: 0.03)
@@ -253,8 +253,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                 onTap: () => _pickTaskDueTime(context, setDialogState),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: ThemeService.isDarkMode.value
                         ? Colors.white.withValues(alpha: 0.03)
@@ -344,8 +344,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
               .map(
                 (priority) => DropdownMenuItem(
                   value: priority,
-                  child:
-                      Text(priority, style: TextStyle(color: textColor)),
+                  child: Text(priority, style: TextStyle(color: textColor)),
                 ),
               )
               .toList(),
@@ -375,10 +374,9 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
         ),
       );
     }).toList();
-    final selectedValue =
-        items.any((item) => item.value == _selectedAssigneeId)
-            ? _selectedAssigneeId
-            : null;
+    final selectedValue = items.any((item) => item.value == _selectedAssigneeId)
+        ? _selectedAssigneeId
+        : null;
 
     return _buildRoundedDropdown<String>(
       value: selectedValue,
@@ -441,8 +439,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                     children: [
                       PremiumInputField(
                         controller: _taskTitleController,
-                        label: LocaleService.tr('Ten task *',
-                            en: 'Task title *'),
+                        label:
+                            LocaleService.tr('Ten task *', en: 'Task title *'),
                         hintText: LocaleService.tr('Nhap ten task...',
                             en: 'Enter task...'),
                         prefixIcon: Icons.task_alt_rounded,
@@ -586,8 +584,8 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                     children: [
                       PremiumInputField(
                         controller: _taskTitleController,
-                        label: LocaleService.tr('Ten task *',
-                            en: 'Task title *'),
+                        label:
+                            LocaleService.tr('Ten task *', en: 'Task title *'),
                         hintText: LocaleService.tr('Nhap ten task...',
                             en: 'Enter task...'),
                         prefixIcon: Icons.task_alt_rounded,
@@ -621,7 +619,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                         label: 'Status',
                         dialogBg: dialogBg,
                         textColor: textColor,
-                        items: ['Pending', 'In Progress', 'Completed']
+                        items: ['Pending', 'In Progress', 'Review', 'Completed']
                             .map((status) => DropdownMenuItem(
                                   value: status,
                                   child: Text(status,
@@ -653,8 +651,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                 ),
                 actions: [
                   TextButton(
-                    onPressed:
-                        isSaving ? null : () => Navigator.pop(context),
+                    onPressed: isSaving ? null : () => Navigator.pop(context),
                     child: Text(LocaleService.tr('Huy', en: 'Cancel'),
                         style: TextStyle(color: captionColor)),
                   ),
@@ -690,8 +687,7 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                               task['_id'],
                               {
                                 'title': title,
-                                'description':
-                                    _taskDescController.text.trim(),
+                                'description': _taskDescController.text.trim(),
                                 'priority': _taskPriority,
                                 'assignedTo': _selectedAssigneeId,
                                 'status': taskStatus,
@@ -812,16 +808,22 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                       const SizedBox(height: 12),
                       SwitchListTile(
                         title: Text(
-                          LocaleService.tr('Thành viên tạo task', en: 'Members create tasks'),
-                          style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
+                          LocaleService.tr('Thành viên tạo task',
+                              en: 'Members create tasks'),
+                          style: TextStyle(
+                              color: textColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
-                          LocaleService.tr('Cho phép thành viên tạo task mới', en: 'Allow members to create tasks'),
+                          LocaleService.tr('Cho phép thành viên tạo task mới',
+                              en: 'Allow members to create tasks'),
                           style: TextStyle(color: captionColor, fontSize: 11),
                         ),
                         value: allowMembers,
                         activeThumbColor: const Color(0xFF06B6D4),
-                        activeTrackColor: const Color(0xFF06B6D4).withValues(alpha: 0.5),
+                        activeTrackColor:
+                            const Color(0xFF06B6D4).withValues(alpha: 0.5),
                         contentPadding: EdgeInsets.zero,
                         onChanged: (value) {
                           setDialogState(() => allowMembers = value);
@@ -832,10 +834,9 @@ extension _ProjectScreenDialogs on _ProjectScreenState {
                 ),
                 actions: [
                   TextButton(
-                    onPressed:
-                      isSaving ? null : () => Navigator.pop(context),
-                    child: Text('Cancel',
-                        style: TextStyle(color: captionColor)),
+                    onPressed: isSaving ? null : () => Navigator.pop(context),
+                    child:
+                        Text('Cancel', style: TextStyle(color: captionColor)),
                   ),
                   PremiumButton(
                     onPressed: isSaving

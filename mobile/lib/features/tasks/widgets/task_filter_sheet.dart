@@ -219,7 +219,13 @@ class _TaskFilterSheetState extends State<_TaskFilterSheet> {
           TaskFilterGroup(
             title: LocaleService.tr('Trạng thái', en: 'Status'),
             value: _status,
-            options: const ['All', 'Pending', 'In Progress', 'Completed'],
+            options: const [
+              'All',
+              'Pending',
+              'In Progress',
+              'Review',
+              'Completed',
+            ],
             onChanged: (v) => setState(() => _status = v),
           ),
           TaskFilterGroup(
@@ -368,10 +374,8 @@ class _TagFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = selected ? Colors.white : tag.color;
-    final bg =
-        selected ? tag.color : tag.color.withValues(alpha: 0.14);
-    final border =
-        selected ? tag.color : tag.color.withValues(alpha: 0.45);
+    final bg = selected ? tag.color : tag.color.withValues(alpha: 0.14);
+    final border = selected ? tag.color : tag.color.withValues(alpha: 0.45);
 
     return Material(
       color: Colors.transparent,

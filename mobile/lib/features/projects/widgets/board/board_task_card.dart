@@ -13,7 +13,6 @@ import 'board_palette.dart';
 /// - Tap fires [onTap] (the parent typically pushes the Task Detail screen).
 /// - Long press fires [onLongPress] (the parent typically shows the detail
 ///   bottom sheet). Falls back to [onTap] when not provided.
-/// - Swipe right marks the task complete via [onSwipeComplete].
 /// - Swipe left advances the task to the next column via [onSwipeAdvance].
 class BoardTaskCard extends StatelessWidget {
   final TaskModel task;
@@ -22,7 +21,6 @@ class BoardTaskCard extends StatelessWidget {
   final bool canSwipe;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
-  final VoidCallback? onSwipeComplete;
   final VoidCallback? onSwipeAdvance;
 
   const BoardTaskCard({
@@ -33,7 +31,6 @@ class BoardTaskCard extends StatelessWidget {
     required this.onTap,
     this.column = BoardColumn.todo,
     this.onLongPress,
-    this.onSwipeComplete,
     this.onSwipeAdvance,
   });
 
@@ -120,9 +117,7 @@ class BoardTaskCard extends StatelessWidget {
                             Icon(
                               Icons.schedule_rounded,
                               size: 14,
-                              color: overdue
-                                  ? BoardPalette.high
-                                  : captionColor,
+                              color: overdue ? BoardPalette.high : captionColor,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -160,20 +155,19 @@ class BoardTaskCard extends StatelessWidget {
       ),
     );
 
-    if (!canSwipe || onSwipeComplete == null || onSwipeAdvance == null) {
+    if (!canSwipe || onSwipeAdvance == null) {
       return card;
     }
 
     return Dismissible(
       key: ValueKey(task.id.isEmpty ? title : task.id),
-      direction: DismissDirection.horizontal,
+      direction: DismissDirection.endToStart,
+      dismissThresholds: const {
+        DismissDirection.endToStart: 0.25,
+      },
       movementDuration: const Duration(milliseconds: 200),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          onSwipeComplete!();
-        } else {
-          onSwipeAdvance!();
-        }
+      confirmDismiss: (_) async {
+        onSwipeAdvance!();
         return false;
       },
       background: _SwipeBackground(

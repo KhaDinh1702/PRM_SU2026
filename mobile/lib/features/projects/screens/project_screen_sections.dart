@@ -40,7 +40,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
       onOpenNextTask: nextTask == null
           ? null
           : () => _showEditProjectTaskDialog(
-                project, nextTask.toMap(), sheetSetState),
+              project, nextTask.toMap(), sheetSetState),
       onStartNextTask: nextTask == null
           ? null
           : () => _updateProjectTaskStatus(
@@ -75,20 +75,16 @@ extension _ProjectScreenSections on _ProjectScreenState {
     final canAddTask = canManage || allowMembers;
     return BoardTab(
       tasks: _projectTasks,
-      reviewTaskIds: _reviewTaskIds,
       isLoading: _isLoadingProjectTasks,
       tasksLoaded: _projectTasksLoaded,
       assigneeName: (assignee) => _assigneeDisplayName(assignee, project),
       canUpdateTask: (task) {
-        return canManage ||
-            _itemId(task.assignedTo) == _currentUserId();
+        return canManage || _itemId(task.assignedTo) == _currentUserId();
       },
       onOpenTask: (task) =>
           _showEditProjectTaskDialog(project, task.toMap(), sheetSetState),
-      onMarkComplete: (task) =>
-          _handleBoardComplete(project.id, task.toMap(), sheetSetState),
       onMoveToNextStatus: (task) =>
-          _handleBoardAdvance(project.id, task.toMap(), sheetSetState),
+          _handleBoardAdvance(project.id, task, sheetSetState),
       onLoadTasks: () => _loadProjectTasks(project.id, sheetSetState),
       onCreateTask: canAddTask
           ? () => _showCreateProjectTaskDialog(project, sheetSetState)
@@ -106,16 +102,16 @@ extension _ProjectScreenSections on _ProjectScreenState {
       milestones: _projectMilestones,
       isLoading: _milestonesLoading,
       onCreateMilestone: canManage
-          ? () => _showCreateMilestoneDialog(
-                project, projectData, sheetSetState)
+          ? () =>
+              _showCreateMilestoneDialog(project, projectData, sheetSetState)
           : null,
       onEditMilestone: canManage
           ? (milestone) => _showEditMilestoneSheet(
-                project, projectData, milestone, sheetSetState)
+              project, projectData, milestone, sheetSetState)
           : null,
       onDeleteMilestone: canManage
           ? (milestone) => _confirmDeleteMilestone(
-                project, projectData, milestone, sheetSetState)
+              project, projectData, milestone, sheetSetState)
           : null,
       onToggleComplete: canManage
           ? (milestone) async {
@@ -212,7 +208,8 @@ extension _ProjectScreenSections on _ProjectScreenState {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(LocaleService.tr('Xoá milestone?', en: 'Delete milestone?')),
+        title:
+            Text(LocaleService.tr('Xoá milestone?', en: 'Delete milestone?')),
         content: Text(
           LocaleService.tr(
             'Xoá "${milestone.title}" khỏi timeline? Không thể hoàn tác.',
@@ -377,7 +374,6 @@ extension _ProjectScreenSections on _ProjectScreenState {
     _projectTasks = [];
     _projectTasksLoaded = false;
     _projectMilestones = [];
-    _reviewTaskIds.clear();
 
     showModalBottomSheet(
       context: context,
@@ -446,8 +442,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                       sheetSetState,
                                     )
                                 : () {},
-                            onCreateMilestone: () =>
-                                _showCreateMilestoneDialog(
+                            onCreateMilestone: () => _showCreateMilestoneDialog(
                               project,
                               projectData,
                               sheetSetState,
@@ -482,8 +477,7 @@ extension _ProjectScreenSections on _ProjectScreenState {
                                 canLeave: !isOwner,
                                 onEdit: () => _showEditProjectDialog(
                                     projectData, sheetSetState),
-                                onDelete: () =>
-                                    _showDeleteConfirmationDialog(
+                                onDelete: () => _showDeleteConfirmationDialog(
                                   project.id,
                                   project.name,
                                 ),

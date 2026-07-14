@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
 /// Enum trạng thái task
-enum TaskStatus { pending, inProgress, completed }
+enum TaskStatus { pending, inProgress, review, completed }
 
 /// Enum mức độ ưu tiên task
 enum TaskPriority { low, medium, high, urgent }
@@ -115,9 +115,8 @@ class TaskModel {
       project: json['project'] is Map
           ? Map<String, dynamic>.from(json['project'] as Map)
           : null,
-      assignedTo: rawAssignee is Map
-          ? Map<String, dynamic>.from(rawAssignee)
-          : null,
+      assignedTo:
+          rawAssignee is Map ? Map<String, dynamic>.from(rawAssignee) : null,
       location: json['location'] is Map
           ? TaskLocation.fromJson(Map<String, dynamic>.from(json['location']))
           : null,
@@ -250,6 +249,8 @@ class TaskModel {
         return 'Completed';
       case TaskStatus.inProgress:
         return 'In Progress';
+      case TaskStatus.review:
+        return 'Review';
       case TaskStatus.pending:
         return 'Pending';
     }
@@ -320,6 +321,8 @@ class TaskModel {
         return TaskStatus.completed;
       case 'in progress':
         return TaskStatus.inProgress;
+      case 'review':
+        return TaskStatus.review;
       default:
         return TaskStatus.pending;
     }

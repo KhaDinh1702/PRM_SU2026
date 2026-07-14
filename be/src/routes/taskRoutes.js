@@ -23,7 +23,7 @@ const auth = require('../middleware/auth');
  *         name: status
  *         schema:
  *           type: string
- *           enum: [Pending, In Progress, Completed, Overdue]
+ *           enum: [Pending, In Progress, Review, Completed, Overdue]
  *         description: Lọc theo trạng thái
  *       - in: query
  *         name: priority
@@ -74,7 +74,7 @@ router.get('/', auth, taskController.getTasks);
  *                 example: "Học các khái niệm Bloc, Provider và State Management"
  *               status:
  *                 type: string
- *                 enum: [Pending, In Progress, Completed, Overdue]
+ *                 enum: [Pending, In Progress, Review, Completed, Overdue]
  *                 example: "Pending"
  *               priority:
  *                 type: string
@@ -126,7 +126,7 @@ router.post('/', auth, taskController.createTask);
  *                 type: string
  *               status:
  *                 type: string
- *                 enum: [Pending, In Progress, Completed, Overdue]
+ *                 enum: [Pending, In Progress, Review, Completed, Overdue]
  *               priority:
  *                 type: string
  *                 enum: [Low, Medium, High]

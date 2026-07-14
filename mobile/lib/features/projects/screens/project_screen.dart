@@ -87,7 +87,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
   String? _selectedAssigneeId;
   final Map<String, Set<String>> _localPendingInviteIds = {};
   bool _isSavingProjectTask = false;
-  final Set<String> _reviewTaskIds = {};
   List<ProjectMilestone> _projectMilestones = [];
   bool _milestonesLoading = false;
   bool _hasOpenedLinkedProject = false;
@@ -255,7 +254,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: BorderSide(
-                  color: Colors.orangeAccent.withValues(alpha: 0.5), width: 1.5),
+                  color: Colors.orangeAccent.withValues(alpha: 0.5),
+                  width: 1.5),
             ),
             title: Row(
               children: [
@@ -361,8 +361,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
     Map<String, dynamic> payload,
   ) async {
     try {
-      await context.read<ProjectProvider>().updateProject(
-          projectId: projectId, payload: payload);
+      await context
+          .read<ProjectProvider>()
+          .updateProject(projectId: projectId, payload: payload);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -391,8 +392,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final fallbackUserId = _userIdByEmail(email);
 
     // Gọi qua ProjectService
-    final result = await _projectService.addMember(
-        projectId: projectId, email: email);
+    final result =
+        await _projectService.addMember(projectId: projectId, email: email);
 
     if (result['success'] == true) {
       _memberEmailController.clear();
@@ -454,9 +455,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
       // Gọi qua ProjectService
       final tasks = await _projectService.getProjectTasks(projectId);
       _projectTasks = tasks;
-      // Re-validate review set so it never holds ids that no longer exist.
-      final liveIds = tasks.map((t) => t.id).toSet();
-      _reviewTaskIds.retainWhere(liveIds.contains);
       _projectTasksLoaded = true;
     } catch (_) {
     } finally {
@@ -467,7 +465,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
-  Future<String?> _createProjectTask(String projectId, StateSetter sheetSetState,
+  Future<String?> _createProjectTask(
+      String projectId, StateSetter sheetSetState,
       [StateSetter? dialogSetState]) async {
     if (_isSavingProjectTask) return null;
     final title = _taskTitleController.text.trim();
@@ -545,8 +544,29 @@ class _ProjectScreenState extends State<ProjectScreen> {
       if (result['success'] == true) {
         await _loadProjectTasks(projectId, sheetSetState);
         await _loadProjects();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              (result['error'] ?? 'Could not move task to the next column.')
+                  .toString(),
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    } catch (_) {}
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not move task: $error'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<String?> _updateProjectTask(
@@ -656,22 +676,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   Future<void> _updateBoardTaskColumn(
     String projectId,
-    dynamic task,
+    TaskModel task,
     BoardColumn targetColumn,
     StateSetter sheetSetState,
   ) async {
-    if (task is! Map) return;
-    final taskId = task['_id']?.toString() ?? '';
+    final taskId = task.id;
     if (taskId.isEmpty) return;
-
-    setState(() {
-      if (ProjectBoardUtils.shouldMarkReview(targetColumn)) {
-        _reviewTaskIds.add(taskId);
-      } else {
-        _reviewTaskIds.remove(taskId);
-      }
-    });
-    sheetSetState(() {});
 
     await _updateProjectTaskStatus(
       projectId,
@@ -681,25 +691,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
     );
   }
 
-  Future<void> _handleBoardComplete(
-    String projectId,
-    dynamic task,
-    StateSetter sheetSetState,
-  ) =>
-      _updateBoardTaskColumn(
-        projectId,
-        task,
-        BoardColumn.completed,
-        sheetSetState,
-      );
-
   Future<void> _handleBoardAdvance(
     String projectId,
-    dynamic task,
+    TaskModel task,
     StateSetter sheetSetState,
   ) async {
-    final current =
-        ProjectBoardUtils.columnForTask(task, _reviewTaskIds);
+    final current = ProjectBoardUtils.columnForTask(task);
     final next = ProjectBoardUtils.nextColumn(current);
     if (next == null) return;
     await _updateBoardTaskColumn(
